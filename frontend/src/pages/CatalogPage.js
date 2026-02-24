@@ -310,7 +310,7 @@ const CatalogPage = () => {
                     <SelectValue placeholder="Любой" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#1C2128] border-[#27272A]">
-                    <SelectItem value="">Любой</SelectItem>
+                    <SelectItem value="all">Любой</SelectItem>
                     <SelectItem value="sedan">Седан</SelectItem>
                     <SelectItem value="suv">Кроссовер</SelectItem>
                     <SelectItem value="hatchback">Хэтчбек</SelectItem>
