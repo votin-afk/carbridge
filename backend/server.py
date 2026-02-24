@@ -780,6 +780,139 @@ async def chat_with_ai(message: ChatMessage):
 Наши специалисты свяжутся с вами в ближайшее время!"""
         return ChatResponse(response=fallback, session_id=session_id)
 
+# ==================== URL PARSER ENDPOINT ====================
+
+@api_router.post("/parse-url", response_model=ParsedCarData)
+async def parse_car_url(request: ParseUrlRequest):
+    """Parse car listing URL from Chinese platforms and extract car data using AI"""
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    
+    url = request.url.strip()
+    
+    # Validate URL
+    supported_domains = ['che168.com', '58.com', 'guazi.com', 'dongchedi.com', 'autohome.com.cn', 'taoche.com']
+    is_supported = any(domain in url for domain in supported_domains)
+    
+    if not is_supported:
+        return ParsedCarData(
+            success=False,
+            source_url=url,
+            error="Неподдерживаемая площадка. Поддерживаются: che168.com, 58.com, guazi.com, dongchedi.com"
+        )
+    
+    try:
+        # Fetch the page content
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        }
+        
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            response = await client.get(url, headers=headers)
+            
+            if response.status_code != 200:
+                return ParsedCarData(
+                    success=False,
+                    source_url=url,
+                    error=f"Не удалось загрузить страницу (код {response.status_code})"
+                )
+            
+            html_content = response.text
+            
+            # Limit content size for AI processing
+            if len(html_content) > 50000:
+                html_content = html_content[:50000]
+        
+        # Use AI to extract car data from HTML
+        api_key = os.environ.get("EMERGENT_LLM_KEY")
+        if not api_key:
+            return ParsedCarData(
+                success=False,
+                source_url=url,
+                error="AI сервис не настроен"
+            )
+        
+        extraction_prompt = f"""Извлеки информацию об автомобиле из HTML-страницы китайской площадки.
+
+URL: {url}
+
+HTML содержимое (фрагмент):
+{html_content[:30000]}
+
+Верни данные в формате JSON:
+{{
+    "brand": "марка авто (например: BYD, Li Auto, Geely, Chery, Haval, NIO, Changan, Hongqi, Zeekr, Xpeng)",
+    "model": "модель авто",
+    "year": число (год выпуска, например: 2023),
+    "price_cny": число (цена в юанях, без знаков валют, только число. Если цена указана в 万 (wan), умножь на 10000),
+    "engine_type": "ice" или "hybrid" или "electric",
+    "engine_volume": число (объем двигателя в см³, если указан, иначе null),
+    "mileage": число (пробег в км, если указан, иначе null. Если указан в 万公里, умножь на 10000),
+    "image_url": "URL главного фото авто, если найден",
+    "description": "краткое описание авто на русском языке (комплектация, цвет, особенности)"
+}}
+
+Если какое-то поле не найдено, верни null. Верни ТОЛЬКО JSON без дополнительного текста."""
+
+        chat = LlmChat(
+            api_key=api_key,
+            system_message="Ты эксперт по извлечению данных из HTML страниц китайских автомобильных площадок. Отвечай только валидным JSON."
+        ).with_model("openai", "gpt-4o")
+        
+        ai_response = await chat.send_message(UserMessage(text=extraction_prompt))
+        
+        # Parse AI response
+        import json
+        import re
+        
+        # Extract JSON from response
+        json_match = re.search(r'\{[^{}]*\}', ai_response, re.DOTALL)
+        if json_match:
+            try:
+                data = json.loads(json_match.group())
+                
+                # Validate and convert data
+                engine_type = data.get('engine_type', 'ice')
+                if engine_type not in ['ice', 'hybrid', 'electric']:
+                    engine_type = 'ice'
+                
+                return ParsedCarData(
+                    success=True,
+                    brand=data.get('brand'),
+                    model=data.get('model'),
+                    year=int(data['year']) if data.get('year') else None,
+                    price_cny=float(data['price_cny']) if data.get('price_cny') else None,
+                    engine_type=engine_type,
+                    engine_volume=int(data['engine_volume']) if data.get('engine_volume') else None,
+                    mileage=int(data['mileage']) if data.get('mileage') else None,
+                    image_url=data.get('image_url'),
+                    description=data.get('description'),
+                    source_url=url
+                )
+            except (json.JSONDecodeError, ValueError, TypeError) as e:
+                logger.error(f"Failed to parse AI response: {e}")
+        
+        return ParsedCarData(
+            success=False,
+            source_url=url,
+            error="Не удалось извлечь данные. Попробуйте другую ссылку или введите данные вручную."
+        )
+        
+    except httpx.TimeoutException:
+        return ParsedCarData(
+            success=False,
+            source_url=url,
+            error="Превышено время ожидания. Китайский сайт не отвечает."
+        )
+    except Exception as e:
+        logger.error(f"URL parsing error: {e}")
+        return ParsedCarData(
+            success=False,
+            source_url=url,
+            error=f"Ошибка при обработке ссылки: {str(e)}"
+        )
+
 # ==================== STATUS ENDPOINT ====================
 
 @api_router.get("/")
