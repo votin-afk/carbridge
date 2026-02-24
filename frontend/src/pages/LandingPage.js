@@ -26,7 +26,8 @@ import {
   Bot,
   Send,
   Loader2,
-  Sparkles
+  Sparkles,
+  Car
 } from 'lucide-react';
 import axios from 'axios';
 
