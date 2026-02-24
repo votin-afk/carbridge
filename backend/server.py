@@ -1272,6 +1272,165 @@ HTML содержимое (фрагмент):
             error=f"Ошибка при обработке ссылки: {str(e)}"
         )
 
+# ==================== CATALOG ENDPOINTS ====================
+
+def generate_search_links(brand: str = None, model: str = None, query: str = None):
+    """Generate search URLs for Chinese car platforms"""
+    import urllib.parse
+    
+    search_term = query or f"{brand or ''} {model or ''}".strip()
+    search_cn = search_term  # Could add translation here
+    encoded = urllib.parse.quote(search_term)
+    encoded_cn = urllib.parse.quote(search_cn)
+    
+    return {
+        "che168": f"https://www.che168.com/china/a0_0msdgscncgpi1ltocsp1exx0/?keyword={encoded}",
+        "58": f"https://m.58.com/ershouche/?keyword={encoded}",
+        "guazi": f"https://www.guazi.com/buy/?search={encoded}",
+        "dongchedi": f"https://www.dongchedi.com/search?keyword={encoded}",
+    }
+
+@api_router.get("/catalog/brands")
+async def get_catalog_brands():
+    """Get list of all brands in catalog"""
+    brands = {}
+    for car in CHINESE_CAR_CATALOG:
+        if car["brand"] not in brands:
+            brands[car["brand"]] = {
+                "name": car["brand"],
+                "name_cn": car["brand_cn"],
+                "count": 0,
+                "models": []
+            }
+        brands[car["brand"]]["count"] += 1
+        if car["model"] not in brands[car["brand"]]["models"]:
+            brands[car["brand"]]["models"].append(car["model"])
+    
+    return list(brands.values())
+
+@api_router.get("/catalog/search", response_model=CatalogSearchResult)
+async def search_catalog(
+    brand: Optional[str] = None,
+    model: Optional[str] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    min_year: Optional[int] = None,
+    max_year: Optional[int] = None,
+    engine_type: Optional[str] = None,
+    body_type: Optional[str] = None,
+    query: Optional[str] = None,
+    page: int = 1,
+    limit: int = 20
+):
+    """Search cars in catalog with filters"""
+    filtered = CHINESE_CAR_CATALOG.copy()
+    
+    # Apply filters
+    if brand:
+        filtered = [c for c in filtered if c["brand"].lower() == brand.lower()]
+    
+    if model:
+        filtered = [c for c in filtered if model.lower() in c["model"].lower()]
+    
+    if min_price:
+        filtered = [c for c in filtered if c["price_from_cny"] >= min_price]
+    
+    if max_price:
+        filtered = [c for c in filtered if c["price_from_cny"] <= max_price]
+    
+    if min_year:
+        filtered = [c for c in filtered if c["year_to"] is None or c["year_to"] >= min_year]
+    
+    if max_year:
+        filtered = [c for c in filtered if c["year_from"] <= max_year]
+    
+    if engine_type:
+        filtered = [c for c in filtered if c["engine_type"] == engine_type]
+    
+    if body_type:
+        filtered = [c for c in filtered if c["body_type"] == body_type]
+    
+    if query:
+        query_lower = query.lower()
+        filtered = [c for c in filtered if 
+            query_lower in c["brand"].lower() or 
+            query_lower in c["model"].lower() or
+            query_lower in c["description"].lower() or
+            query_lower in c["brand_cn"] or
+            query_lower in c["model_cn"]
+        ]
+    
+    # Sort by popularity
+    filtered.sort(key=lambda x: x["popularity"], reverse=True)
+    
+    # Pagination
+    total = len(filtered)
+    pages = (total + limit - 1) // limit
+    start = (page - 1) * limit
+    end = start + limit
+    paginated = filtered[start:end]
+    
+    # Generate search links
+    search_links = generate_search_links(brand, model, query)
+    
+    return CatalogSearchResult(
+        cars=[CatalogCarModel(**c) for c in paginated],
+        total=total,
+        page=page,
+        pages=pages,
+        search_links=search_links
+    )
+
+@api_router.get("/catalog/{car_id}")
+async def get_catalog_car(car_id: str):
+    """Get single car details from catalog"""
+    for car in CHINESE_CAR_CATALOG:
+        if car["id"] == car_id:
+            return {
+                **car,
+                "search_links": generate_search_links(car["brand"], car["model"])
+            }
+    raise HTTPException(status_code=404, detail="Car not found in catalog")
+
+@api_router.post("/catalog/{car_id}/add-to-garage")
+async def add_catalog_car_to_garage(
+    car_id: str, 
+    current_user: dict = Depends(get_current_user)
+):
+    """Add car from catalog to user's garage"""
+    catalog_car = None
+    for car in CHINESE_CAR_CATALOG:
+        if car["id"] == car_id:
+            catalog_car = car
+            break
+    
+    if not catalog_car:
+        raise HTTPException(status_code=404, detail="Car not found in catalog")
+    
+    # Create garage entry
+    garage_id = str(uuid.uuid4())
+    garage_doc = {
+        "id": garage_id,
+        "user_id": current_user["id"],
+        "brand": catalog_car["brand"],
+        "model": catalog_car["model"],
+        "year": catalog_car["year_to"] or catalog_car["year_from"],
+        "price_cny": catalog_car["price_from_cny"],
+        "engine_type": catalog_car["engine_type"],
+        "engine_volume": catalog_car.get("engine_volume"),
+        "mileage": None,
+        "image_url": catalog_car["image_url"],
+        "source_url": None,
+        "description": catalog_car["description"],
+        "status": "saved",
+        "from_catalog": True,
+        "catalog_id": car_id,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.garage.insert_one(garage_doc)
+    
+    return {"message": "Car added to garage", "garage_id": garage_id}
+
 # ==================== STATUS ENDPOINT ====================
 
 @api_router.get("/")
