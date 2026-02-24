@@ -45,10 +45,10 @@ const LandingPage = () => {
   ];
 
   const platforms = [
-    { name: "Che168", url: "https://www.che168.com", desc: "Крупнейшая площадка Китая" },
-    { name: "Autohome", url: "https://www.autohome.com.cn", desc: "Популярный автопортал" },
-    { name: "Taoche", url: "https://www.taoche.com", desc: "Проверенные дилеры" },
+    { name: "58.com", url: "https://m.58.com/", desc: "Крупнейший классифайд Китая" },
+    { name: "Che168", url: "https://www.che168.com/", desc: "Ведущая автоплощадка" },
     { name: "Guazi", url: "https://www.guazi.com", desc: "Авто с пробегом" },
+    { name: "Dongchedi", url: "https://www.dongchedi.com", desc: "Автопортал от ByteDance" },
   ];
 
   const faqItems = [
