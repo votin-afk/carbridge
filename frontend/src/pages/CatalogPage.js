@@ -408,12 +408,12 @@ const CatalogPage = () => {
               {/* Engine Type */}
               <div>
                 <Label className="text-slate-400 mb-2 block">Двигатель</Label>
-                <Select value={filters.engine_type} onValueChange={(v) => handleFilterChange('engine_type', v)}>
+                <Select value={filters.engine_type || "all"} onValueChange={(v) => handleFilterChange('engine_type', v === "all" ? "" : v)}>
                   <SelectTrigger className="bg-[#0D1117] border-[#27272A] text-white">
                     <SelectValue placeholder="Любой" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#15191E] border-[#27272A]">
-                    <SelectItem value="" className="text-white">Любой</SelectItem>
+                    <SelectItem value="all" className="text-white">Любой</SelectItem>
                     <SelectItem value="ice" className="text-white">
                       <div className="flex items-center gap-2">
                         <Fuel size={14} className="text-slate-400" />
@@ -439,12 +439,12 @@ const CatalogPage = () => {
               {/* Body Type */}
               <div>
                 <Label className="text-slate-400 mb-2 block">Кузов</Label>
-                <Select value={filters.body_type} onValueChange={(v) => handleFilterChange('body_type', v)}>
+                <Select value={filters.body_type || "all"} onValueChange={(v) => handleFilterChange('body_type', v === "all" ? "" : v)}>
                   <SelectTrigger className="bg-[#0D1117] border-[#27272A] text-white">
                     <SelectValue placeholder="Любой" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#15191E] border-[#27272A]">
-                    <SelectItem value="" className="text-white">Любой</SelectItem>
+                    <SelectItem value="all" className="text-white">Любой</SelectItem>
                     <SelectItem value="sedan" className="text-white">Седан</SelectItem>
                     <SelectItem value="suv" className="text-white">Кроссовер / SUV</SelectItem>
                     <SelectItem value="hatchback" className="text-white">Хэтчбек</SelectItem>
@@ -460,12 +460,12 @@ const CatalogPage = () => {
               {/* Year From */}
               <div>
                 <Label className="text-slate-400 mb-2 block">Год от</Label>
-                <Select value={filters.min_year} onValueChange={(v) => handleFilterChange('min_year', v)}>
+                <Select value={filters.min_year || "all"} onValueChange={(v) => handleFilterChange('min_year', v === "all" ? "" : v)}>
                   <SelectTrigger className="bg-[#0D1117] border-[#27272A] text-white">
                     <SelectValue placeholder="Любой" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#15191E] border-[#27272A] max-h-60">
-                    <SelectItem value="" className="text-white">Любой</SelectItem>
+                    <SelectItem value="all" className="text-white">Любой</SelectItem>
                     {yearOptions.map((y) => (
                       <SelectItem key={y} value={y.toString()} className="text-white">{y}</SelectItem>
                     ))}
@@ -476,12 +476,12 @@ const CatalogPage = () => {
               {/* Year To */}
               <div>
                 <Label className="text-slate-400 mb-2 block">Год до</Label>
-                <Select value={filters.max_year} onValueChange={(v) => handleFilterChange('max_year', v)}>
+                <Select value={filters.max_year || "all"} onValueChange={(v) => handleFilterChange('max_year', v === "all" ? "" : v)}>
                   <SelectTrigger className="bg-[#0D1117] border-[#27272A] text-white">
                     <SelectValue placeholder="Любой" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#15191E] border-[#27272A] max-h-60">
-                    <SelectItem value="" className="text-white">Любой</SelectItem>
+                    <SelectItem value="all" className="text-white">Любой</SelectItem>
                     {yearOptions.map((y) => (
                       <SelectItem key={y} value={y.toString()} className="text-white">{y}</SelectItem>
                     ))}
