@@ -9,6 +9,7 @@ import MyGarage from "./pages/dashboard/MyGarage";
 import Tenders from "./pages/dashboard/Tenders";
 import Documents from "./pages/dashboard/Documents";
 import Calculator from "./pages/Calculator";
+import CatalogPage from "./pages/CatalogPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AIChat from "./components/AIChat";
 import "@/App.css";
@@ -21,6 +22,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/calculator" element={<Calculator />} />
+          <Route path="/catalog" element={<CatalogPage />} />
           
           <Route path="/dashboard" element={
             <ProtectedRoute>
