@@ -522,6 +522,314 @@ CHINESE_CAR_CATALOG = [
     },
 ]
 
+# ==================== PRO-AUCTIONS PARSER ====================
+
+class ProAuctionsParser:
+    """Parser for demo.pro-auctions.ru/china-used/ catalog"""
+    
+    BASE_URL = "https://demo.pro-auctions.ru/china-used/"
+    
+    @staticmethod
+    def parse_price_rub(text: str) -> Optional[int]:
+        """Extract price in RUB from string like '1 513 051 ₽'"""
+        if not text:
+            return None
+        # Remove all non-digits except decimal points
+        cleaned = re.sub(r'[^\d]', '', text.strip())
+        try:
+            return int(cleaned) if cleaned else None
+        except ValueError:
+            return None
+    
+    @staticmethod
+    def parse_mileage(text: str) -> Optional[int]:
+        """Extract mileage from string like '2 600 км'"""
+        if not text:
+            return None
+        match = re.search(r'([\d\s]+)\s*км', text)
+        if match:
+            cleaned = re.sub(r'\s', '', match.group(1))
+            try:
+                return int(cleaned)
+            except ValueError:
+                return None
+        return None
+    
+    @staticmethod
+    def parse_year_month(text: str) -> tuple:
+        """Extract year and month from string like '1 / 2025 г' or '6 / 2024 г'"""
+        if not text:
+            return None, None
+        match = re.search(r'(\d+)\s*/\s*(\d{4})', text)
+        if match:
+            return int(match.group(2)), int(match.group(1))
+        return None, None
+    
+    @staticmethod
+    def parse_engine_volume(text: str) -> Optional[int]:
+        """Extract engine volume from string like '1499 см³'"""
+        if not text:
+            return None
+        match = re.search(r'(\d+)\s*см', text)
+        if match:
+            try:
+                return int(match.group(1))
+            except ValueError:
+                return None
+        return None
+    
+    @staticmethod
+    def determine_engine_type(fuel_text: str) -> str:
+        """Determine engine type from fuel text"""
+        if not fuel_text:
+            return "ice"
+        fuel_lower = fuel_text.lower()
+        if 'электр' in fuel_lower or 'electric' in fuel_lower:
+            return "electric"
+        elif 'гибрид' in fuel_lower or 'hybrid' in fuel_lower or 'phev' in fuel_lower:
+            return "hybrid"
+        return "ice"
+    
+    @staticmethod
+    def determine_body_type(body_text: str) -> str:
+        """Determine body type from text"""
+        if not body_text:
+            return "sedan"
+        body_lower = body_text.lower()
+        if 'кроссовер' in body_lower or 'suv' in body_lower:
+            return "suv"
+        elif 'хэтчбек' in body_lower or 'хетчбек' in body_lower:
+            return "hatchback"
+        elif 'минивэн' in body_lower or 'mpv' in body_lower:
+            return "mpv"
+        elif 'универсал' in body_lower or 'wagon' in body_lower:
+            return "wagon"
+        elif 'пикап' in body_lower or 'pickup' in body_lower:
+            return "pickup"
+        return "sedan"
+    
+    @classmethod
+    async def fetch_page(cls, url: str) -> Optional[str]:
+        """Fetch HTML content from URL"""
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language': 'ru-RU,ru;q=0.9,en;q=0.8',
+                }
+                response = await client.get(url, headers=headers, follow_redirects=True)
+                if response.status_code == 200:
+                    return response.text
+        except Exception as e:
+            logger.error(f"Error fetching {url}: {e}")
+        return None
+    
+    @classmethod
+    async def get_brands(cls) -> List[Dict]:
+        """Get list of all brands from main catalog page"""
+        cache_key = "pro_auctions_brands"
+        cached = get_cached(cache_key)
+        if cached:
+            return cached
+        
+        html = await cls.fetch_page(cls.BASE_URL)
+        if not html:
+            return []
+        
+        soup = BeautifulSoup(html, 'lxml')
+        brands = []
+        
+        # Find brand links like: <a class="brands_models__link" href=".../china-used/geely/">
+        brand_links = soup.select('.brands_models__link, .car-brands__link')
+        seen_brands = set()
+        
+        for link in brand_links:
+            href = link.get('href', '')
+            if '/china-used/' in href and href != cls.BASE_URL:
+                # Extract brand slug from URL
+                parts = href.rstrip('/').split('/')
+                if len(parts) >= 2 and parts[-2] == 'china-used':
+                    brand_slug = parts[-1]
+                    if brand_slug and brand_slug not in seen_brands:
+                        spans = link.find_all('span')
+                        brand_name = spans[0].get_text(strip=True) if spans else link.get_text(strip=True)
+                        count_text = spans[1].get_text(strip=True) if len(spans) > 1 else "0"
+                        count = int(re.sub(r'\D', '', count_text)) if count_text else 0
+                        
+                        if brand_name and not brand_name.startswith('...'):
+                            seen_brands.add(brand_slug)
+                            brands.append({
+                                "name": brand_name,
+                                "slug": brand_slug,
+                                "count": count,
+                                "url": href
+                            })
+        
+        # Sort by count descending
+        brands.sort(key=lambda x: x["count"], reverse=True)
+        set_cache(cache_key, brands)
+        return brands
+    
+    @classmethod
+    async def search_cars(cls, brand: str = None, page: int = 1, limit: int = 20) -> Dict:
+        """Search cars from catalog with optional brand filter"""
+        cache_key = f"pro_auctions_cars_{brand or 'all'}_{page}_{limit}"
+        cached = get_cached(cache_key)
+        if cached:
+            return cached
+        
+        # Build URL
+        if brand:
+            url = f"{cls.BASE_URL}{brand}/"
+        else:
+            url = cls.BASE_URL
+        
+        html = await cls.fetch_page(url)
+        if not html:
+            return {"cars": [], "total": 0, "pages": 1}
+        
+        soup = BeautifulSoup(html, 'lxml')
+        cars = []
+        
+        # Find car cards
+        car_cards = soup.select('.card-row')
+        
+        for card in car_cards:
+            try:
+                car_data = cls._parse_car_card(card)
+                if car_data:
+                    cars.append(car_data)
+            except Exception as e:
+                logger.error(f"Error parsing car card: {e}")
+                continue
+        
+        # Get total count
+        total_text = soup.select_one('.catalog__qnt span')
+        total = int(re.sub(r'\D', '', total_text.get_text())) if total_text else len(cars)
+        
+        # Apply pagination
+        start = (page - 1) * limit
+        end = start + limit
+        paginated_cars = cars[start:end]
+        
+        pages = max(1, (total + limit - 1) // limit)
+        
+        result = {
+            "cars": paginated_cars,
+            "total": total,
+            "pages": pages,
+            "page": page
+        }
+        
+        set_cache(cache_key, result)
+        return result
+    
+    @classmethod
+    def _parse_car_card(cls, card) -> Optional[Dict]:
+        """Parse single car card HTML element"""
+        # Get car name and URL
+        name_link = card.select_one('.card-row__name')
+        if not name_link:
+            return None
+        
+        car_name = name_link.get_text(strip=True)
+        car_url = name_link.get('href', '')
+        
+        # Extract brand and model from name (e.g., "Geely Emgrand")
+        name_parts = car_name.split(' ', 1)
+        brand = name_parts[0] if name_parts else ""
+        model = name_parts[1] if len(name_parts) > 1 else car_name
+        
+        # Get car ID from URL
+        car_id = car_url.rstrip('/').split('/')[-1] if car_url else str(uuid.uuid4())
+        
+        # Get image
+        images = []
+        img_elements = card.select('.card-row-gallery img')
+        for img in img_elements:
+            src = img.get('src') or img.get('data-src')
+            if src and 'pa-server.ru' in src:
+                images.append(src)
+        
+        image_url = images[0] if images else "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800"
+        
+        # Get age info (mileage and year)
+        age_div = card.select_one('.card-row__age')
+        mileage = None
+        year = None
+        month = None
+        
+        if age_div:
+            spans = age_div.find_all('span')
+            for span in spans:
+                text = span.get_text(strip=True)
+                if 'км' in text:
+                    mileage = cls.parse_mileage(text)
+                elif '/' in text and 'г' in text:
+                    year, month = cls.parse_year_month(text)
+        
+        # Get car info (body type, engine, fuel)
+        info_cols = card.select('.card-row__col')
+        body_type = "sedan"
+        engine_volume = None
+        fuel_type = "Бензин"
+        configuration = ""
+        source_url = ""
+        
+        for col in info_cols:
+            text = col.get_text(strip=True)
+            if 'Седан' in text or 'Кроссовер' in text or 'Хэтчбек' in text or 'Минивэн' in text:
+                body_type = cls.determine_body_type(text)
+            elif 'см³' in text:
+                engine_volume = cls.parse_engine_volume(text)
+                if 'Бензин' in text:
+                    fuel_type = "Бензин"
+                elif 'Дизель' in text:
+                    fuel_type = "Дизель"
+                elif 'Электр' in text:
+                    fuel_type = "Электро"
+            elif 'dongchedi' in text.lower() or 'che168' in text.lower():
+                # External link
+                ext_link = col.select_one('a')
+                if ext_link:
+                    source_url = ext_link.get('href', '')
+        
+        # Get price
+        price_div = card.select_one('.card-row__price p')
+        price_rub = cls.parse_price_rub(price_div.get_text() if price_div else "0")
+        
+        # Convert RUB to CNY (approximate rate: 1 CNY ≈ 12.5 RUB)
+        CNY_RATE = 12.5
+        price_cny = int(price_rub / CNY_RATE) if price_rub else 0
+        
+        engine_type = cls.determine_engine_type(fuel_type)
+        
+        return {
+            "id": car_id,
+            "brand": brand,
+            "brand_cn": "",
+            "model": model,
+            "model_cn": "",
+            "year_from": year or 2023,
+            "year_to": year,
+            "price_from_cny": price_cny,
+            "price_to_cny": price_cny,
+            "price_rub": price_rub,
+            "engine_type": engine_type,
+            "engine_volume": engine_volume,
+            "body_type": body_type,
+            "mileage": mileage,
+            "image_url": image_url,
+            "images": images,
+            "description": f"{car_name} - {year or 2023} г., пробег {mileage or 0} км",
+            "features": [],
+            "source": "pro-auctions",
+            "source_url": source_url,
+            "popularity": 50,
+            "fuel_type": fuel_type
+        }
+
 # ==================== AUTH HELPERS ====================
 
 def create_token(user_id: str, email: str) -> str:
