@@ -802,23 +802,33 @@ async def parse_car_url(request: ParseUrlRequest):
     
     try:
         # Fetch the page content
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        req_headers = {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
         }
         
-        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
-            response = await client.get(url, headers=headers)
+        async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as http_client:
+            response = await http_client.get(url, headers=req_headers)
             
             if response.status_code != 200:
                 return ParsedCarData(
                     success=False,
                     source_url=url,
-                    error=f"Не удалось загрузить страницу (код {response.status_code})"
+                    error=f"Не удалось загрузить страницу (код {response.status_code}). Попробуйте ввести данные вручную."
                 )
             
             html_content = response.text
+            
+            # Check if page has meaningful content
+            if len(html_content) < 1000:
+                return ParsedCarData(
+                    success=False,
+                    source_url=url,
+                    error="Страница пуста или защищена. Введите данные вручную."
+                )
             
             # Limit content size for AI processing
             if len(html_content) > 50000:
@@ -838,22 +848,28 @@ async def parse_car_url(request: ParseUrlRequest):
 URL: {url}
 
 HTML содержимое (фрагмент):
-{html_content[:30000]}
+{html_content[:25000]}
+
+ВАЖНО: Ищи в HTML следующие данные:
+- Название/title страницы часто содержит марку и модель
+- Цена может быть в формате "XX.XX万" (万 = 10000 юаней) или просто числом
+- Год выпуска обычно 4 цифры (2020-2025)
+- Пробег может быть в 万公里 (万 = 10000 км)
 
 Верни данные в формате JSON:
 {{
-    "brand": "марка авто (например: BYD, Li Auto, Geely, Chery, Haval, NIO, Changan, Hongqi, Zeekr, Xpeng)",
+    "brand": "марка авто (BYD, Li Auto, Geely, Chery, Haval, NIO, Changan, Hongqi, Zeekr, Xpeng, Volkswagen, Toyota и др.)",
     "model": "модель авто",
-    "year": число (год выпуска, например: 2023),
-    "price_cny": число (цена в юанях, без знаков валют, только число. Если цена указана в 万 (wan), умножь на 10000),
-    "engine_type": "ice" или "hybrid" или "electric",
-    "engine_volume": число (объем двигателя в см³, если указан, иначе null),
-    "mileage": число (пробег в км, если указан, иначе null. Если указан в 万公里, умножь на 10000),
-    "image_url": "URL главного фото авто, если найден",
-    "description": "краткое описание авто на русском языке (комплектация, цвет, особенности)"
+    "year": число (год выпуска, 2015-2025),
+    "price_cny": число (цена в юанях. ВАЖНО: если цена в 万, умножь на 10000. Например 15.8万 = 158000),
+    "engine_type": "ice" или "hybrid" или "electric" (определи по названию модели или характеристикам),
+    "engine_volume": число (объем в см³) или null,
+    "mileage": число (пробег в км. ВАЖНО: если в 万公里, умножь на 10000) или null,
+    "image_url": "URL фото авто" или null,
+    "description": "краткое описание на русском (цвет, комплектация, состояние)"
 }}
 
-Если какое-то поле не найдено, верни null. Верни ТОЛЬКО JSON без дополнительного текста."""
+Верни ТОЛЬКО валидный JSON без пояснений."""
 
         chat = LlmChat(
             api_key=api_key,
