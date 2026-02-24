@@ -403,6 +403,11 @@ const CatalogPage = () => {
                     {getEngineIcon(car.engine_type)}
                     <span className="text-white">{getEngineLabel(car.engine_type)}</span>
                   </div>
+                  {car.source === 'pro-auctions' && (
+                    <div className="absolute top-3 right-3 px-2 py-1 bg-emerald-500/80 backdrop-blur-sm rounded text-xs text-white font-medium">
+                      LIVE
+                    </div>
+                  )}
                 </div>
 
                 {/* Content */}
@@ -412,21 +417,39 @@ const CatalogPage = () => {
                       <p className="text-slate-500 text-xs">{car.brand}</p>
                       <h3 className="text-white font-semibold">{car.model}</h3>
                     </div>
-                    <span className="text-[#00E5FF] font-semibold text-sm">
-                      {formatPrice(car.price_from_cny)}
-                      {car.price_to_cny && car.price_to_cny !== car.price_from_cny && (
-                        <span className="text-slate-500 font-normal"> — {formatPrice(car.price_to_cny)}</span>
+                    <div className="text-right">
+                      {car.price_rub ? (
+                        <>
+                          <span className="text-[#00E5FF] font-semibold text-sm block">
+                            {formatPriceRub(car.price_rub)}
+                          </span>
+                          <span className="text-slate-500 text-xs">
+                            ≈ {formatPrice(car.price_from_cny)}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-[#00E5FF] font-semibold text-sm">
+                          {formatPrice(car.price_from_cny)}
+                          {car.price_to_cny && car.price_to_cny !== car.price_from_cny && (
+                            <span className="text-slate-500 font-normal"> — {formatPrice(car.price_to_cny)}</span>
+                          )}
+                        </span>
                       )}
-                    </span>
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap gap-1.5 mb-3">
                     <span className="px-2 py-0.5 bg-[#27272A] rounded text-xs text-slate-400">
-                      {car.year_from}{car.year_to && car.year_to !== car.year_from ? `-${car.year_to}` : ''}
+                      {car.year_from}{car.year_to && car.year_to !== car.year_from ? `-${car.year_to}` : ' г'}
                     </span>
                     <span className="px-2 py-0.5 bg-[#27272A] rounded text-xs text-slate-400">
                       {getBodyLabel(car.body_type)}
                     </span>
+                    {car.mileage && (
+                      <span className="px-2 py-0.5 bg-[#27272A] rounded text-xs text-slate-400">
+                        {formatMileage(car.mileage)}
+                      </span>
+                    )}
                   </div>
 
                   <p className="text-slate-400 text-xs line-clamp-2 mb-4">
