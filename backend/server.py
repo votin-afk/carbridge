@@ -782,21 +782,114 @@ class ProAuctionsParser:
         # Get car ID from URL
         car_id = car_url.rstrip('/').split('/')[-1] if car_url else str(uuid.uuid4())
         
-        # Get image
+        # Get images - look in multiple places
         images = []
-        img_elements = card.select('.card-row-gallery img')
+        
+        # Try card-row-gallery first
+        img_elements = card.select('.card-row-gallery img, .card-row__img img, .swiper-slide img')
         for img in img_elements:
-            src = img.get('src') or img.get('data-src')
-            if src and 'pa-server.ru' in src:
-                images.append(src)
+            src = img.get('data-src') or img.get('src')
+            if src:
+                # Handle relative and escaped URLs
+                if 'pa-server.ru' in src:
+                    # Clean up escaped URLs
+                    clean_src = src.replace('\\/', '/')
+                    if not clean_src.startswith('http'):
+                        clean_src = 'https://' + clean_src
+                    if clean_src not in images:
+                        images.append(clean_src)
+        
+        # Also look for lazy-load images in data attributes
+        lazy_imgs = card.select('[data-src*="pa-server"]')
+        for img in lazy_imgs:
+            src = img.get('data-src')
+            if src:
+                clean_src = src.replace('\\/', '/')
+                if not clean_src.startswith('http'):
+                    clean_src = 'https://' + clean_src
+                if clean_src not in images:
+                    images.append(clean_src)
+        
+        # Get image from srcset attribute as fallback
+        srcset_imgs = card.select('img[srcset*="pa-server"]')
+        for img in srcset_imgs:
+            srcset = img.get('srcset', '')
+            if srcset:
+                # Parse srcset to get first image URL
+                first_src = srcset.split(',')[0].strip().split(' ')[0]
+                if first_src and first_src not in images:
+                    if not first_src.startswith('http'):
+                        first_src = 'https://' + first_src
+                    images.append(first_src)
         
         image_url = images[0] if images else "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800"
         
-        # Get age info (mileage and year)
-        age_div = card.select_one('.card-row__age')
-        mileage = None
+        # Get price in CNY from data-calc attribute
+        price_cny = 0
         year = None
         month = None
+        engine_volume = None
+        fuel_type = "Бензин"
+        engine_type = "ice"
+        
+        price_toggle = card.select_one('.js-price-popup, [data-calc]')
+        if price_toggle:
+            data_calc = price_toggle.get('data-calc', '')
+            # Parse data-calc: "price=52000&year=2022&month=12&v=1499&m=b..."
+            params = dict(param.split('=') for param in data_calc.split('&') if '=' in param)
+            
+            if 'price' in params:
+                try:
+                    price_cny = int(params['price'])
+                except ValueError:
+                    price_cny = 0
+            
+            if 'year' in params:
+                try:
+                    year = int(params['year'])
+                except ValueError:
+                    pass
+            
+            if 'month' in params:
+                try:
+                    month = int(params['month'])
+                except ValueError:
+                    pass
+            
+            if 'v' in params:
+                try:
+                    engine_volume = int(params['v'])
+                except ValueError:
+                    pass
+            
+            # Determine engine type from m parameter (b=benzin, d=diesel, e=electric, h=hybrid)
+            m_param = params.get('m', 'b').lower()
+            if m_param == 'e' or 'electro' in data_calc.lower():
+                engine_type = "electric"
+                fuel_type = "Электро"
+            elif m_param == 'h' or 'hybrid' in data_calc.lower():
+                engine_type = "hybrid"
+                fuel_type = "Гибрид"
+            elif m_param == 'd':
+                engine_type = "ice"
+                fuel_type = "Дизель"
+            else:
+                engine_type = "ice"
+                fuel_type = "Бензин"
+            
+            # Check for electric power
+            power_electro = params.get('powerElectro', '0')
+            if power_electro and power_electro != '0':
+                if params.get('powerDVS', '0') != '0':
+                    engine_type = "hybrid"
+                    fuel_type = "Гибрид"
+                else:
+                    engine_type = "electric"
+                    fuel_type = "Электро"
+        
+        # Fallback: Get age info (mileage and year) from visible text if not from data-calc
+        mileage = None
+        age_div = card.select_one('.card-row__age')
         
         if age_div:
             spans = age_div.find_all('span')
@@ -804,44 +897,22 @@ class ProAuctionsParser:
                 text = span.get_text(strip=True)
                 if 'км' in text:
                     mileage = cls.parse_mileage(text)
-                elif '/' in text and 'г' in text:
+                elif '/' in text and 'г' in text and not year:
                     year, month = cls.parse_year_month(text)
         
-        # Get car info (body type, engine, fuel)
-        info_cols = card.select('.card-row__col')
+        # Get body type from info columns
         body_type = "sedan"
-        engine_volume = None
-        fuel_type = "Бензин"
-        configuration = ""
         source_url = ""
+        info_cols = card.select('.card-row__col')
         
         for col in info_cols:
             text = col.get_text(strip=True)
-            if 'Седан' in text or 'Кроссовер' in text or 'Хэтчбек' in text or 'Минивэн' in text:
+            if any(bt in text for bt in ['Седан', 'Кроссовер', 'Хэтчбек', 'Минивэн', 'Универсал', 'Пикап', 'SUV']):
                 body_type = cls.determine_body_type(text)
-            elif 'см³' in text:
-                engine_volume = cls.parse_engine_volume(text)
-                if 'Бензин' in text:
-                    fuel_type = "Бензин"
-                elif 'Дизель' in text:
-                    fuel_type = "Дизель"
-                elif 'Электр' in text:
-                    fuel_type = "Электро"
             elif 'dongchedi' in text.lower() or 'che168' in text.lower():
-                # External link
                 ext_link = col.select_one('a')
                 if ext_link:
                     source_url = ext_link.get('href', '')
-        
-        # Get price
-        price_div = card.select_one('.card-row__price p')
-        price_rub = cls.parse_price_rub(price_div.get_text() if price_div else "0")
-        
-        # Convert RUB to CNY (approximate rate: 1 CNY ≈ 12.5 RUB)
-        CNY_RATE = 12.5
-        price_cny = int(price_rub / CNY_RATE) if price_rub else 0
-        
-        engine_type = cls.determine_engine_type(fuel_type)
         
         return {
             "id": car_id,
@@ -853,7 +924,6 @@ class ProAuctionsParser:
             "year_to": year,
             "price_from_cny": price_cny,
             "price_to_cny": price_cny,
-            "price_rub": price_rub,
             "engine_type": engine_type,
             "engine_volume": engine_volume,
             "body_type": body_type,
