@@ -184,15 +184,21 @@ const LandingPage = () => {
               </p>
 
               <div className="flex flex-wrap gap-4">
+                <Link to="/catalog">
+                  <Button data-testid="hero-catalog-btn" className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black font-semibold px-8 py-6 rounded-sm btn-glow">
+                    <Car className="mr-2" size={20} />
+                    Каталог авто
+                  </Button>
+                </Link>
                 <a href="#ai-agent">
-                  <Button data-testid="hero-cta-btn" className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black font-semibold px-8 py-6 rounded-sm btn-glow">
+                  <Button data-testid="hero-cta-btn" variant="outline" className="border-[#27272A] text-white hover:border-[#00E5FF] hover:text-[#00E5FF] px-8 py-6 rounded-sm">
                     <Sparkles className="mr-2" size={20} />
-                    AI Подбор авто
+                    AI Подбор
                   </Button>
                 </a>
                 <Link to="/calculator">
                   <Button data-testid="hero-calc-btn" variant="outline" className="border-[#27272A] text-white hover:border-[#00E5FF] hover:text-[#00E5FF] px-8 py-6 rounded-sm">
-                    Рассчитать стоимость
+                    Калькулятор
                   </Button>
                 </Link>
               </div>
