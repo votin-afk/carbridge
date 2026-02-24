@@ -1623,7 +1623,16 @@ def generate_search_links(brand: str = None, model: str = None, query: str = Non
 
 @api_router.get("/catalog/brands")
 async def get_catalog_brands():
-    """Get list of all brands in catalog"""
+    """Get list of all brands in catalog - fetches live data from pro-auctions"""
+    try:
+        # Try to get live data from pro-auctions
+        live_brands = await ProAuctionsParser.get_brands()
+        if live_brands:
+            return live_brands
+    except Exception as e:
+        logger.error(f"Error fetching live brands: {e}")
+    
+    # Fallback to static data
     brands = {}
     for car in CHINESE_CAR_CATALOG:
         if car["brand"] not in brands:
@@ -1653,7 +1662,95 @@ async def search_catalog(
     page: int = 1,
     limit: int = 20
 ):
-    """Search cars in catalog with filters"""
+    """Search cars in catalog with filters - fetches live data from pro-auctions"""
+    try:
+        # Try to get live data from pro-auctions
+        # Find brand slug if brand name provided
+        brand_slug = None
+        if brand:
+            live_brands = await ProAuctionsParser.get_brands()
+            for b in live_brands:
+                if b["name"].lower() == brand.lower():
+                    brand_slug = b["slug"]
+                    break
+        
+        live_result = await ProAuctionsParser.search_cars(brand=brand_slug, page=page, limit=limit)
+        
+        if live_result["cars"]:
+            # Apply additional filters to live data
+            filtered = live_result["cars"]
+            
+            if model:
+                filtered = [c for c in filtered if model.lower() in c["model"].lower()]
+            
+            if min_price:
+                filtered = [c for c in filtered if c["price_from_cny"] >= min_price]
+            
+            if max_price:
+                filtered = [c for c in filtered if c["price_from_cny"] <= max_price]
+            
+            if min_year:
+                filtered = [c for c in filtered if c["year_to"] is None or c["year_to"] >= min_year]
+            
+            if max_year:
+                filtered = [c for c in filtered if c["year_from"] <= max_year]
+            
+            if engine_type:
+                filtered = [c for c in filtered if c["engine_type"] == engine_type]
+            
+            if body_type:
+                filtered = [c for c in filtered if c["body_type"] == body_type]
+            
+            if query:
+                query_lower = query.lower()
+                filtered = [c for c in filtered if 
+                    query_lower in c["brand"].lower() or 
+                    query_lower in c["model"].lower() or
+                    query_lower in c.get("description", "").lower()
+                ]
+            
+            # Generate search links
+            search_links = generate_search_links(brand, model, query)
+            
+            # Create CatalogCarModel compatible objects
+            cars_for_response = []
+            for c in filtered:
+                car_dict = {
+                    "id": c["id"],
+                    "brand": c["brand"],
+                    "brand_cn": c.get("brand_cn", ""),
+                    "model": c["model"],
+                    "model_cn": c.get("model_cn", ""),
+                    "year_from": c["year_from"],
+                    "year_to": c.get("year_to"),
+                    "price_from_cny": c["price_from_cny"],
+                    "price_to_cny": c.get("price_to_cny", c["price_from_cny"]),
+                    "engine_type": c["engine_type"],
+                    "engine_volume": c.get("engine_volume"),
+                    "body_type": c["body_type"],
+                    "image_url": c["image_url"],
+                    "description": c.get("description", ""),
+                    "features": c.get("features", []),
+                    "popularity": c.get("popularity", 50),
+                    "mileage": c.get("mileage"),
+                    "price_rub": c.get("price_rub"),
+                    "source": c.get("source", "pro-auctions")
+                }
+                cars_for_response.append(CatalogCarModel(**car_dict))
+            
+            total = live_result["total"] if not any([model, min_price, max_price, min_year, max_year, engine_type, body_type, query]) else len(filtered)
+            
+            return CatalogSearchResult(
+                cars=cars_for_response,
+                total=total,
+                page=page,
+                pages=live_result["pages"],
+                search_links=search_links
+            )
+    except Exception as e:
+        logger.error(f"Error fetching live catalog: {e}")
+    
+    # Fallback to static data
     filtered = CHINESE_CAR_CATALOG.copy()
     
     # Apply filters
@@ -1715,13 +1812,23 @@ async def search_catalog(
 @api_router.get("/catalog/{car_id}")
 async def get_catalog_car(car_id: str):
     """Get single car details from catalog"""
+    # First check static catalog
     for car in CHINESE_CAR_CATALOG:
         if car["id"] == car_id:
             return {
                 **car,
                 "search_links": generate_search_links(car["brand"], car["model"])
             }
-    raise HTTPException(status_code=404, detail="Car not found in catalog")
+    
+    # If not found, it might be a live car from pro-auctions
+    # The car_id format from pro-auctions is like "2_10412458"
+    return {
+        "id": car_id,
+        "brand": "Unknown",
+        "model": "Unknown",
+        "message": "Car details not available",
+        "search_links": {}
+    }
 
 @api_router.post("/catalog/{car_id}/add-to-garage")
 async def add_catalog_car_to_garage(
@@ -1730,10 +1837,26 @@ async def add_catalog_car_to_garage(
 ):
     """Add car from catalog to user's garage"""
     catalog_car = None
+    
+    # First check static catalog
     for car in CHINESE_CAR_CATALOG:
         if car["id"] == car_id:
             catalog_car = car
             break
+    
+    # If not in static catalog, check cache for live cars
+    if not catalog_car:
+        # Try to find in cached live data
+        for key in list(_cache.keys()):
+            if key.startswith("pro_auctions_cars_"):
+                cached_data = _cache.get(key, {})
+                cars = cached_data.get("cars", [])
+                for car in cars:
+                    if car["id"] == car_id:
+                        catalog_car = car
+                        break
+                if catalog_car:
+                    break
     
     if not catalog_car:
         raise HTTPException(status_code=404, detail="Car not found in catalog")
@@ -1745,17 +1868,19 @@ async def add_catalog_car_to_garage(
         "user_id": current_user["id"],
         "brand": catalog_car["brand"],
         "model": catalog_car["model"],
-        "year": catalog_car["year_to"] or catalog_car["year_from"],
-        "price_cny": catalog_car["price_from_cny"],
-        "engine_type": catalog_car["engine_type"],
+        "year": catalog_car.get("year_to") or catalog_car.get("year_from", 2023),
+        "price_cny": catalog_car.get("price_from_cny", 0),
+        "engine_type": catalog_car.get("engine_type", "ice"),
         "engine_volume": catalog_car.get("engine_volume"),
-        "mileage": None,
-        "image_url": catalog_car["image_url"],
-        "source_url": None,
-        "description": catalog_car["description"],
+        "mileage": catalog_car.get("mileage"),
+        "image_url": catalog_car.get("image_url"),
+        "source_url": catalog_car.get("source_url"),
+        "description": catalog_car.get("description", ""),
         "status": "saved",
         "from_catalog": True,
         "catalog_id": car_id,
+        "source": catalog_car.get("source", "static"),
+        "price_rub": catalog_car.get("price_rub"),
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.garage.insert_one(garage_doc)
