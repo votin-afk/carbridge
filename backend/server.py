@@ -240,8 +240,8 @@ class CatalogCarModel(BaseModel):
     features: List[str] = []
     popularity: int = 0
     mileage: Optional[int] = None
-    price_rub: Optional[int] = None
     source: Optional[str] = None
+    fuel_type: Optional[str] = None
 
 class CatalogSearchResult(BaseModel):
     cars: List[CatalogCarModel]
