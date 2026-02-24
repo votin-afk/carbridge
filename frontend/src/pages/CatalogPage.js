@@ -545,17 +545,34 @@ const CatalogPage = () => {
               Введите название марки или модели в поисковую строку, либо используйте фильтры для поиска авто
             </p>
             <div className="flex flex-wrap gap-2 justify-center">
-              {['Geely', 'BYD', 'Changan', 'Haval', 'Li Auto'].map((brand) => (
+              {['Geely', 'BYD', 'Changan', 'Haval', 'Li Auto'].map((brandName) => (
                 <Button
-                  key={brand}
+                  key={brandName}
                   variant="outline"
-                  onClick={() => {
-                    handleFilterChange('brand', brand);
-                    setTimeout(() => searchCars(), 100);
+                  onClick={async () => {
+                    setFilters(prev => ({ ...prev, brand: brandName, page: 1 }));
+                    setHasSearched(true);
+                    setLoading(true);
+                    try {
+                      const params = new URLSearchParams();
+                      params.append('brand', brandName);
+                      params.append('page', '1');
+                      params.append('limit', '12');
+                      const response = await axios.get(`${API}/catalog/search?${params}`);
+                      setCars(response.data.cars);
+                      setTotal(response.data.total);
+                      setPages(response.data.pages);
+                      setSearchLinks(response.data.search_links);
+                    } catch (error) {
+                      console.error('Error:', error);
+                      toast.error('Ошибка при загрузке');
+                    } finally {
+                      setLoading(false);
+                    }
                   }}
                   className="border-[#27272A] text-slate-300 hover:bg-[#27272A] hover:border-[#00E5FF]"
                 >
-                  {brand}
+                  {brandName}
                 </Button>
               ))}
             </div>
