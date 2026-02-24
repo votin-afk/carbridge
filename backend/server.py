@@ -1841,8 +1841,8 @@ async def search_catalog(
                     "features": c.get("features", []),
                     "popularity": c.get("popularity", 50),
                     "mileage": c.get("mileage"),
-                    "price_rub": c.get("price_rub"),
-                    "source": c.get("source", "pro-auctions")
+                    "source": c.get("source", "pro-auctions"),
+                    "fuel_type": c.get("fuel_type", "Бензин")
                 }
                 cars_for_response.append(CatalogCarModel(**car_dict))
             
