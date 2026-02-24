@@ -888,7 +888,6 @@ class ProAuctionsParser:
             else:
                 engine_type = "ice"
                 fuel_type = "Бензин"
-                    fuel_type = "Электро"
         
         # Fallback: Get age info (mileage and year) from visible text if not from data-calc
         mileage = None
