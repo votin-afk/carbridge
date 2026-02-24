@@ -271,12 +271,12 @@ const CatalogPage = () => {
               {/* Brand */}
               <div>
                 <Label className="text-slate-400 text-sm">Марка</Label>
-                <Select value={filters.brand} onValueChange={(v) => handleFilterChange('brand', v)}>
+                <Select value={filters.brand || "all"} onValueChange={(v) => handleFilterChange('brand', v === 'all' ? '' : v)}>
                   <SelectTrigger className="mt-1 bg-[#0B0F14] border-[#27272A] text-white">
                     <SelectValue placeholder="Все марки" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#1C2128] border-[#27272A]">
-                    <SelectItem value="">Все марки</SelectItem>
+                    <SelectItem value="all">Все марки</SelectItem>
                     {brands.map(b => (
                       <SelectItem key={b.name} value={b.name}>
                         {b.name} ({b.count})
@@ -289,12 +289,12 @@ const CatalogPage = () => {
               {/* Engine Type */}
               <div>
                 <Label className="text-slate-400 text-sm">Двигатель</Label>
-                <Select value={filters.engine_type} onValueChange={(v) => handleFilterChange('engine_type', v)}>
+                <Select value={filters.engine_type || "all"} onValueChange={(v) => handleFilterChange('engine_type', v === 'all' ? '' : v)}>
                   <SelectTrigger className="mt-1 bg-[#0B0F14] border-[#27272A] text-white">
                     <SelectValue placeholder="Любой" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#1C2128] border-[#27272A]">
-                    <SelectItem value="">Любой</SelectItem>
+                    <SelectItem value="all">Любой</SelectItem>
                     <SelectItem value="electric">Электро</SelectItem>
                     <SelectItem value="hybrid">Гибрид</SelectItem>
                     <SelectItem value="ice">ДВС</SelectItem>
@@ -305,7 +305,7 @@ const CatalogPage = () => {
               {/* Body Type */}
               <div>
                 <Label className="text-slate-400 text-sm">Кузов</Label>
-                <Select value={filters.body_type} onValueChange={(v) => handleFilterChange('body_type', v)}>
+                <Select value={filters.body_type || "all"} onValueChange={(v) => handleFilterChange('body_type', v === 'all' ? '' : v)}>
                   <SelectTrigger className="mt-1 bg-[#0B0F14] border-[#27272A] text-white">
                     <SelectValue placeholder="Любой" />
                   </SelectTrigger>
