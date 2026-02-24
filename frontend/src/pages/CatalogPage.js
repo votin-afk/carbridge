@@ -169,6 +169,16 @@ const CatalogPage = () => {
     return `¥${price.toLocaleString()}`;
   };
 
+  const formatPriceRub = (price) => {
+    if (!price) return null;
+    return `${price.toLocaleString('ru-RU')} ₽`;
+  };
+
+  const formatMileage = (km) => {
+    if (!km) return null;
+    return `${km.toLocaleString('ru-RU')} км`;
+  };
+
   const activeFiltersCount = [
     filters.brand,
     filters.engine_type,
