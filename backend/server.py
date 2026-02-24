@@ -225,9 +225,9 @@ class CatalogSearchParams(BaseModel):
 class CatalogCarModel(BaseModel):
     id: str
     brand: str
-    brand_cn: str
+    brand_cn: str = ""
     model: str
-    model_cn: str
+    model_cn: str = ""
     year_from: int
     year_to: Optional[int] = None
     price_from_cny: float
@@ -236,9 +236,12 @@ class CatalogCarModel(BaseModel):
     engine_volume: Optional[int] = None
     body_type: str
     image_url: str
-    description: str
+    description: str = ""
     features: List[str] = []
     popularity: int = 0
+    mileage: Optional[int] = None
+    price_rub: Optional[int] = None
+    source: Optional[str] = None
 
 class CatalogSearchResult(BaseModel):
     cars: List[CatalogCarModel]
