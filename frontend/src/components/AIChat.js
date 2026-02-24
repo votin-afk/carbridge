@@ -65,7 +65,8 @@ const AIChat = () => {
       <button
         data-testid="ai-chat-toggle"
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 ${
+        style={{ zIndex: 9999 }}
+        className={`fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg ${
           isOpen 
             ? 'bg-[#27272A] text-white rotate-90' 
             : 'bg-[#00E5FF] text-black hover:bg-[#22D3EE] pulse-cyan'
