@@ -169,6 +169,23 @@ class ChatResponse(BaseModel):
     response: str
     session_id: str
 
+class ParseUrlRequest(BaseModel):
+    url: str
+
+class ParsedCarData(BaseModel):
+    success: bool
+    brand: Optional[str] = None
+    model: Optional[str] = None
+    year: Optional[int] = None
+    price_cny: Optional[float] = None
+    engine_type: Optional[str] = None
+    engine_volume: Optional[int] = None
+    mileage: Optional[int] = None
+    image_url: Optional[str] = None
+    description: Optional[str] = None
+    source_url: str
+    error: Optional[str] = None
+
 # ==================== AUTH HELPERS ====================
 
 def create_token(user_id: str, email: str) -> str:
