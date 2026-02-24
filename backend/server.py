@@ -857,10 +857,29 @@ class ProAuctionsParser:
             
             # Determine engine type from m parameter (b=benzin, d=diesel, e=electric, h=hybrid)
             m_param = params.get('m', 'b').lower()
-            if m_param == 'e' or 'electro' in data_calc.lower():
+            
+            # Check for electric power first - this is more reliable
+            power_electro = params.get('powerElectro', '0')
+            power_dvs = params.get('powerDVS', '0')
+            
+            # Convert to float for comparison
+            try:
+                electro_val = float(power_electro) if power_electro else 0
+                dvs_val = float(power_dvs) if power_dvs else 0
+            except ValueError:
+                electro_val = 0
+                dvs_val = 0
+            
+            if electro_val > 0 and dvs_val > 0:
+                engine_type = "hybrid"
+                fuel_type = "Гибрид"
+            elif electro_val > 0 and dvs_val == 0:
                 engine_type = "electric"
                 fuel_type = "Электро"
-            elif m_param == 'h' or 'hybrid' in data_calc.lower():
+            elif m_param == 'e':
+                engine_type = "electric"
+                fuel_type = "Электро"
+            elif m_param == 'h':
                 engine_type = "hybrid"
                 fuel_type = "Гибрид"
             elif m_param == 'd':
@@ -869,15 +888,6 @@ class ProAuctionsParser:
             else:
                 engine_type = "ice"
                 fuel_type = "Бензин"
-            
-            # Check for electric power
-            power_electro = params.get('powerElectro', '0')
-            if power_electro and power_electro != '0':
-                if params.get('powerDVS', '0') != '0':
-                    engine_type = "hybrid"
-                    fuel_type = "Гибрид"
-                else:
-                    engine_type = "electric"
                     fuel_type = "Электро"
         
         # Fallback: Get age info (mileage and year) from visible text if not from data-calc
