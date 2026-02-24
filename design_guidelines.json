@@ -1,0 +1,162 @@
+{
+  "identity": {
+    "name": "CARBRIDGE",
+    "tone": "Industrial Tech, Reliable, Precise, Modern",
+    "aesthetic": "Dark Mode, Cyber-Physical, Clean Minimal",
+    "target_audience": "Belarusian clients importing cars from China",
+    "keywords": ["Precision", "Logistics", "Tech-forward", "Transparency"]
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Space Grotesk, sans-serif",
+      "body": "Manrope, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-5xl md:text-7xl font-bold tracking-tight",
+      "h2": "text-4xl md:text-5xl font-semibold tracking-tight",
+      "h3": "text-2xl md:text-3xl font-medium",
+      "body": "text-base leading-relaxed text-slate-300",
+      "caption": "text-xs uppercase tracking-widest text-slate-500"
+    }
+  },
+  "colors": {
+    "background": {
+      "default": "#0B0F14",
+      "surface": "#15191E",
+      "card": "#1C2128",
+      "overlay": "rgba(11, 15, 20, 0.8)"
+    },
+    "primary": {
+      "default": "#00E5FF",
+      "hover": "#22D3EE",
+      "foreground": "#000000"
+    },
+    "secondary": {
+      "default": "#334155",
+      "foreground": "#F8FAFC"
+    },
+    "accent": {
+      "cyan": "#00E5FF",
+      "slate": "#94A3B8",
+      "success": "#10B981",
+      "warning": "#F59E0B",
+      "error": "#EF4444"
+    },
+    "border": {
+      "default": "#27272A",
+      "active": "#00E5FF"
+    },
+    "text": {
+      "primary": "#F8FAFC",
+      "secondary": "#94A3B8",
+      "muted": "#64748B"
+    }
+  },
+  "visual_enhancers": {
+    "radius": "rounded-sm",
+    "shadows": {
+      "card": "0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3)",
+      "glow": "0 0 20px rgba(0, 229, 255, 0.15)"
+    },
+    "borders": "1px solid #27272A",
+    "glassmorphism": "backdrop-blur-xl bg-black/40 border border-white/10",
+    "textures": {
+      "topographic": "url('https://images.pexels.com/photos/13796547/pexels-photo-13796547.jpeg')",
+      "grid": "linear-gradient(to right, #27272A 1px, transparent 1px), linear-gradient(to bottom, #27272A 1px, transparent 1px)"
+    }
+  },
+  "layout": {
+    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "grid_system": "grid grid-cols-1 md:grid-cols-12 gap-6",
+    "spacing": {
+      "section": "py-24",
+      "component": "p-6"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-[#00E5FF] text-black hover:bg-[#22D3EE] rounded-sm font-medium px-6 py-3 transition-all shadow-[0_0_15px_rgba(0,229,255,0.3)] hover:shadow-[0_0_25px_rgba(0,229,255,0.5)]",
+      "secondary": "bg-transparent border border-[#27272A] text-white hover:border-[#00E5FF] hover:text-[#00E5FF] rounded-sm px-6 py-3 transition-all",
+      "ghost": "text-slate-400 hover:text-white hover:bg-white/5 rounded-sm px-4 py-2"
+    },
+    "cards": {
+      "default": "bg-[#15191E] border border-[#27272A] rounded-sm p-6 hover:border-[#00E5FF]/50 transition-colors group relative overflow-hidden",
+      "feature": "bg-[#1C2128]/50 backdrop-blur-sm border border-white/5 rounded-sm p-8 hover:bg-[#1C2128] transition-all"
+    },
+    "inputs": {
+      "default": "bg-[#0B0F14] border border-[#27272A] text-white rounded-sm focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF] placeholder:text-slate-600"
+    },
+    "badges": {
+      "status": "px-2 py-1 rounded-full text-xs font-medium uppercase tracking-wider",
+      "success": "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
+      "warning": "bg-amber-500/10 text-amber-400 border border-amber-500/20",
+      "info": "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
+    }
+  },
+  "image_urls": {
+    "hero": {
+      "url": "https://images.pexels.com/photos/32912506/pexels-photo-32912506.jpeg",
+      "alt": "Modern Electric SUV in Dark Studio",
+      "category": "landing"
+    },
+    "logistics": {
+      "url": "https://images.unsplash.com/photo-1594842001896-6a99a5a07c2d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNDR8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBjYXIlMjBsb2dpc3RpY3MlMjBjb250YWluZXIlMjBzaGlwJTIwYWVyaWFsfGVufDB8fHx8MTc3MTkzMzE1Nnww&ixlib=rb-4.1.0&q=85",
+      "alt": "Aerial view of car logistics",
+      "category": "about"
+    },
+    "garage": [
+      {
+        "url": "https://images.pexels.com/photos/32912506/pexels-photo-32912506.jpeg",
+        "alt": "Li Auto L9",
+        "model": "Li Auto L9"
+      },
+      {
+        "url": "https://images.pexels.com/photos/27243718/pexels-photo-27243718.jpeg",
+        "alt": "BYD Han",
+        "model": "BYD Han"
+      },
+      {
+        "url": "https://images.pexels.com/photos/33532868/pexels-photo-33532868.jpeg",
+        "alt": "Geely Monjaro",
+        "model": "Geely Monjaro"
+      }
+    ],
+    "backgrounds": {
+      "topographic": "https://images.pexels.com/photos/13796547/pexels-photo-13796547.jpeg"
+    }
+  },
+  "instructions_to_main_agent": [
+    "1. THEME SETUP: Immediately configure `tailwind.config.js` to use the custom color palette defined in `colors`. Override the default Shadcn variables in `index.css` to match the Dark Industrial theme (Zinc 950 background).",
+    "2. FONTS: Import 'Space Grotesk' and 'Manrope' from Google Fonts. Apply Space Grotesk to all headings and Manrope to body text.",
+    "3. LAYOUT: Use a 'Bento Grid' layout for the Dashboard overview. Use asymmetric layouts for the Landing page.",
+    "4. COMPONENTS: Customize Shadcn components to remove excessive rounded corners. Use `rounded-sm` or `rounded-none` for a technical feel. Add 1px borders with low opacity to cards.",
+    "5. LOGO: Create a text-based logo component where 'CAR' is white and 'BRIDGE' is #00E5FF (Cyan). Use Space Grotesk Bold.",
+    "6. BACKGROUNDS: Use the 'topographic' image as a subtle background overlay with low opacity (5-10%) on the Landing page hero section.",
+    "7. CALCULATOR: Build the Customs Calculator as a prominent feature. Use range sliders with Cyan tracks and large, clear typography for the result.",
+    "8. AI AGENT: Implement the AI Chat as a floating action button (bottom-right) or a dedicated sidebar mode. Style the chat bubbles with a technical look (square corners on one side).",
+    "9. MOBILE: Ensure all grids collapse to 1 column on mobile. The sidebar should become a drawer.",
+    "10. DATA-TESTID: Add `data-testid` attributes to all interactive elements (buttons, inputs, links) for testing."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. In frontend design, this creates what users call the 'AI slop' aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy",
+    "Use glass-morphism effects with backdrop filters (12-24px blur)",
+    "You MUST NOT apply universal transition. Eg: `transition: all`. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms",
+    "You MUST NOT center align the app container, ie do not add `.App { text-align: center; }` in the css file. This disrupts the human natural reading flow of text",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style",
+    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯📚🎭🎬🎪🎉🎊🎁🎀🎂🍰🎈🎨🎰💰💵💳🏦💎🪙💸🤑📊📈📉💹🔢🏆🥇 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Main agent relies on these image URLs. Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN",
+    "Prioritize using pre-existing components from src/components/ui when applicable",
+    "Create new components that match the style and conventions of existing components when needed",
+    "Examine existing components to understand the project's component patterns before creating new ones",
+    "Components MUST use named exports (export const ComponentName = ...)",
+    "Pages MUST use default exports (export default function PageName() {...})",
+    "Use `sonner` for toasts. Sonner component are located in `/app/src/components/ui/sonner.tsx`"
+  ]
+}
