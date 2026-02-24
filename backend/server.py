@@ -782,47 +782,40 @@ class ProAuctionsParser:
         # Get car ID from URL
         car_id = car_url.rstrip('/').split('/')[-1] if car_url else str(uuid.uuid4())
         
-        # Get images - look in multiple places
+        # Get image from meta itemprop="image" - most reliable
+        image_url = None
         images = []
         
-        # Try card-row-gallery first
-        img_elements = card.select('.card-row-gallery img, .card-row__img img, .swiper-slide img')
-        for img in img_elements:
-            src = img.get('data-src') or img.get('src')
-            if src:
-                # Handle relative and escaped URLs
-                if 'pa-server.ru' in src:
-                    # Clean up escaped URLs
-                    clean_src = src.replace('\\/', '/')
-                    if not clean_src.startswith('http'):
-                        clean_src = 'https://' + clean_src
-                    if clean_src not in images:
-                        images.append(clean_src)
+        # First try meta tag with itemprop="image"
+        meta_image = card.select_one('meta[itemprop="image"]')
+        if meta_image:
+            content = meta_image.get('content', '')
+            if content and 'pa-server.ru' in content:
+                image_url = content
+                images.append(content)
         
-        # Also look for lazy-load images in data attributes
-        lazy_imgs = card.select('[data-src*="pa-server"]')
-        for img in lazy_imgs:
-            src = img.get('data-src')
-            if src:
-                clean_src = src.replace('\\/', '/')
-                if not clean_src.startswith('http'):
-                    clean_src = 'https://' + clean_src
-                if clean_src not in images:
-                    images.append(clean_src)
+        # Also try to extract images from JSON in comments
+        card_html = str(card)
+        import json as json_module
+        json_match = re.search(r'"images":\[([^\]]+)\]', card_html)
+        if json_match:
+            try:
+                # Parse the images array
+                images_str = '[' + json_match.group(1) + ']'
+                # Clean escaped URLs
+                images_str = images_str.replace('\\/', '/')
+                parsed_images = json_module.loads(images_str)
+                for img in parsed_images[:5]:  # Limit to 5 images
+                    if img not in images:
+                        images.append(img)
+                if not image_url and parsed_images:
+                    image_url = parsed_images[0]
+            except:
+                pass
         
-        # Get image from srcset attribute as fallback
-        srcset_imgs = card.select('img[srcset*="pa-server"]')
-        for img in srcset_imgs:
-            srcset = img.get('srcset', '')
-            if srcset:
-                # Parse srcset to get first image URL
-                first_src = srcset.split(',')[0].strip().split(' ')[0]
-                if first_src and first_src not in images:
-                    if not first_src.startswith('http'):
-                        first_src = 'https://' + first_src
-                    images.append(first_src)
-        
-        image_url = images[0] if images else "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800"
+        # Fallback to default image if nothing found
+        if not image_url:
+            image_url = "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800"
         
         # Get price in CNY from data-calc attribute
         price_cny = 0
