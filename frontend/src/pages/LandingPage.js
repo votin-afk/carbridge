@@ -131,10 +131,10 @@ const LandingPage = () => {
             <Logo />
             
             <nav className="hidden md:flex items-center gap-8">
+              <Link to="/catalog" className="text-slate-400 hover:text-[#00E5FF] transition-colors font-medium">Каталог</Link>
               <a href="#ai-agent" className="text-slate-400 hover:text-white transition-colors">AI Подбор</a>
               <a href="#process" className="text-slate-400 hover:text-white transition-colors">Процесс</a>
               <a href="#advantages" className="text-slate-400 hover:text-white transition-colors">Преимущества</a>
-              <a href="#platforms" className="text-slate-400 hover:text-white transition-colors">Площадки</a>
               <a href="#faq" className="text-slate-400 hover:text-white transition-colors">FAQ</a>
               <a href="#contacts" className="text-slate-400 hover:text-white transition-colors">Контакты</a>
             </nav>
