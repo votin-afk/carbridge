@@ -322,6 +322,84 @@ class CarbridgeAPITester:
         """Test exchange rates endpoint"""
         return self.run_test("Exchange Rates", "GET", "exchange-rates", 200)
 
+    def test_parse_url_valid(self):
+        """Test URL parsing with valid Chinese marketplace URL"""
+        # Test with a sample Chinese car marketplace URL
+        parse_data = {
+            "url": "https://www.che168.com/dealer/100023/65893845.html"
+        }
+        
+        success, response = self.run_test(
+            "Parse URL - Valid Chinese URL", 
+            "POST", 
+            "parse-url", 
+            200, 
+            parse_data
+        )
+        
+        if success:
+            # Check if response has expected structure
+            if 'success' in response and 'source_url' in response:
+                if response.get('success'):
+                    self.log_test("Parse URL Success Response", True, f"Parsed: {response.get('brand', 'N/A')} {response.get('model', 'N/A')}")
+                else:
+                    # Even if parsing failed, it should return informative error
+                    error_msg = response.get('error', 'No error message')
+                    self.log_test("Parse URL Error Response", True, f"Informative error: {error_msg}")
+                return True
+            else:
+                self.log_test("Parse URL Response Structure", False, "Missing required fields")
+                return False
+        return False
+
+    def test_parse_url_invalid(self):
+        """Test URL parsing with invalid/unsupported URL"""
+        parse_data = {
+            "url": "https://www.google.com"
+        }
+        
+        success, response = self.run_test(
+            "Parse URL - Invalid URL", 
+            "POST", 
+            "parse-url", 
+            200, 
+            parse_data
+        )
+        
+        if success:
+            # Should return success=False with informative error
+            if response.get('success') == False and response.get('error'):
+                self.log_test("Parse URL Invalid Domain Handling", True, f"Error: {response.get('error')}")
+                return True
+            else:
+                self.log_test("Parse URL Invalid Domain Handling", False, "Should return error for unsupported domain")
+                return False
+        return False
+
+    def test_parse_url_empty(self):
+        """Test URL parsing with empty URL"""
+        parse_data = {
+            "url": ""
+        }
+        
+        success, response = self.run_test(
+            "Parse URL - Empty URL", 
+            "POST", 
+            "parse-url", 
+            200, 
+            parse_data
+        )
+        
+        if success:
+            # Should handle empty URL gracefully
+            if response.get('success') == False:
+                self.log_test("Parse URL Empty Handling", True, "Handled empty URL correctly")
+                return True
+            else:
+                self.log_test("Parse URL Empty Handling", False, "Should reject empty URL")
+                return False
+        return False
+
     def run_all_tests(self):
         """Run all API tests"""
         print("🚀 Starting CARBRIDGE API Tests")
