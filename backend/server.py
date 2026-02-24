@@ -699,17 +699,18 @@ class ProAuctionsParser:
                         
                         if brand_name and not brand_name.startswith('...') and not brand_name.startswith('Показать'):
                             seen_brands.add(brand_slug)
+                            # Build full URL for the brand
+                            full_url = f"{cls.BASE_URL}{brand_slug}/"
                             brands.append({
                                 "name": brand_name,
                                 "slug": brand_slug,
                                 "count": count,
-                                "url": href
+                                "url": full_url
                             })
         
         # Sort by count descending
         brands.sort(key=lambda x: x["count"], reverse=True)
         set_cache(cache_key, brands)
-        return brands
         return brands
     
     @classmethod
