@@ -1756,6 +1756,31 @@ async def get_catalog_brands():
     
     return list(brands.values())
 
+@api_router.get("/catalog/models/{brand_slug}")
+async def get_catalog_models(brand_slug: str):
+    """Get list of all models for a specific brand"""
+    try:
+        # Get cars for this brand to extract unique models
+        live_result = await ProAuctionsParser.search_cars(brand=brand_slug, page=1, limit=100)
+        if live_result["cars"]:
+            models = {}
+            for car in live_result["cars"]:
+                model_name = car["model"]
+                if model_name not in models:
+                    models[model_name] = {
+                        "name": model_name,
+                        "count": 0
+                    }
+                models[model_name]["count"] += 1
+            
+            result = list(models.values())
+            result.sort(key=lambda x: x["count"], reverse=True)
+            return result
+    except Exception as e:
+        logger.error(f"Error fetching models for {brand_slug}: {e}")
+    
+    return []
+
 @api_router.get("/catalog/search", response_model=CatalogSearchResult)
 async def search_catalog(
     brand: Optional[str] = None,
