@@ -225,7 +225,11 @@ const CatalogPage = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Каталог авто из Китая</h1>
           <p className="text-slate-400">
-            Популярные модели китайских автомобилей с ценами и характеристиками
+            Актуальные предложения с китайских площадок — цены, пробег, характеристики
+          </p>
+          <p className="text-emerald-400/80 text-xs mt-1 flex items-center gap-1">
+            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+            Данные синхронизируются с demo.pro-auctions.ru
           </p>
         </div>
 
