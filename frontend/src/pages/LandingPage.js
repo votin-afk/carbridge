@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
@@ -22,11 +23,58 @@ import {
   Phone,
   Mail,
   MapPin,
-  Star
+  Bot,
+  Send,
+  Loader2,
+  Sparkles
 } from 'lucide-react';
+import axios from 'axios';
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const LandingPage = () => {
   const { isAuthenticated } = useAuth();
+  
+  // AI Chat state
+  const [chatMessages, setChatMessages] = useState([
+    {
+      role: 'assistant',
+      content: 'Привет! Я AI-ассистент CARBRIDGE. Помогу подобрать автомобиль из Китая под ваши требования. Расскажите, какой автомобиль вы ищете?'
+    }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  const sendChatMessage = async () => {
+    if (!chatInput.trim() || chatLoading) return;
+    
+    const userMessage = chatInput.trim();
+    setChatInput('');
+    setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setChatLoading(true);
+
+    try {
+      const response = await axios.post(`${API}/chat`, {
+        message: userMessage,
+        session_id: sessionId
+      });
+      setSessionId(response.data.session_id);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: response.data.response }]);
+    } catch (error) {
+      setChatMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'Извините, произошла ошибка. Попробуйте позже или свяжитесь с нами напрямую.' 
+      }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   const processSteps = [
     { num: "01", title: "Подбор", desc: "AI-ассистент помогает определить потребности и подобрать авто", icon: Search },
@@ -69,8 +117,8 @@ const LandingPage = () => {
       a: "Да, электромобили растамаживаются по льготной ставке 0%. Это делает их особенно выгодными для импорта. Мы поможем подобрать подходящую модель с учетом особенностей эксплуатации в Беларуси."
     },
     {
-      q: "Как происходит проверка автомобиля?",
-      a: "После выбора подрядчика вы получаете: реальные фото автомобиля (не из объявления), видеообзор, и профессиональный отчет о техническом состоянии от независимого эксперта."
+      q: "Что такое Указ 140?",
+      a: "Указ № 140 позволяет многодетным семьям, инвалидам I-II групп и родителям детей-инвалидов получить 50% скидку на таможенные пошлины при ввозе автомобиля для личного пользования."
     },
   ];
 
@@ -83,6 +131,7 @@ const LandingPage = () => {
             <Logo />
             
             <nav className="hidden md:flex items-center gap-8">
+              <a href="#ai-agent" className="text-slate-400 hover:text-white transition-colors">AI Подбор</a>
               <a href="#process" className="text-slate-400 hover:text-white transition-colors">Процесс</a>
               <a href="#advantages" className="text-slate-400 hover:text-white transition-colors">Преимущества</a>
               <a href="#platforms" className="text-slate-400 hover:text-white transition-colors">Площадки</a>
@@ -116,7 +165,7 @@ const LandingPage = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-24 topo-bg overflow-hidden">
+      <section className="relative pt-32 pb-16 topo-bg overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="fade-in">
@@ -135,12 +184,12 @@ const LandingPage = () => {
               </p>
 
               <div className="flex flex-wrap gap-4">
-                <Link to={isAuthenticated ? "/dashboard" : "/auth"}>
+                <a href="#ai-agent">
                   <Button data-testid="hero-cta-btn" className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black font-semibold px-8 py-6 rounded-sm btn-glow">
-                    Начать подбор
-                    <ArrowRight className="ml-2" size={20} />
+                    <Sparkles className="mr-2" size={20} />
+                    AI Подбор авто
                   </Button>
-                </Link>
+                </a>
                 <Link to="/calculator">
                   <Button data-testid="hero-calc-btn" variant="outline" className="border-[#27272A] text-white hover:border-[#00E5FF] hover:text-[#00E5FF] px-8 py-6 rounded-sm">
                     Рассчитать стоимость
@@ -182,8 +231,112 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* AI Agent Section */}
+      <section id="ai-agent" className="py-16 bg-[#15191E]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#00E5FF]/10 border border-[#00E5FF]/20 rounded-full mb-4">
+              <Sparkles size={16} className="text-[#00E5FF]" />
+              <span className="text-[#00E5FF] text-sm font-medium">AI-агент подбора</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Подберите авто с помощью AI</h2>
+            <p className="text-slate-400 max-w-2xl mx-auto">
+              Расскажите о ваших требованиях, бюджете и предпочтениях — AI поможет найти идеальный автомобиль из Китая
+            </p>
+          </div>
+
+          <div className="max-w-3xl mx-auto">
+            <div className="bg-[#1C2128] border border-[#27272A] rounded-lg overflow-hidden glow-cyan">
+              {/* Chat Header */}
+              <div className="px-6 py-4 border-b border-[#27272A] flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#00E5FF]/10 rounded-full flex items-center justify-center">
+                  <Bot className="text-[#00E5FF]" size={20} />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">AI-Ассистент CARBRIDGE</h3>
+                  <p className="text-slate-500 text-sm">Онлайн • Отвечу на любые вопросы</p>
+                </div>
+              </div>
+
+              {/* Chat Messages */}
+              <div className="h-[350px] overflow-y-auto p-6 space-y-4" data-testid="ai-agent-chat">
+                {chatMessages.map((msg, index) => (
+                  <div
+                    key={index}
+                    className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+                  >
+                    <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${
+                      msg.role === 'user' ? 'bg-[#27272A]' : 'bg-[#00E5FF]/10'
+                    }`}>
+                      {msg.role === 'user' ? (
+                        <span className="text-slate-400 text-sm font-medium">Вы</span>
+                      ) : (
+                        <Bot className="w-4 h-4 text-[#00E5FF]" />
+                      )}
+                    </div>
+                    <div className={`max-w-[80%] px-4 py-3 text-sm leading-relaxed ${
+                      msg.role === 'user' 
+                        ? 'bg-[#27272A] text-white rounded-2xl rounded-tr-sm' 
+                        : 'bg-[#00E5FF]/10 border border-[#00E5FF]/20 text-slate-200 rounded-2xl rounded-tl-sm'
+                    }`}>
+                      {msg.content}
+                    </div>
+                  </div>
+                ))}
+                {chatLoading && (
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 rounded-full bg-[#00E5FF]/10 flex items-center justify-center">
+                      <Bot className="w-4 h-4 text-[#00E5FF]" />
+                    </div>
+                    <div className="bg-[#00E5FF]/10 border border-[#00E5FF]/20 rounded-2xl rounded-tl-sm px-4 py-3">
+                      <Loader2 className="w-5 h-5 text-[#00E5FF] animate-spin" />
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Chat Input */}
+              <div className="p-4 border-t border-[#27272A] bg-[#15191E]">
+                <div className="flex gap-3">
+                  <input
+                    data-testid="ai-agent-input"
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()}
+                    placeholder="Опишите, какой автомобиль вы ищете..."
+                    className="flex-1 bg-[#0B0F14] border border-[#27272A] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]/20"
+                    disabled={chatLoading}
+                  />
+                  <Button
+                    data-testid="ai-agent-send"
+                    onClick={sendChatMessage}
+                    disabled={!chatInput.trim() || chatLoading}
+                    className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black px-6 rounded-lg disabled:opacity-50"
+                  >
+                    <Send size={20} />
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {['Электромобиль до $30000', 'Семейный кроссовер', 'BYD или Li Auto'].map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      onClick={() => setChatInput(suggestion)}
+                      className="px-3 py-1.5 text-xs bg-[#27272A] text-slate-400 rounded-full hover:bg-[#00E5FF]/10 hover:text-[#00E5FF] transition-colors"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Process Section */}
-      <section id="process" className="py-24 bg-[#15191E]">
+      <section id="process" className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">Как это работает</p>
@@ -194,7 +347,7 @@ const LandingPage = () => {
             {processSteps.map((step, idx) => (
               <div 
                 key={idx}
-                className="bg-[#1C2128] border border-[#27272A] rounded-sm p-6 card-hover group"
+                className="bg-[#15191E] border border-[#27272A] rounded-sm p-6 card-hover group"
               >
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 bg-[#00E5FF]/10 rounded-sm flex items-center justify-center text-[#00E5FF] group-hover:bg-[#00E5FF] group-hover:text-black transition-colors">
@@ -215,7 +368,7 @@ const LandingPage = () => {
       </section>
 
       {/* Advantages Section */}
-      <section id="advantages" className="py-24">
+      <section id="advantages" className="py-24 bg-[#15191E]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">Почему мы</p>
@@ -226,7 +379,7 @@ const LandingPage = () => {
             {advantages.map((item, idx) => (
               <div 
                 key={idx}
-                className="bg-[#15191E] border border-[#27272A] rounded-sm p-6 text-center card-hover"
+                className="bg-[#1C2128] border border-[#27272A] rounded-sm p-6 text-center card-hover"
               >
                 <div className="w-16 h-16 mx-auto mb-4 bg-[#00E5FF]/10 rounded-full flex items-center justify-center text-[#00E5FF] text-2xl font-bold">
                   {item.icon}
@@ -240,7 +393,7 @@ const LandingPage = () => {
       </section>
 
       {/* Platforms Section */}
-      <section id="platforms" className="py-24 bg-[#15191E]">
+      <section id="platforms" className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">Где искать</p>
@@ -257,7 +410,7 @@ const LandingPage = () => {
                 href={platform.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-[#1C2128] border border-[#27272A] rounded-sm p-6 card-hover group flex flex-col"
+                className="bg-[#15191E] border border-[#27272A] rounded-sm p-6 card-hover group flex flex-col"
               >
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-white font-semibold text-lg group-hover:text-[#00E5FF] transition-colors">
@@ -273,16 +426,16 @@ const LandingPage = () => {
       </section>
 
       {/* Calculator CTA */}
-      <section className="py-24">
+      <section className="py-24 bg-[#15191E]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-gradient-to-r from-[#15191E] to-[#1C2128] border border-[#27272A] rounded-lg p-8 md:p-12 glow-cyan">
+          <div className="bg-gradient-to-r from-[#1C2128] to-[#15191E] border border-[#27272A] rounded-lg p-8 md:p-12 glow-cyan">
             <div className="grid md:grid-cols-2 gap-8 items-center">
               <div>
                 <h2 className="text-3xl font-bold text-white mb-4">
                   Рассчитайте стоимость автомобиля
                 </h2>
                 <p className="text-slate-400 mb-6">
-                  Бесплатный калькулятор для расчета полной стоимости авто «под ключ» в Беларуси. Учитывает все расходы: растаможку, доставку, комиссии.
+                  Бесплатный калькулятор для расчета полной стоимости авто «под ключ» в Беларуси. Учитывает все расходы: растаможку, доставку, комиссии. Поддерживает льготу по Указу 140.
                 </p>
                 <Link to="/calculator">
                   <Button data-testid="calc-cta-btn" className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black font-semibold px-8 py-6 rounded-sm">
@@ -302,7 +455,7 @@ const LandingPage = () => {
       </section>
 
       {/* FAQ Section */}
-      <section id="faq" className="py-24 bg-[#15191E]">
+      <section id="faq" className="py-24">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">FAQ</p>
@@ -314,7 +467,7 @@ const LandingPage = () => {
               <AccordionItem 
                 key={idx} 
                 value={`item-${idx}`}
-                className="bg-[#1C2128] border border-[#27272A] rounded-sm px-6 data-[state=open]:border-[#00E5FF]/50"
+                className="bg-[#15191E] border border-[#27272A] rounded-sm px-6 data-[state=open]:border-[#00E5FF]/50"
               >
                 <AccordionTrigger className="text-white hover:text-[#00E5FF] text-left py-4">
                   {item.q}
@@ -329,7 +482,7 @@ const LandingPage = () => {
       </section>
 
       {/* Contacts Section */}
-      <section id="contacts" className="py-24">
+      <section id="contacts" className="py-24 bg-[#15191E]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">Связаться</p>
@@ -337,7 +490,7 @@ const LandingPage = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-6 text-center card-hover">
+            <div className="bg-[#1C2128] border border-[#27272A] rounded-sm p-6 text-center card-hover">
               <div className="w-12 h-12 mx-auto mb-4 bg-[#00E5FF]/10 rounded-full flex items-center justify-center">
                 <Phone size={24} className="text-[#00E5FF]" />
               </div>
@@ -347,7 +500,7 @@ const LandingPage = () => {
               </a>
             </div>
 
-            <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-6 text-center card-hover">
+            <div className="bg-[#1C2128] border border-[#27272A] rounded-sm p-6 text-center card-hover">
               <div className="w-12 h-12 mx-auto mb-4 bg-[#00E5FF]/10 rounded-full flex items-center justify-center">
                 <Mail size={24} className="text-[#00E5FF]" />
               </div>
@@ -357,7 +510,7 @@ const LandingPage = () => {
               </a>
             </div>
 
-            <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-6 text-center card-hover">
+            <div className="bg-[#1C2128] border border-[#27272A] rounded-sm p-6 text-center card-hover">
               <div className="w-12 h-12 mx-auto mb-4 bg-[#00E5FF]/10 rounded-full flex items-center justify-center">
                 <MapPin size={24} className="text-[#00E5FF]" />
               </div>
