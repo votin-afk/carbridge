@@ -883,37 +883,66 @@ HTML содержимое (фрагмент):
         import json
         import re
         
-        # Extract JSON from response
-        json_match = re.search(r'\{[^{}]*\}', ai_response, re.DOTALL)
+        # Try to extract JSON from response - handle nested braces
+        json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', ai_response, re.DOTALL)
+        if not json_match:
+            # Try simpler pattern
+            json_match = re.search(r'\{.*?\}', ai_response, re.DOTALL)
+        
         if json_match:
             try:
                 data = json.loads(json_match.group())
+                
+                # Check if we got at least brand or model
+                if not data.get('brand') and not data.get('model'):
+                    return ParsedCarData(
+                        success=False,
+                        source_url=url,
+                        error="Не удалось определить марку/модель авто. Страница может быть защищена. Введите данные вручную."
+                    )
                 
                 # Validate and convert data
                 engine_type = data.get('engine_type', 'ice')
                 if engine_type not in ['ice', 'hybrid', 'electric']:
                     engine_type = 'ice'
                 
+                # Safe number conversion
+                def safe_int(val):
+                    if val is None:
+                        return None
+                    try:
+                        return int(float(val))
+                    except:
+                        return None
+                
+                def safe_float(val):
+                    if val is None:
+                        return None
+                    try:
+                        return float(val)
+                    except:
+                        return None
+                
                 return ParsedCarData(
                     success=True,
                     brand=data.get('brand'),
                     model=data.get('model'),
-                    year=int(data['year']) if data.get('year') else None,
-                    price_cny=float(data['price_cny']) if data.get('price_cny') else None,
+                    year=safe_int(data.get('year')),
+                    price_cny=safe_float(data.get('price_cny')),
                     engine_type=engine_type,
-                    engine_volume=int(data['engine_volume']) if data.get('engine_volume') else None,
-                    mileage=int(data['mileage']) if data.get('mileage') else None,
+                    engine_volume=safe_int(data.get('engine_volume')),
+                    mileage=safe_int(data.get('mileage')),
                     image_url=data.get('image_url'),
                     description=data.get('description'),
                     source_url=url
                 )
             except (json.JSONDecodeError, ValueError, TypeError) as e:
-                logger.error(f"Failed to parse AI response: {e}")
+                logger.error(f"Failed to parse AI response: {e}, response: {ai_response[:500]}")
         
         return ParsedCarData(
             success=False,
             source_url=url,
-            error="Не удалось извлечь данные. Попробуйте другую ссылку или введите данные вручную."
+            error="Не удалось извлечь данные. Страница может быть защищена от парсинга. Введите данные вручную."
         )
         
     except httpx.TimeoutException:
