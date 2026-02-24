@@ -857,6 +857,7 @@ HTML содержимое (фрагмент):
 
         chat = LlmChat(
             api_key=api_key,
+            session_id=f"parse_{uuid.uuid4()}",
             system_message="Ты эксперт по извлечению данных из HTML страниц китайских автомобильных площадок. Отвечай только валидным JSON."
         ).with_model("openai", "gpt-4o")
         
