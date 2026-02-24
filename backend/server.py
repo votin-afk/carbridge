@@ -616,6 +616,38 @@ async def calculate_customs(data: CalculatorInput):
     
     total_usd = total_byn / rates["USD_BYN"]
     
+    # Комиссия платформы 3% от стоимости авто в USD
+    platform_commission_usd = price_usd * 0.03
+    platform_commission_byn = platform_commission_usd * rates["USD_BYN"]
+    
+    # Комиссия за оплату 1.5% (через платформу или банк - одинаково)
+    payment_commission_usd = price_usd * 0.015
+    payment_commission_byn = payment_commission_usd * rates["USD_BYN"]
+    
+    # Применение льготы по Указу 140 (50% скидка на таможенные пошлины и налоги)
+    decree_140_discount_byn = 0
+    if data.user_type == "individual" and data.use_decree_140:
+        # Скидка 50% на таможенную пошлину и НДС
+        discount_on_duty = customs_duty_byn * 0.5
+        discount_on_vat = vat_byn * 0.5
+        decree_140_discount_byn = discount_on_duty + discount_on_vat
+        customs_duty_byn = customs_duty_byn - discount_on_duty
+        vat_byn = vat_byn - discount_on_vat
+    
+    # Пересчет итога с учетом льготы и комиссий
+    total_byn = (
+        data.price_cny * rates.get("CNY_BYN", rates["CNY_USD"] * rates["USD_BYN"]) +
+        customs_duty_byn +
+        utilization_fee +
+        vat_byn +
+        fixed_costs_byn +
+        fixed_costs_usd * rates["USD_BYN"] +
+        platform_commission_byn +
+        payment_commission_byn
+    )
+    
+    total_usd = total_byn / rates["USD_BYN"]
+    
     breakdown = {
         "car_price_cny": data.price_cny,
         "car_price_eur": round(price_eur, 2),
@@ -627,6 +659,12 @@ async def calculate_customs(data: CalculatorInput):
         "vat_byn": round(vat_byn, 2),
         "fixed_byn": round(fixed_costs_byn, 2),
         "fixed_usd": round(fixed_costs_usd, 2),
+        "platform_commission_usd": round(platform_commission_usd, 2),
+        "platform_commission_byn": round(platform_commission_byn, 2),
+        "payment_commission_usd": round(payment_commission_usd, 2),
+        "payment_commission_byn": round(payment_commission_byn, 2),
+        "decree_140_discount_byn": round(decree_140_discount_byn, 2),
+        "decree_140_applied": data.use_decree_140 and data.user_type == "individual",
         "exchange_rates": rates
     }
     
@@ -639,6 +677,9 @@ async def calculate_customs(data: CalculatorInput):
         vat=round(vat_byn, 2),
         fixed_costs_byn=round(fixed_costs_byn, 2),
         fixed_costs_usd=round(fixed_costs_usd, 2),
+        platform_commission=round(platform_commission_byn, 2),
+        payment_commission=round(payment_commission_byn, 2),
+        decree_140_discount=round(decree_140_discount_byn, 2),
         total_byn=round(total_byn, 2),
         total_usd=round(total_usd, 2),
         breakdown=breakdown
