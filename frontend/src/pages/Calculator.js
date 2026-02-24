@@ -5,7 +5,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { ArrowLeft, Calculator as CalcIcon, Info } from 'lucide-react';
+import { Switch } from '../components/ui/switch';
+import { ArrowLeft, Calculator as CalcIcon, Info, BadgePercent, CreditCard, Building2 } from 'lucide-react';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -19,7 +20,8 @@ const Calculator = () => {
     age: 'under3',
     engine_type: 'ice',
     engine_volume: '',
-    use_decree_140: false
+    use_decree_140: false,
+    payment_via_platform: true
   });
 
   const handleChange = (e) => {
@@ -41,7 +43,8 @@ const Calculator = () => {
         engine_type: formData.engine_type,
         engine_volume: formData.engine_volume ? parseInt(formData.engine_volume) : null,
         user_type: userType,
-        use_decree_140: formData.use_decree_140
+        use_decree_140: formData.use_decree_140,
+        payment_via_platform: formData.payment_via_platform
       });
       setResult(response.data);
     } catch (error) {
@@ -74,7 +77,7 @@ const Calculator = () => {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-10">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-10">
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-[#00E5FF]/10 rounded-full mb-4">
             <CalcIcon size={32} className="text-[#00E5FF]" />
@@ -85,7 +88,7 @@ const Calculator = () => {
 
         <div className="bg-[#15191E] border border-[#27272A] rounded-lg p-6 md:p-8">
           {/* User Type Tabs */}
-          <Tabs value={userType} onValueChange={setUserType} className="mb-8">
+          <Tabs value={userType} onValueChange={(v) => { setUserType(v); setResult(null); }} className="mb-8">
             <TabsList className="grid grid-cols-2 bg-[#0B0F14] p-1 rounded-sm">
               <TabsTrigger 
                 data-testid="calc-tab-individual"
@@ -192,6 +195,49 @@ const Calculator = () => {
                 </div>
               )}
 
+              {/* Decree 140 - Only for individuals */}
+              {userType === 'individual' && (
+                <div className="bg-[#1C2128] border border-[#27272A] rounded-sm p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <BadgePercent size={20} className="text-[#00E5FF]" />
+                      <div>
+                        <p className="text-white font-medium text-sm">Льгота по Указу 140</p>
+                        <p className="text-slate-500 text-xs">50% скидка на пошлины</p>
+                      </div>
+                    </div>
+                    <Switch
+                      data-testid="calc-decree-140"
+                      checked={formData.use_decree_140}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, use_decree_140: checked }))}
+                    />
+                  </div>
+                  {formData.use_decree_140 && (
+                    <p className="text-slate-400 text-xs mt-3 pl-8">
+                      Для многодетных семей, инвалидов I-II гр., родителей детей-инвалидов
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Payment method info */}
+              <div className="bg-[#1C2128] border border-[#27272A] rounded-sm p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <CreditCard size={20} className="text-[#00E5FF]" />
+                  <p className="text-white font-medium text-sm">Комиссии платформы</p>
+                </div>
+                <div className="pl-8 space-y-2 text-sm">
+                  <div className="flex justify-between text-slate-400">
+                    <span>Комиссия платформы</span>
+                    <span className="text-white">3%</span>
+                  </div>
+                  <div className="flex justify-between text-slate-400">
+                    <span>Комиссия за оплату</span>
+                    <span className="text-white">1.5%</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Calculate Button */}
               <Button
                 data-testid="calc-submit-btn"
@@ -225,6 +271,19 @@ const Calculator = () => {
                     </p>
                   </div>
 
+                  {/* Discount Badge */}
+                  {result.decree_140_discount > 0 && (
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-sm p-4 flex items-center gap-3">
+                      <BadgePercent size={24} className="text-emerald-400" />
+                      <div>
+                        <p className="text-emerald-400 font-medium">Льгота по Указу 140 применена</p>
+                        <p className="text-slate-400 text-sm">
+                          Экономия: {formatNumber(result.decree_140_discount)} BYN
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Breakdown */}
                   <div className="bg-[#1C2128] border border-[#27272A] rounded-sm p-6 space-y-4">
                     <h3 className="text-white font-semibold mb-4">Детализация</h3>
@@ -234,6 +293,11 @@ const Calculator = () => {
                         <span className="text-slate-400">Цена авто</span>
                         <span className="text-white">{formatNumber(result.price_usd)} $</span>
                       </div>
+                      
+                      <div className="border-t border-[#27272A] pt-3 mt-3">
+                        <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Таможенные платежи</p>
+                      </div>
+                      
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-400">Таможенная пошлина</span>
                         <span className="text-white">{formatNumber(result.customs_duty)} BYN</span>
@@ -248,14 +312,44 @@ const Calculator = () => {
                           <span className="text-white">{formatNumber(result.vat)} BYN</span>
                         </div>
                       )}
+                      
+                      <div className="border-t border-[#27272A] pt-3 mt-3">
+                        <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Фиксированные расходы</p>
+                      </div>
+                      
                       <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Фикс. расходы (BYN)</span>
+                        <span className="text-slate-400">Сборы в РБ (таможня, склад, ЭПТС)</span>
                         <span className="text-white">{formatNumber(result.fixed_costs_byn)} BYN</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Фикс. расходы (USD)</span>
+                        <span className="text-slate-400">Доставка и оформление</span>
                         <span className="text-white">{formatNumber(result.fixed_costs_usd)} $</span>
                       </div>
+                      
+                      <div className="border-t border-[#27272A] pt-3 mt-3">
+                        <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Комиссии платформы</p>
+                      </div>
+                      
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-400">Комиссия платформы (3%)</span>
+                        <span className="text-white">{formatNumber(result.platform_commission)} BYN</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-400">Комиссия за оплату (1.5%)</span>
+                        <span className="text-white">{formatNumber(result.payment_commission)} BYN</span>
+                      </div>
+                      
+                      {result.decree_140_discount > 0 && (
+                        <>
+                          <div className="border-t border-[#27272A] pt-3 mt-3">
+                            <p className="text-emerald-400 text-xs uppercase tracking-wider mb-2">Льготы</p>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-emerald-400">Скидка по Указу 140</span>
+                            <span className="text-emerald-400">-{formatNumber(result.decree_140_discount)} BYN</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -310,6 +404,29 @@ const Calculator = () => {
                 <span className="text-slate-400">Оформление в Китае</span>
                 <span className="text-white">9 000 ¥</span>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Decree 140 Info */}
+        <div className="mt-6 bg-[#15191E] border border-[#27272A] rounded-lg p-6">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 bg-emerald-500/10 rounded-full flex items-center justify-center flex-shrink-0">
+              <BadgePercent size={20} className="text-emerald-400" />
+            </div>
+            <div>
+              <h3 className="text-white font-semibold mb-2">Указ № 140 — Льготная растаможка</h3>
+              <p className="text-slate-400 text-sm mb-3">
+                50% скидка на таможенные пошлины и налоги для отдельных категорий граждан РБ:
+              </p>
+              <ul className="text-slate-400 text-sm space-y-1 list-disc list-inside">
+                <li>Многодетные семьи (3 и более детей)</li>
+                <li>Инвалиды I или II группы</li>
+                <li>Родители (опекуны) детей-инвалидов до 18 лет</li>
+              </ul>
+              <p className="text-slate-500 text-xs mt-3">
+                Требуется документальное подтверждение статуса. Льгота — 1 автомобиль в год.
+              </p>
             </div>
           </div>
         </div>
