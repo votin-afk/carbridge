@@ -186,6 +186,319 @@ class ParsedCarData(BaseModel):
     source_url: str
     error: Optional[str] = None
 
+class CatalogSearchParams(BaseModel):
+    brand: Optional[str] = None
+    model: Optional[str] = None
+    min_price: Optional[float] = None
+    max_price: Optional[float] = None
+    min_year: Optional[int] = None
+    max_year: Optional[int] = None
+    engine_type: Optional[str] = None
+    body_type: Optional[str] = None
+    query: Optional[str] = None
+    page: int = 1
+    limit: int = 20
+
+class CatalogCarModel(BaseModel):
+    id: str
+    brand: str
+    brand_cn: str
+    model: str
+    model_cn: str
+    year_from: int
+    year_to: Optional[int] = None
+    price_from_cny: float
+    price_to_cny: Optional[float] = None
+    engine_type: str
+    engine_volume: Optional[int] = None
+    body_type: str
+    image_url: str
+    description: str
+    features: List[str] = []
+    popularity: int = 0
+
+class CatalogSearchResult(BaseModel):
+    cars: List[CatalogCarModel]
+    total: int
+    page: int
+    pages: int
+    search_links: dict
+
+# ==================== CHINESE CAR CATALOG DATA ====================
+
+CHINESE_CAR_CATALOG = [
+    # BYD
+    {
+        "id": "byd-han-ev",
+        "brand": "BYD", "brand_cn": "比亚迪",
+        "model": "Han EV", "model_cn": "汉EV",
+        "year_from": 2020, "year_to": 2024,
+        "price_from_cny": 180000, "price_to_cny": 330000,
+        "engine_type": "electric", "engine_volume": None,
+        "body_type": "sedan",
+        "image_url": "https://images.unsplash.com/photo-1617788138017-80ad40651399?w=800",
+        "description": "Флагманский электрический седан BYD с батареей Blade. Запас хода до 605 км.",
+        "features": ["Blade Battery", "DiPilot", "605 км запас хода", "0-100 за 3.9с"],
+        "popularity": 95
+    },
+    {
+        "id": "byd-seal",
+        "brand": "BYD", "brand_cn": "比亚迪",
+        "model": "Seal", "model_cn": "海豹",
+        "year_from": 2022, "year_to": 2024,
+        "price_from_cny": 189800, "price_to_cny": 289800,
+        "engine_type": "electric", "engine_volume": None,
+        "body_type": "sedan",
+        "image_url": "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800",
+        "description": "Спортивный электроседан на платформе e-platform 3.0. Конкурент Tesla Model 3.",
+        "features": ["e-platform 3.0", "CTB технология", "700 км запас хода", "AWD"],
+        "popularity": 90
+    },
+    {
+        "id": "byd-song-plus-dmi",
+        "brand": "BYD", "brand_cn": "比亚迪",
+        "model": "Song Plus DM-i", "model_cn": "宋PLUS DM-i",
+        "year_from": 2021, "year_to": 2024,
+        "price_from_cny": 150000, "price_to_cny": 220000,
+        "engine_type": "hybrid", "engine_volume": 1500,
+        "body_type": "suv",
+        "image_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800",
+        "description": "Популярный гибридный кроссовер с системой DM-i. Расход 3.8л/100км.",
+        "features": ["DM-i гибрид", "1100 км запас хода", "Расход 3.8л", "DiLink 4.0"],
+        "popularity": 92
+    },
+    {
+        "id": "byd-dolphin",
+        "brand": "BYD", "brand_cn": "比亚迪",
+        "model": "Dolphin", "model_cn": "海豚",
+        "year_from": 2021, "year_to": 2024,
+        "price_from_cny": 96800, "price_to_cny": 136800,
+        "engine_type": "electric", "engine_volume": None,
+        "body_type": "hatchback",
+        "image_url": "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800",
+        "description": "Компактный городской электромобиль. Идеален для города.",
+        "features": ["e-platform 3.0", "401 км запас хода", "Быстрая зарядка", "Компактный"],
+        "popularity": 88
+    },
+    # Li Auto
+    {
+        "id": "li-l9",
+        "brand": "Li Auto", "brand_cn": "理想",
+        "model": "L9", "model_cn": "L9",
+        "year_from": 2022, "year_to": 2024,
+        "price_from_cny": 429800, "price_to_cny": 469800,
+        "engine_type": "hybrid", "engine_volume": 1500,
+        "body_type": "suv",
+        "image_url": "https://images.pexels.com/photos/32912506/pexels-photo-32912506.jpeg?w=800",
+        "description": "Премиальный 6-местный SUV с увеличенным запасом хода. Флагман Li Auto.",
+        "features": ["EREV гибрид", "1315 км запас хода", "6 мест", "AD Max автопилот"],
+        "popularity": 94
+    },
+    {
+        "id": "li-l7",
+        "brand": "Li Auto", "brand_cn": "理想",
+        "model": "L7", "model_cn": "L7",
+        "year_from": 2022, "year_to": 2024,
+        "price_from_cny": 319800, "price_to_cny": 379800,
+        "engine_type": "hybrid", "engine_volume": 1500,
+        "body_type": "suv",
+        "image_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800",
+        "description": "Среднеразмерный премиум SUV. 5 мест, богатое оснащение.",
+        "features": ["EREV гибрид", "1100 км запас хода", "5 мест", "Air подвеска"],
+        "popularity": 91
+    },
+    {
+        "id": "li-mega",
+        "brand": "Li Auto", "brand_cn": "理想",
+        "model": "MEGA", "model_cn": "MEGA",
+        "year_from": 2024, "year_to": 2024,
+        "price_from_cny": 559800, "price_to_cny": 559800,
+        "engine_type": "electric", "engine_volume": None,
+        "body_type": "mpv",
+        "image_url": "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800",
+        "description": "Первый полностью электрический MPV от Li Auto. 5C зарядка.",
+        "features": ["800V платформа", "5C зарядка", "710 км запас хода", "7 мест"],
+        "popularity": 85
+    },
+    # NIO
+    {
+        "id": "nio-et7",
+        "brand": "NIO", "brand_cn": "蔚来",
+        "model": "ET7", "model_cn": "ET7",
+        "year_from": 2022, "year_to": 2024,
+        "price_from_cny": 428000, "price_to_cny": 536000,
+        "engine_type": "electric", "engine_volume": None,
+        "body_type": "sedan",
+        "image_url": "https://images.unsplash.com/photo-1617788138017-80ad40651399?w=800",
+        "description": "Флагманский электроседан NIO с твердотельной батареей 150 кВт·ч.",
+        "features": ["Замена батарей", "1000 км запас хода", "NAD автопилот", "Твердотельная батарея"],
+        "popularity": 89
+    },
+    {
+        "id": "nio-es6",
+        "brand": "NIO", "brand_cn": "蔚来",
+        "model": "ES6", "model_cn": "ES6",
+        "year_from": 2019, "year_to": 2024,
+        "price_from_cny": 338000, "price_to_cny": 426000,
+        "engine_type": "electric", "engine_volume": None,
+        "body_type": "suv",
+        "image_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800",
+        "description": "Популярный электрический SUV от NIO с возможностью замены батарей.",
+        "features": ["Замена батарей", "610 км запас хода", "NOMI AI", "Air подвеска"],
+        "popularity": 87
+    },
+    # Zeekr
+    {
+        "id": "zeekr-001",
+        "brand": "Zeekr", "brand_cn": "极氪",
+        "model": "001", "model_cn": "001",
+        "year_from": 2021, "year_to": 2024,
+        "price_from_cny": 269000, "price_to_cny": 389000,
+        "engine_type": "electric", "engine_volume": None,
+        "body_type": "shooting_brake",
+        "image_url": "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800",
+        "description": "Стильный электрический shooting brake от Geely. Платформа SEA.",
+        "features": ["SEA платформа", "1000 км запас хода", "0-100 за 3.8с", "Безрамочные двери"],
+        "popularity": 86
+    },
+    {
+        "id": "zeekr-009",
+        "brand": "Zeekr", "brand_cn": "极氪",
+        "model": "009", "model_cn": "009",
+        "year_from": 2022, "year_to": 2024,
+        "price_from_cny": 499000, "price_to_cny": 788000,
+        "engine_type": "electric", "engine_volume": None,
+        "body_type": "mpv",
+        "image_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800",
+        "description": "Премиальный электрический минивэн. Конкурент Lexus LM.",
+        "features": ["140 кВт·ч батарея", "822 км запас хода", "VIP салон", "Air подвеска"],
+        "popularity": 82
+    },
+    # Xpeng
+    {
+        "id": "xpeng-p7",
+        "brand": "Xpeng", "brand_cn": "小鹏",
+        "model": "P7", "model_cn": "P7",
+        "year_from": 2020, "year_to": 2024,
+        "price_from_cny": 209900, "price_to_cny": 339900,
+        "engine_type": "electric", "engine_volume": None,
+        "body_type": "sedan",
+        "image_url": "https://images.unsplash.com/photo-1617788138017-80ad40651399?w=800",
+        "description": "Спортивный электроседан с продвинутым автопилотом XPILOT.",
+        "features": ["XPILOT 4.0", "706 км запас хода", "0-100 за 4.3с", "OTA обновления"],
+        "popularity": 84
+    },
+    {
+        "id": "xpeng-g9",
+        "brand": "Xpeng", "brand_cn": "小鹏",
+        "model": "G9", "model_cn": "G9",
+        "year_from": 2022, "year_to": 2024,
+        "price_from_cny": 309900, "price_to_cny": 469900,
+        "engine_type": "electric", "engine_volume": None,
+        "body_type": "suv",
+        "image_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800",
+        "description": "Флагманский SUV Xpeng с 800V архитектурой и быстрой зарядкой.",
+        "features": ["800V платформа", "702 км запас хода", "5C зарядка", "XPILOT 4.0"],
+        "popularity": 83
+    },
+    # Geely
+    {
+        "id": "geely-xingyue-l",
+        "brand": "Geely", "brand_cn": "吉利",
+        "model": "Xingyue L", "model_cn": "星越L",
+        "year_from": 2021, "year_to": 2024,
+        "price_from_cny": 137700, "price_to_cny": 182700,
+        "engine_type": "ice", "engine_volume": 2000,
+        "body_type": "suv",
+        "image_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800",
+        "description": "Премиальный кроссовер на платформе CMA. Турбо 2.0T.",
+        "features": ["CMA платформа", "Volvo технологии", "2.0T двигатель", "Pilot автопилот"],
+        "popularity": 80
+    },
+    # Chery
+    {
+        "id": "chery-tiggo-8-pro",
+        "brand": "Chery", "brand_cn": "奇瑞",
+        "model": "Tiggo 8 Pro", "model_cn": "瑞虎8 PRO",
+        "year_from": 2020, "year_to": 2024,
+        "price_from_cny": 119900, "price_to_cny": 159900,
+        "engine_type": "ice", "engine_volume": 1600,
+        "body_type": "suv",
+        "image_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800",
+        "description": "Семейный 7-местный кроссовер с отличным соотношением цена/качество.",
+        "features": ["7 мест", "1.6T двигатель", "Lion 5.0 система", "Просторный салон"],
+        "popularity": 78
+    },
+    # Haval
+    {
+        "id": "haval-h6",
+        "brand": "Haval", "brand_cn": "哈弗",
+        "model": "H6", "model_cn": "H6",
+        "year_from": 2020, "year_to": 2024,
+        "price_from_cny": 99900, "price_to_cny": 149900,
+        "engine_type": "ice", "engine_volume": 1500,
+        "body_type": "suv",
+        "image_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800",
+        "description": "Бестселлер среди китайских кроссоверов. Надежность и комфорт.",
+        "features": ["1.5T/2.0T двигатель", "Lemon платформа", "Богатое оснащение", "Низкая цена"],
+        "popularity": 85
+    },
+    {
+        "id": "haval-jolion",
+        "brand": "Haval", "brand_cn": "哈弗",
+        "model": "Jolion", "model_cn": "初恋",
+        "year_from": 2021, "year_to": 2024,
+        "price_from_cny": 79900, "price_to_cny": 119900,
+        "engine_type": "ice", "engine_volume": 1500,
+        "body_type": "suv",
+        "image_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800",
+        "description": "Компактный молодежный кроссовер. Стильный дизайн, доступная цена.",
+        "features": ["1.5T двигатель", "Молодежный дизайн", "Богатая комплектация", "Экономичный"],
+        "popularity": 79
+    },
+    # Changan
+    {
+        "id": "changan-uni-k",
+        "brand": "Changan", "brand_cn": "长安",
+        "model": "UNI-K", "model_cn": "UNI-K",
+        "year_from": 2021, "year_to": 2024,
+        "price_from_cny": 149900, "price_to_cny": 189900,
+        "engine_type": "ice", "engine_volume": 2000,
+        "body_type": "suv",
+        "image_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800",
+        "description": "Футуристичный кроссовер с безрамочной решеткой радиатора.",
+        "features": ["Blue Core 2.0T", "IMS система", "Футуристичный дизайн", "5/7 мест"],
+        "popularity": 77
+    },
+    # Hongqi
+    {
+        "id": "hongqi-h9",
+        "brand": "Hongqi", "brand_cn": "红旗",
+        "model": "H9", "model_cn": "H9",
+        "year_from": 2020, "year_to": 2024,
+        "price_from_cny": 309800, "price_to_cny": 539800,
+        "engine_type": "ice", "engine_volume": 3000,
+        "body_type": "sedan",
+        "image_url": "https://images.unsplash.com/photo-1617788138017-80ad40651399?w=800",
+        "description": "Флагманский седан представительского класса. Китайский Maybach.",
+        "features": ["V6 3.0T", "Массаж сидений", "Air подвеска", "Премиум аудио"],
+        "popularity": 81
+    },
+    {
+        "id": "hongqi-e-hs9",
+        "brand": "Hongqi", "brand_cn": "红旗",
+        "model": "E-HS9", "model_cn": "E-HS9",
+        "year_from": 2020, "year_to": 2024,
+        "price_from_cny": 509800, "price_to_cny": 729800,
+        "engine_type": "electric", "engine_volume": None,
+        "body_type": "suv",
+        "image_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800",
+        "description": "Премиальный электрический SUV от Hongqi. Максимальная роскошь.",
+        "features": ["120 кВт·ч батарея", "690 км запас хода", "VIP конфигурация", "4/6/7 мест"],
+        "popularity": 75
+    },
+]
+
 # ==================== AUTH HELPERS ====================
 
 def create_token(user_id: str, email: str) -> str:
