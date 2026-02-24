@@ -143,6 +143,7 @@ class CalculatorInput(BaseModel):
     engine_volume: Optional[int] = None
     user_type: Literal["individual", "legal"] = "individual"
     use_decree_140: bool = False
+    payment_via_platform: bool = True  # True = через платформу, False = через банк
 
 class CalculatorResult(BaseModel):
     price_cny: float
@@ -153,6 +154,9 @@ class CalculatorResult(BaseModel):
     vat: float
     fixed_costs_byn: float
     fixed_costs_usd: float
+    platform_commission: float  # 3% комиссия платформы
+    payment_commission: float  # 1.5% за оплату
+    decree_140_discount: float  # Скидка по Указу 140
     total_byn: float
     total_usd: float
     breakdown: dict
