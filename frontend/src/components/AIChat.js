@@ -79,7 +79,8 @@ const AIChat = () => {
       {isOpen && (
         <div 
           data-testid="ai-chat-window"
-          className="fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-48px)] h-[500px] max-h-[calc(100vh-140px)] bg-[#0B0F14] border border-[#27272A] rounded-lg shadow-2xl flex flex-col overflow-hidden"
+          style={{ zIndex: 9998 }}
+          className="fixed bottom-24 right-6 w-[380px] max-w-[calc(100vw-48px)] h-[500px] max-h-[calc(100vh-140px)] bg-[#0B0F14] border border-[#27272A] rounded-lg shadow-2xl flex flex-col overflow-hidden"
         >
           {/* Header */}
           <div className="px-4 py-3 border-b border-[#27272A] bg-[#15191E] flex items-center gap-3">
