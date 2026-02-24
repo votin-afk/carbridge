@@ -37,6 +37,26 @@ security = HTTPBearer()
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
+# ==================== PRO-AUCTIONS PARSER CONFIG ====================
+PRO_AUCTIONS_BASE_URL = "https://demo.pro-auctions.ru/china-used/"
+CACHE_TTL_SECONDS = 300  # 5 minutes cache
+
+# Simple in-memory cache
+_cache: Dict[str, Any] = {}
+_cache_timestamps: Dict[str, datetime] = {}
+
+def get_cached(key: str) -> Optional[Any]:
+    """Get cached value if not expired"""
+    if key in _cache and key in _cache_timestamps:
+        if datetime.now(timezone.utc) - _cache_timestamps[key] < timedelta(seconds=CACHE_TTL_SECONDS):
+            return _cache[key]
+    return None
+
+def set_cache(key: str, value: Any):
+    """Set cache value with timestamp"""
+    _cache[key] = value
+    _cache_timestamps[key] = datetime.now(timezone.utc)
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
