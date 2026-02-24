@@ -672,41 +672,37 @@ class ProAuctionsParser:
                     # Format: <span>Brand</span><span>1 234</span>
                     brand_name = spans[0].get_text(strip=True)
                     count_text = spans[1].get_text(strip=True)
-                        if spans and len(spans) >= 2:
-                            # Format: <span>Brand</span><span>1 234</span>
-                            brand_name = spans[0].get_text(strip=True)
-                            count_text = spans[1].get_text(strip=True)
-                        elif spans and len(spans) == 1:
-                            # Only one span - just brand name
-                            brand_name = spans[0].get_text(strip=True)
-                            count_text = "0"
-                        else:
-                            # No spans - text is directly in link
-                            full_text = link.get_text(strip=True)
-                            brand_name = full_text
-                            count_text = "0"
-                        
-                        # Extract count - handle "1 234" format with spaces
-                        count = 0
-                        if count_text:
-                            # Remove all non-digit characters and convert
-                            digits = re.sub(r'[^\d]', '', count_text)
-                            if digits:
-                                try:
-                                    count = int(digits)
-                                except ValueError:
-                                    count = 0
-                        
-                        if brand_name and not brand_name.startswith('...') and not brand_name.startswith('Показать'):
-                            seen_brands.add(brand_slug)
-                            # Build full URL for the brand
-                            full_url = f"{cls.BASE_URL}{brand_slug}/"
-                            brands.append({
-                                "name": brand_name,
-                                "slug": brand_slug,
-                                "count": count,
-                                "url": full_url
-                            })
+                elif spans and len(spans) == 1:
+                    # Only one span - just brand name
+                    brand_name = spans[0].get_text(strip=True)
+                    count_text = "0"
+                else:
+                    # No spans - text is directly in link
+                    full_text = link.get_text(strip=True)
+                    brand_name = full_text
+                    count_text = "0"
+                
+                # Extract count - handle "1 234" format with spaces
+                count = 0
+                if count_text:
+                    # Remove all non-digit characters and convert
+                    digits = re.sub(r'[^\d]', '', count_text)
+                    if digits:
+                        try:
+                            count = int(digits)
+                        except ValueError:
+                            count = 0
+                
+                if brand_name and not brand_name.startswith('...') and not brand_name.startswith('Показать'):
+                    seen_brands.add(brand_slug)
+                    # Build full URL for the brand
+                    full_url = f"{cls.BASE_URL}{brand_slug}/"
+                    brands.append({
+                        "name": brand_name,
+                        "slug": brand_slug,
+                        "count": count,
+                        "url": full_url
+                    })
         
         # Sort by count descending
         brands.sort(key=lambda x: x["count"], reverse=True)
