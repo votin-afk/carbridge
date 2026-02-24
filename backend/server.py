@@ -656,11 +656,34 @@ class ProAuctionsParser:
                     brand_slug = parts[-1]
                     if brand_slug and brand_slug not in seen_brands:
                         spans = link.find_all('span')
-                        brand_name = spans[0].get_text(strip=True) if spans else link.get_text(strip=True)
-                        count_text = spans[1].get_text(strip=True) if len(spans) > 1 else "0"
-                        count = int(re.sub(r'\D', '', count_text)) if count_text else 0
                         
-                        if brand_name and not brand_name.startswith('...'):
+                        # Try different methods to extract name and count
+                        if spans and len(spans) >= 2:
+                            # Format: <span>Brand</span><span>1 234</span>
+                            brand_name = spans[0].get_text(strip=True)
+                            count_text = spans[1].get_text(strip=True)
+                        elif spans and len(spans) == 1:
+                            # Only one span - just brand name
+                            brand_name = spans[0].get_text(strip=True)
+                            count_text = "0"
+                        else:
+                            # No spans - text is directly in link
+                            full_text = link.get_text(strip=True)
+                            brand_name = full_text
+                            count_text = "0"
+                        
+                        # Extract count - handle "1 234" format with spaces
+                        count = 0
+                        if count_text:
+                            # Remove all non-digit characters and convert
+                            digits = re.sub(r'[^\d]', '', count_text)
+                            if digits:
+                                try:
+                                    count = int(digits)
+                                except ValueError:
+                                    count = 0
+                        
+                        if brand_name and not brand_name.startswith('...') and not brand_name.startswith('Показать'):
                             seen_brands.add(brand_slug)
                             brands.append({
                                 "name": brand_name,
@@ -672,6 +695,7 @@ class ProAuctionsParser:
         # Sort by count descending
         brands.sort(key=lambda x: x["count"], reverse=True)
         set_cache(cache_key, brands)
+        return brands
         return brands
     
     @classmethod
