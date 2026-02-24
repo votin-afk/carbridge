@@ -643,21 +643,35 @@ class ProAuctionsParser:
         soup = BeautifulSoup(html, 'lxml')
         brands = []
         
-        # Find brand links like: <a class="brands_models__link" href=".../china-used/geely/">
+        # Find brand links - they can be relative (href="aito/") or absolute
         brand_links = soup.select('.brands_models__link, .car-brands__link')
         seen_brands = set()
         
         for link in brand_links:
             href = link.get('href', '')
-            if '/china-used/' in href and href != cls.BASE_URL:
-                # Extract brand slug from URL
-                parts = href.rstrip('/').split('/')
-                if len(parts) >= 2 and parts[-2] == 'china-used':
-                    brand_slug = parts[-1]
-                    if brand_slug and brand_slug not in seen_brands:
-                        spans = link.find_all('span')
-                        
-                        # Try different methods to extract name and count
+            
+            # Skip empty or non-relevant links
+            if not href or href == '#' or 'javascript:' in href:
+                continue
+            
+            # Handle relative URLs (like "aito/") and absolute URLs
+            # Extract brand slug from URL
+            brand_slug = href.rstrip('/').split('/')[-1]
+            
+            # Skip if looks like a model URL (contains parent brand slug)
+            # Brand URLs: aito/, geely/, etc. Model URLs: geely/emgrand/, etc.
+            parts = href.rstrip('/').split('/')
+            if len(parts) > 2:  # This is a model URL, skip it
+                continue
+            
+            if brand_slug and brand_slug not in seen_brands:
+                spans = link.find_all('span')
+                
+                # Try different methods to extract name and count
+                if spans and len(spans) >= 2:
+                    # Format: <span>Brand</span><span>1 234</span>
+                    brand_name = spans[0].get_text(strip=True)
+                    count_text = spans[1].get_text(strip=True)
                         if spans and len(spans) >= 2:
                             # Format: <span>Brand</span><span>1 234</span>
                             brand_name = spans[0].get_text(strip=True)
