@@ -431,6 +431,11 @@ class CarbridgeAPITester:
         # AI Chat test
         self.test_ai_chat()
         
+        # URL Parser tests (new feature)
+        self.test_parse_url_valid()
+        self.test_parse_url_invalid()
+        self.test_parse_url_empty()
+        
         return self.generate_report()
 
     def generate_report(self):
