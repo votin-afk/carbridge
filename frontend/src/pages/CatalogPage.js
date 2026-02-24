@@ -368,12 +368,12 @@ const CatalogPage = () => {
               {/* Brand */}
               <div>
                 <Label className="text-slate-400 mb-2 block">Марка</Label>
-                <Select value={filters.brand} onValueChange={(v) => handleFilterChange('brand', v)}>
+                <Select value={filters.brand || "all"} onValueChange={(v) => handleFilterChange('brand', v === "all" ? "" : v)}>
                   <SelectTrigger className="bg-[#0D1117] border-[#27272A] text-white">
                     <SelectValue placeholder="Все марки" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#15191E] border-[#27272A] max-h-60">
-                    <SelectItem value="" className="text-white">Все марки</SelectItem>
+                    <SelectItem value="all" className="text-white">Все марки</SelectItem>
                     {brands.slice(0, 50).map((b) => (
                       <SelectItem key={b.slug || b.name} value={b.name} className="text-white">
                         {b.name} ({b.count})
@@ -387,15 +387,15 @@ const CatalogPage = () => {
               <div>
                 <Label className="text-slate-400 mb-2 block">Модель</Label>
                 <Select 
-                  value={filters.model} 
-                  onValueChange={(v) => handleFilterChange('model', v)}
+                  value={filters.model || "all"} 
+                  onValueChange={(v) => handleFilterChange('model', v === "all" ? "" : v)}
                   disabled={!filters.brand}
                 >
                   <SelectTrigger className="bg-[#0D1117] border-[#27272A] text-white">
                     <SelectValue placeholder={filters.brand ? "Выберите модель" : "Сначала выберите марку"} />
                   </SelectTrigger>
                   <SelectContent className="bg-[#15191E] border-[#27272A] max-h-60">
-                    <SelectItem value="" className="text-white">Все модели</SelectItem>
+                    <SelectItem value="all" className="text-white">Все модели</SelectItem>
                     {models.map((m) => (
                       <SelectItem key={m.name} value={m.name} className="text-white">
                         {m.name} ({m.count})
