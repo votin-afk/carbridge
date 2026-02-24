@@ -135,35 +135,110 @@ class CarbridgeAPITester:
         return self.run_test("Get User Profile", "GET", "auth/me", 200)
 
     def test_calculator(self):
-        """Test customs calculator"""
-        calc_data = {
+        """Test customs calculator with all new features"""
+        # Test 1: Individual with Decree 140 (50% discount)
+        calc_data_decree = {
             "price_cny": 150000,
             "age": "under3",
-            "engine_type": "electric",
-            "user_type": "individual"
+            "engine_type": "ice",
+            "engine_volume": 2000,
+            "user_type": "individual",
+            "use_decree_140": True,
+            "payment_via_platform": True
         }
         
-        success, response = self.run_test(
-            "Calculator - Electric Individual", 
+        success1, response1 = self.run_test(
+            "Calculator - Individual with Decree 140", 
             "POST", 
             "calculator", 
             200, 
-            calc_data
+            calc_data_decree
         )
         
-        if success:
-            # Verify response structure
-            required_fields = ['total_usd', 'total_byn', 'customs_duty', 'utilization_fee']
-            missing_fields = [f for f in required_fields if f not in response]
-            if missing_fields:
-                self.log_test("Calculator Response Structure", False, f"Missing fields: {missing_fields}")
-                return False
+        if success1:
+            # Verify Decree 140 discount is applied
+            decree_discount = response1.get('decree_140_discount', 0)
+            if decree_discount > 0:
+                self.log_test("Decree 140 Discount Applied", True, f"Discount: {decree_discount} BYN")
             else:
-                self.log_test("Calculator Response Structure", True)
-                print(f"   Total USD: ${response.get('total_usd', 0):,.2f}")
-                print(f"   Total BYN: {response.get('total_byn', 0):,.2f} BYN")
+                self.log_test("Decree 140 Discount Applied", False, "No discount found")
+            
+            # Verify platform commission (3%)
+            platform_commission = response1.get('platform_commission', 0)
+            expected_platform_commission = response1.get('price_usd', 0) * 0.03 * 3.25  # Rough BYN conversion
+            if abs(platform_commission - expected_platform_commission) < 100:  # Allow some variance
+                self.log_test("Platform Commission 3%", True, f"Commission: {platform_commission} BYN")
+            else:
+                self.log_test("Platform Commission 3%", False, f"Expected ~{expected_platform_commission}, got {platform_commission}")
+            
+            # Verify payment commission (1.5%)
+            payment_commission = response1.get('payment_commission', 0)
+            expected_payment_commission = response1.get('price_usd', 0) * 0.015 * 3.25  # Rough BYN conversion
+            if abs(payment_commission - expected_payment_commission) < 50:  # Allow some variance
+                self.log_test("Payment Commission 1.5%", True, f"Commission: {payment_commission} BYN")
+            else:
+                self.log_test("Payment Commission 1.5%", False, f"Expected ~{expected_payment_commission}, got {payment_commission}")
+            
+            print(f"   Total USD: ${response1.get('total_usd', 0):,.2f}")
+            print(f"   Total BYN: {response1.get('total_byn', 0):,.2f} BYN")
+            print(f"   Decree 140 Discount: {decree_discount} BYN")
+            print(f"   Platform Commission: {platform_commission} BYN")
+            print(f"   Payment Commission: {payment_commission} BYN")
         
-        return success
+        # Test 2: Individual without Decree 140
+        calc_data_no_decree = {
+            "price_cny": 150000,
+            "age": "under3",
+            "engine_type": "ice",
+            "engine_volume": 2000,
+            "user_type": "individual",
+            "use_decree_140": False,
+            "payment_via_platform": True
+        }
+        
+        success2, response2 = self.run_test(
+            "Calculator - Individual without Decree 140", 
+            "POST", 
+            "calculator", 
+            200, 
+            calc_data_no_decree
+        )
+        
+        if success2:
+            # Verify no Decree 140 discount
+            decree_discount = response2.get('decree_140_discount', 0)
+            if decree_discount == 0:
+                self.log_test("No Decree 140 when disabled", True)
+            else:
+                self.log_test("No Decree 140 when disabled", False, f"Unexpected discount: {decree_discount}")
+        
+        # Test 3: Legal entity (should not have Decree 140 option)
+        calc_data_legal = {
+            "price_cny": 200000,
+            "age": "under3",
+            "engine_type": "electric",
+            "user_type": "legal",
+            "use_decree_140": True,  # Should be ignored
+            "payment_via_platform": True
+        }
+        
+        success3, response3 = self.run_test(
+            "Calculator - Legal Entity", 
+            "POST", 
+            "calculator", 
+            200, 
+            calc_data_legal
+        )
+        
+        if success3:
+            # Verify no Decree 140 for legal entities
+            decree_discount = response3.get('decree_140_discount', 0)
+            if decree_discount == 0:
+                self.log_test("No Decree 140 for Legal Entity", True)
+            else:
+                self.log_test("No Decree 140 for Legal Entity", False, f"Unexpected discount: {decree_discount}")
+        
+        return success1 and success2 and success3
 
     def test_add_car_to_garage(self):
         """Test adding a car to garage"""
