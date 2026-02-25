@@ -1024,6 +1024,69 @@ const MyGarage = () => {
           </Button>
         </div>
       )}
+
+      {/* Contractor Selection Dialog */}
+      <Dialog open={!!contractorDialogOpen} onOpenChange={() => setContractorDialogOpen(null)}>
+        <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {contractorDialogOpen && stageConfig[contractorDialogOpen.stage] && (
+                <>
+                  {(() => {
+                    const StageIcon = stageConfig[contractorDialogOpen.stage].icon;
+                    return <StageIcon size={20} className={stageConfig[contractorDialogOpen.stage].color} />;
+                  })()}
+                  Выбрать подрядчика: {stageConfig[contractorDialogOpen.stage]?.label}
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {loadingContractors ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 size={32} className="text-[#00E5FF] animate-spin" />
+            </div>
+          ) : contractors.length > 0 ? (
+            <div className="space-y-3 mt-4">
+              {contractors.map(contractor => (
+                <div 
+                  key={contractor.id}
+                  className="p-4 bg-[#0B0F14] border border-[#27272A] rounded-sm hover:border-[#00E5FF]/50 cursor-pointer transition-colors"
+                  onClick={() => assignContractor(contractor.id)}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-white font-medium">{contractor.name}</h4>
+                      {contractor.is_verified && (
+                        <CheckCircle2 size={14} className="text-[#00E5FF]" />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Star size={12} className="text-amber-400 fill-amber-400" />
+                      <span className="text-white text-sm">{contractor.rating.toFixed(1)}</span>
+                    </div>
+                  </div>
+                  <p className="text-slate-400 text-sm mb-2 line-clamp-2">{contractor.description}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 text-xs">
+                      <Users size={12} className="inline mr-1" />
+                      {contractor.deals_count} сделок
+                    </span>
+                    {contractor.price_range && (
+                      <span className="text-[#00E5FF] text-sm font-medium">{contractor.price_range}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-slate-400">
+              <Users size={48} className="mx-auto mb-3 opacity-30" />
+              <p>Подрядчики не найдены</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
