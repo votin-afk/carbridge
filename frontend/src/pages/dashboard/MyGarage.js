@@ -227,13 +227,32 @@ const MyGarage = () => {
     setAddMode('url');
   };
 
+  // Delete confirmation state
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
   const handleDeleteCar = async (carId) => {
-    if (!window.confirm('Удалить авто из гаража?')) return;
-    
+    setDeleting(true);
     try {
       await axios.delete(`${API}/garage/${carId}`, { headers });
       toast.success('Авто удалено');
       setCars(prevCars => prevCars.filter(c => c.id !== carId));
+      setDeleteConfirmId(null);
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Ошибка при удалении');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const confirmDelete = (carId) => {
+    setDeleteConfirmId(carId);
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirmId(null);
+  };
     } catch (error) {
       console.error('Delete error:', error);
       toast.error('Ошибка при удалении');
