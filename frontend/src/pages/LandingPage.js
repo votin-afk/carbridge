@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
@@ -27,9 +27,38 @@ import {
   Send,
   Loader2,
   Sparkles,
-  Car
+  Car,
+  ChevronLeft
 } from 'lucide-react';
 import axios from 'axios';
+
+// Popular cars data with prices for Belarus
+const popularCars = [
+  {
+    id: 1,
+    name: "GEELY MANJARO",
+    priceUSD: 19961.47,
+    image: "https://customer-assets.emergentagent.com/job_china-motors-by/artifacts/os4c665q_GEELY%20MANJARO.jpg"
+  },
+  {
+    id: 2,
+    name: "BMW iX1",
+    priceUSD: 24819.83,
+    image: "https://customer-assets.emergentagent.com/job_china-motors-by/artifacts/m2yr3tp2_BMW%20IX1.jpg"
+  },
+  {
+    id: 3,
+    name: "AVATR 11",
+    priceUSD: 30229.94,
+    image: "https://customer-assets.emergentagent.com/job_china-motors-by/artifacts/y3bvr5ut_AVATR%2011.jpg"
+  },
+  {
+    id: 4,
+    name: "Mazda EZ6",
+    priceUSD: 21817.60,
+    image: "https://customer-assets.emergentagent.com/job_china-motors-by/artifacts/pidxk08i_Mazda%20EZ6.jpg"
+  }
+];
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
