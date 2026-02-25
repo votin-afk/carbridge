@@ -882,6 +882,49 @@ const MyGarage = () => {
                   )}
                 </div>
 
+                {/* Contractor Selection Stages */}
+                <div className="mb-4 space-y-2">
+                  <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Выбор подрядчиков</p>
+                  {['inspection', 'export', 'logistics'].map(stage => {
+                    const config = stageConfig[stage];
+                    const StageIcon = config.icon;
+                    const assignedContractor = car.contractors?.[stage];
+                    
+                    return (
+                      <div 
+                        key={stage}
+                        className={`flex items-center justify-between p-2 rounded-sm border ${
+                          assignedContractor ? config.borderColor : 'border-[#27272A]'
+                        } ${assignedContractor ? config.bgColor : 'bg-[#0B0F14]'}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <StageIcon size={14} className={config.color} />
+                          <span className="text-slate-400 text-sm">{config.label}</span>
+                        </div>
+                        
+                        {assignedContractor ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-white text-sm font-medium">{assignedContractor.contractor_name}</span>
+                            <button
+                              onClick={() => removeContractor(car.id, stage)}
+                              className="text-slate-500 hover:text-red-400"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => openContractorDialog(car.id, stage)}
+                            className={`text-xs px-2 py-1 rounded-sm ${config.bgColor} ${config.color} hover:opacity-80`}
+                          >
+                            Выбрать
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
                 {/* Actions */}
                 <div className="space-y-2">
                   <div className="flex gap-2">
