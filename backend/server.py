@@ -163,6 +163,50 @@ class DocumentResponse(BaseModel):
     tender_id: Optional[str] = None
     created_at: str
 
+# ==================== CONTRACTOR MODELS ====================
+
+class ContractorCreate(BaseModel):
+    name: str
+    contractor_type: Literal["inspection", "export", "logistics"]
+    description: str
+    services: str
+    price_range: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    website: Optional[str] = None
+    whatsapp: Optional[str] = None
+    wechat: Optional[str] = None
+    telegram: Optional[str] = None
+    rating: float = 5.0
+    deals_count: int = 0
+    is_verified: bool = False
+    logo_url: Optional[str] = None
+
+class ContractorResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    name: str
+    contractor_type: str
+    description: str
+    services: str
+    price_range: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    website: Optional[str] = None
+    whatsapp: Optional[str] = None
+    wechat: Optional[str] = None
+    telegram: Optional[str] = None
+    rating: float
+    deals_count: int
+    is_verified: bool
+    logo_url: Optional[str] = None
+    created_at: str
+
+class ContractorAssignment(BaseModel):
+    car_id: str
+    contractor_id: str
+    stage: Literal["inspection", "export", "logistics"]
+
 class CalculatorInput(BaseModel):
     price_cny: float
     age: Literal["under3", "3to5", "over5"]
