@@ -99,6 +99,8 @@ class CarCreate(BaseModel):
     image_url: Optional[str] = None
     source_url: Optional[str] = None
     description: Optional[str] = None
+    calculated_price_usd: Optional[float] = None
+    calculated_price_byn: Optional[float] = None
 
 class CarResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -114,6 +116,8 @@ class CarResponse(BaseModel):
     image_url: Optional[str] = None
     source_url: Optional[str] = None
     description: Optional[str] = None
+    calculated_price_usd: Optional[float] = None
+    calculated_price_byn: Optional[float] = None
     status: str
     created_at: str
 
