@@ -26,12 +26,44 @@ import {
   FileSearch,
   Lock,
   FileText,
-  CreditCard
+  CreditCard,
+  ClipboardCheck,
+  Package,
+  Truck,
+  Star,
+  Users,
+  ChevronDown,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+// Contractor stage config
+const stageConfig = {
+  inspection: {
+    label: 'Проверка',
+    icon: ClipboardCheck,
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-500/10',
+    borderColor: 'border-blue-500/30'
+  },
+  export: {
+    label: 'Экспорт',
+    icon: Package,
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-500/10',
+    borderColor: 'border-amber-500/30'
+  },
+  logistics: {
+    label: 'Логистика',
+    icon: Truck,
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/30'
+  }
+};
 
 const MyGarage = () => {
   const { token, user } = useAuth();
