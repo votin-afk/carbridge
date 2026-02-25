@@ -636,14 +636,14 @@ const LandingPage = () => {
             <h2 className="text-3xl sm:text-4xl font-bold text-white">Контакты</h2>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-12">
             <div className="bg-[#1C2128] border border-[#27272A] rounded-sm p-6 text-center card-hover">
               <div className="w-12 h-12 mx-auto mb-4 bg-[#00E5FF]/10 rounded-full flex items-center justify-center">
                 <Phone size={24} className="text-[#00E5FF]" />
               </div>
               <h3 className="text-white font-medium mb-2">Телефон</h3>
-              <a href="tel:+375291234567" className="text-slate-400 hover:text-[#00E5FF] transition-colors">
-                +375 (29) 123-45-67
+              <a href="tel:+37296699557" className="text-slate-400 hover:text-[#00E5FF] transition-colors">
+                +375 (29) 669-95-57
               </a>
             </div>
 
@@ -662,8 +662,68 @@ const LandingPage = () => {
                 <MapPin size={24} className="text-[#00E5FF]" />
               </div>
               <h3 className="text-white font-medium mb-2">Адрес</h3>
-              <p className="text-slate-400">г. Минск, ул. Примерная, 123</p>
+              <p className="text-slate-400">г. Минск, ул. Червякова, д. 52, пом. 1</p>
             </div>
+          </div>
+
+          {/* Messengers Section */}
+          <div className="max-w-2xl mx-auto">
+            <h3 className="text-white font-semibold text-xl text-center mb-6">Мессенджеры для связи</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <a
+                href="https://wa.me/37296699557"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-[#1C2128] border border-[#27272A] rounded-sm p-4 flex flex-col items-center gap-2 card-hover group"
+                data-testid="contact-whatsapp"
+              >
+                <div className="w-10 h-10 bg-[#25D366]/10 rounded-full flex items-center justify-center text-[#25D366] group-hover:bg-[#25D366] group-hover:text-white transition-colors">
+                  <WhatsAppIcon />
+                </div>
+                <span className="text-slate-400 text-sm group-hover:text-white transition-colors">WhatsApp</span>
+              </a>
+
+              <a
+                href="viber://chat?number=+37296699557"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-[#1C2128] border border-[#27272A] rounded-sm p-4 flex flex-col items-center gap-2 card-hover group"
+                data-testid="contact-viber"
+              >
+                <div className="w-10 h-10 bg-[#7360F2]/10 rounded-full flex items-center justify-center text-[#7360F2] group-hover:bg-[#7360F2] group-hover:text-white transition-colors">
+                  <ViberIcon />
+                </div>
+                <span className="text-slate-400 text-sm group-hover:text-white transition-colors">Viber</span>
+              </a>
+
+              <a
+                href="https://t.me/kiryl_votsintsau"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-[#1C2128] border border-[#27272A] rounded-sm p-4 flex flex-col items-center gap-2 card-hover group"
+                data-testid="contact-telegram"
+              >
+                <div className="w-10 h-10 bg-[#0088CC]/10 rounded-full flex items-center justify-center text-[#0088CC] group-hover:bg-[#0088CC] group-hover:text-white transition-colors">
+                  <TelegramIcon />
+                </div>
+                <span className="text-slate-400 text-sm group-hover:text-white transition-colors">Telegram</span>
+              </a>
+
+              <div
+                className="bg-[#1C2128] border border-[#27272A] rounded-sm p-4 flex flex-col items-center gap-2 card-hover group cursor-pointer"
+                onClick={() => {
+                  navigator.clipboard.writeText('wxid_fuzh2yfspean12');
+                  alert('WeChat ID скопирован: wxid_fuzh2yfspean12');
+                }}
+                data-testid="contact-wechat"
+              >
+                <div className="w-10 h-10 bg-[#07C160]/10 rounded-full flex items-center justify-center text-[#07C160] group-hover:bg-[#07C160] group-hover:text-white transition-colors">
+                  <WeChatIcon />
+                </div>
+                <span className="text-slate-400 text-sm group-hover:text-white transition-colors">WeChat</span>
+              </div>
+            </div>
+            <p className="text-slate-500 text-xs text-center mt-3">WeChat ID: wxid_fuzh2yfspean12 (нажмите чтобы скопировать)</p>
           </div>
         </div>
       </section>
