@@ -21,7 +21,12 @@ import {
   Loader2,
   Sparkles,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Wallet,
+  FileSearch,
+  Lock,
+  FileText,
+  CreditCard
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -29,15 +34,23 @@ import axios from 'axios';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const MyGarage = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [addMode, setAddMode] = useState('url'); // 'url' or 'manual'
+  const [addMode, setAddMode] = useState('url');
   const [urlInput, setUrlInput] = useState('');
   const [parsing, setParsing] = useState(false);
   const [parseResult, setParseResult] = useState(null);
+  const [calculatedPrice, setCalculatedPrice] = useState(null);
+  const [calculatingPrice, setCalculatingPrice] = useState(false);
+  
+  // User account state
+  const [userBalance, setUserBalance] = useState(0);
+  const [isVerified, setIsVerified] = useState(false);
+  const [contractSigned, setContractSigned] = useState(false);
+  
   const [formData, setFormData] = useState({
     brand: '',
     model: '',
@@ -64,9 +77,68 @@ const MyGarage = () => {
     }
   };
 
+  const fetchUserAccount = async () => {
+    try {
+      const response = await axios.get(`${API}/user/account`, { headers });
+      setUserBalance(response.data.balance || 0);
+      setIsVerified(response.data.is_verified || false);
+      setContractSigned(response.data.contract_signed || false);
+    } catch (error) {
+      // If endpoint doesn't exist yet, use defaults
+      console.log('Account endpoint not available, using defaults');
+    }
+  };
+
   useEffect(() => {
     fetchCars();
+    fetchUserAccount();
   }, []);
+
+  // Calculate price when form data changes
+  const calculateBelarusPrice = async (priceCny, engineType, engineVolume, year) => {
+    if (!priceCny) return;
+    
+    setCalculatingPrice(true);
+    try {
+      const currentYear = new Date().getFullYear();
+      const carAge = currentYear - year;
+      let age = 'under3';
+      if (carAge >= 3 && carAge < 5) age = '3to5';
+      else if (carAge >= 5) age = 'over5';
+
+      const response = await axios.post(`${API}/calculator`, {
+        price_cny: parseFloat(priceCny),
+        age: age,
+        engine_type: engineType || 'ice',
+        engine_volume: engineVolume ? parseInt(engineVolume) : 2000,
+        user_type: 'individual',
+        use_decree_140: false,
+        payment_via_platform: true
+      });
+      setCalculatedPrice(response.data);
+    } catch (error) {
+      console.error('Calculation error:', error);
+      setCalculatedPrice(null);
+    } finally {
+      setCalculatingPrice(false);
+    }
+  };
+
+  useEffect(() => {
+    if (formData.price_cny) {
+      const timeout = setTimeout(() => {
+        calculateBelarusPrice(
+          formData.price_cny, 
+          formData.engine_type, 
+          formData.engine_volume,
+          formData.year
+        );
+      }, 500);
+      return () => clearTimeout(timeout);
+    } else {
+      setCalculatedPrice(null);
+    }
+  }, [formData.price_cny, formData.engine_type, formData.engine_volume, formData.year]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -81,14 +153,14 @@ const MyGarage = () => {
 
     setParsing(true);
     setParseResult(null);
+    setCalculatedPrice(null);
 
     try {
       const response = await axios.post(`${API}/parse-url`, { url: urlInput.trim() });
       
       if (response.data.success) {
         setParseResult({ success: true, data: response.data });
-        // Fill form with parsed data
-        setFormData({
+        const newFormData = {
           brand: response.data.brand || '',
           model: response.data.model || '',
           year: response.data.year || new Date().getFullYear(),
@@ -99,7 +171,8 @@ const MyGarage = () => {
           image_url: response.data.image_url || '',
           source_url: response.data.source_url || urlInput.trim(),
           description: response.data.description || ''
-        });
+        };
+        setFormData(newFormData);
         toast.success('Данные извлечены! Проверьте и добавьте в гараж');
       } else {
         setParseResult({ success: false, error: response.data.error });
@@ -126,7 +199,9 @@ const MyGarage = () => {
         year: parseInt(formData.year),
         price_cny: parseFloat(formData.price_cny),
         engine_volume: formData.engine_volume ? parseInt(formData.engine_volume) : null,
-        mileage: formData.mileage ? parseInt(formData.mileage) : null
+        mileage: formData.mileage ? parseInt(formData.mileage) : null,
+        calculated_price_usd: calculatedPrice?.total_usd || null,
+        calculated_price_byn: calculatedPrice?.total_byn || null
       }, { headers });
       
       toast.success('Авто добавлено в гараж');
@@ -148,6 +223,7 @@ const MyGarage = () => {
     });
     setUrlInput('');
     setParseResult(null);
+    setCalculatedPrice(null);
     setAddMode('url');
   };
 
@@ -157,13 +233,23 @@ const MyGarage = () => {
     try {
       await axios.delete(`${API}/garage/${carId}`, { headers });
       toast.success('Авто удалено');
-      setCars(cars.filter(c => c.id !== carId));
+      setCars(prevCars => prevCars.filter(c => c.id !== carId));
     } catch (error) {
+      console.error('Delete error:', error);
       toast.error('Ошибка при удалении');
     }
   };
 
   const handleStartTender = async (carId) => {
+    if (!contractSigned) {
+      toast.error('Для запуска тендера необходимо подписать договор');
+      return;
+    }
+    if (userBalance <= 0) {
+      toast.error('Для запуска тендера необходимо пополнить баланс');
+      return;
+    }
+
     try {
       await axios.post(`${API}/tenders`, { car_id: carId }, { headers });
       toast.success('Тендер запущен! Проверьте раздел "Тендеры"');
@@ -172,6 +258,21 @@ const MyGarage = () => {
       toast.error('Ошибка при запуске тендера');
     }
   };
+
+  const handleRequestReport = async (carId) => {
+    if (!contractSigned) {
+      toast.error('Для запроса отчёта необходимо подписать договор');
+      return;
+    }
+    if (userBalance <= 0) {
+      toast.error('Для запроса отчёта необходимо пополнить баланс');
+      return;
+    }
+
+    toast.success('Запрос на отчёт о состоянии отправлен');
+  };
+
+  const canPerformActions = contractSigned && userBalance > 0;
 
   const getStatusBadge = (status) => {
     const styles = {
@@ -196,6 +297,13 @@ const MyGarage = () => {
     return labels[type] || type;
   };
 
+  const formatNumber = (num) => {
+    return new Intl.NumberFormat('ru-RU', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    }).format(num);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -206,6 +314,60 @@ const MyGarage = () => {
 
   return (
     <div className="space-y-6" data-testid="my-garage">
+      {/* Balance Card */}
+      <div className="bg-gradient-to-r from-[#1C2128] to-[#15191E] border border-[#27272A] rounded-lg p-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-[#00E5FF]/10 rounded-full flex items-center justify-center">
+              <Wallet size={28} className="text-[#00E5FF]" />
+            </div>
+            <div>
+              <p className="text-slate-400 text-sm">Мой баланс</p>
+              <p className="text-2xl font-bold text-white">${formatNumber(userBalance)}</p>
+            </div>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Verification Status */}
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-sm border ${
+              isVerified 
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+            }`}>
+              {isVerified ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+              <span className="text-sm">{isVerified ? 'Верифицирован' : 'Не верифицирован'}</span>
+            </div>
+            
+            {/* Contract Status */}
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-sm border ${
+              contractSigned 
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                : 'bg-slate-500/10 border-slate-500/30 text-slate-400'
+            }`}>
+              <FileText size={16} />
+              <span className="text-sm">{contractSigned ? 'Договор подписан' : 'Договор не подписан'}</span>
+            </div>
+
+            <Button 
+              className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
+              onClick={() => toast.info('Функция пополнения баланса будет доступна после верификации')}
+            >
+              <CreditCard size={16} className="mr-2" />
+              Пополнить
+            </Button>
+          </div>
+        </div>
+
+        {!canPerformActions && (
+          <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-sm">
+            <p className="text-amber-400 text-sm flex items-center gap-2">
+              <Lock size={14} />
+              Для запуска тендера и запроса отчётов необходимо пройти верификацию, подписать договор и пополнить баланс
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -307,7 +469,7 @@ const MyGarage = () => {
                   </div>
                 )}
 
-                {/* Parsed Data Preview */}
+                {/* Parsed Data Preview with Belarus Price */}
                 {parseResult?.success && (
                   <div className="space-y-3 pt-2">
                     <p className="text-slate-400 text-sm">Проверьте данные и нажмите "Добавить в гараж"</p>
@@ -337,15 +499,37 @@ const MyGarage = () => {
                         <p className="text-white">{formData.year || '—'}</p>
                       </div>
                       <div className="bg-[#1C2128] p-3 rounded-sm">
-                        <span className="text-slate-500">Цена:</span>
-                        <p className="text-[#00E5FF]">¥{formData.price_cny?.toLocaleString() || '—'}</p>
+                        <span className="text-slate-500">Цена в Китае:</span>
+                        <p className="text-white">¥{formData.price_cny?.toLocaleString() || '—'}</p>
                       </div>
                     </div>
 
-                    {formData.description && (
-                      <div className="bg-[#1C2128] p-3 rounded-sm">
-                        <span className="text-slate-500 text-sm">Описание:</span>
-                        <p className="text-slate-300 text-sm mt-1">{formData.description}</p>
+                    {/* Belarus Price Calculation */}
+                    {calculatedPrice && (
+                      <div className="bg-[#00E5FF]/10 border border-[#00E5FF]/30 rounded-sm p-4">
+                        <p className="text-[#00E5FF] font-medium mb-2 flex items-center gap-2">
+                          <CheckCircle2 size={16} />
+                          Расчёт под ключ в Беларуси
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-slate-400">Итого USD:</span>
+                            <p className="text-white font-semibold text-lg">${formatNumber(calculatedPrice.total_usd)}</p>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">Итого BYN:</span>
+                            <p className="text-white font-semibold text-lg">{formatNumber(calculatedPrice.total_byn)} BYN</p>
+                          </div>
+                        </div>
+                        <p className="text-slate-500 text-xs mt-2">
+                          Включает: растаможку, доставку, комиссию платформы 3%, комиссию за оплату 1.5%
+                        </p>
+                      </div>
+                    )}
+                    {calculatingPrice && (
+                      <div className="bg-[#1C2128] border border-[#27272A] rounded-sm p-4 flex items-center gap-3">
+                        <Loader2 size={20} className="text-[#00E5FF] animate-spin" />
+                        <span className="text-slate-400">Расчёт стоимости...</span>
                       </div>
                     )}
 
@@ -466,6 +650,32 @@ const MyGarage = () => {
                   />
                 </div>
 
+                {/* Belarus Price Calculation for Manual Input */}
+                {calculatedPrice && (
+                  <div className="bg-[#00E5FF]/10 border border-[#00E5FF]/30 rounded-sm p-4">
+                    <p className="text-[#00E5FF] font-medium mb-2 flex items-center gap-2">
+                      <CheckCircle2 size={16} />
+                      Расчёт под ключ в Беларуси
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-slate-400">Итого USD:</span>
+                        <p className="text-white font-semibold text-lg">${formatNumber(calculatedPrice.total_usd)}</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Итого BYN:</span>
+                        <p className="text-white font-semibold text-lg">{formatNumber(calculatedPrice.total_byn)} BYN</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {calculatingPrice && (
+                  <div className="bg-[#1C2128] border border-[#27272A] rounded-sm p-4 flex items-center gap-3">
+                    <Loader2 size={20} className="text-[#00E5FF] animate-spin" />
+                    <span className="text-slate-400">Расчёт стоимости...</span>
+                  </div>
+                )}
+
                 <div>
                   <Label className="text-slate-300">Ссылка на объявление</Label>
                   <Input
@@ -545,10 +755,19 @@ const MyGarage = () => {
                   <h3 className="text-white font-semibold text-lg">
                     {car.brand} {car.model}
                   </h3>
-                  <span className="text-[#00E5FF] font-semibold">
+                  <span className="text-slate-400 text-sm">
                     ¥{car.price_cny?.toLocaleString()}
                   </span>
                 </div>
+
+                {/* Belarus Price */}
+                {car.calculated_price_usd && (
+                  <div className="mb-3 p-2 bg-[#00E5FF]/10 rounded-sm">
+                    <p className="text-[#00E5FF] font-semibold">
+                      ${formatNumber(car.calculated_price_usd)} под ключ
+                    </p>
+                  </div>
+                )}
 
                 <div className="flex flex-wrap gap-2 text-sm text-slate-400 mb-4">
                   <span>{car.year}</span>
@@ -569,34 +788,61 @@ const MyGarage = () => {
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-2">
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    {car.status === 'saved' && (
+                      <Button
+                        data-testid={`start-tender-${car.id}`}
+                        onClick={() => handleStartTender(car.id)}
+                        disabled={!canPerformActions}
+                        className={`flex-1 text-sm ${
+                          canPerformActions 
+                            ? 'bg-[#00E5FF] hover:bg-[#22D3EE] text-black' 
+                            : 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                        }`}
+                      >
+                        {!canPerformActions && <Lock size={12} className="mr-1" />}
+                        <Send size={14} className="mr-1" />
+                        Запустить тендер
+                      </Button>
+                    )}
+                    {car.source_url && (
+                      <a 
+                        href={car.source_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-[#00E5FF] hover:border-[#00E5FF]"
+                      >
+                        <ExternalLink size={16} />
+                      </a>
+                    )}
+                    <button
+                      data-testid={`delete-car-${car.id}`}
+                      onClick={() => handleDeleteCar(car.id)}
+                      className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-red-400 hover:border-red-400"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  
+                  {/* Request Report Button */}
                   {car.status === 'saved' && (
                     <Button
-                      data-testid={`start-tender-${car.id}`}
-                      onClick={() => handleStartTender(car.id)}
-                      className="flex-1 bg-[#00E5FF] hover:bg-[#22D3EE] text-black text-sm"
+                      data-testid={`request-report-${car.id}`}
+                      onClick={() => handleRequestReport(car.id)}
+                      disabled={!canPerformActions}
+                      variant="outline"
+                      className={`w-full text-sm ${
+                        canPerformActions 
+                          ? 'border-[#27272A] text-slate-300 hover:border-[#00E5FF] hover:text-[#00E5FF]' 
+                          : 'border-slate-700 text-slate-500 cursor-not-allowed'
+                      }`}
                     >
-                      <Send size={14} className="mr-1" />
-                      Запустить тендер
+                      {!canPerformActions && <Lock size={12} className="mr-1" />}
+                      <FileSearch size={14} className="mr-1" />
+                      Запросить отчёт о состоянии
                     </Button>
                   )}
-                  {car.source_url && (
-                    <a 
-                      href={car.source_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-[#00E5FF] hover:border-[#00E5FF]"
-                    >
-                      <ExternalLink size={16} />
-                    </a>
-                  )}
-                  <button
-                    data-testid={`delete-car-${car.id}`}
-                    onClick={() => handleDeleteCar(car.id)}
-                    className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-red-400 hover:border-red-400"
-                  >
-                    <Trash2 size={16} />
-                  </button>
                 </div>
               </div>
             </div>
