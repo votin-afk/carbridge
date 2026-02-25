@@ -83,6 +83,11 @@ const MyGarage = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [contractSigned, setContractSigned] = useState(false);
   
+  // Contractor selection state
+  const [contractorDialogOpen, setContractorDialogOpen] = useState(null); // { carId, stage }
+  const [contractors, setContractors] = useState([]);
+  const [loadingContractors, setLoadingContractors] = useState(false);
+  
   const [formData, setFormData] = useState({
     brand: '',
     model: '',
