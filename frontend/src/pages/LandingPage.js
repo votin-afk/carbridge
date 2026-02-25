@@ -292,15 +292,59 @@ const LandingPage = () => {
 
             <div className="relative fade-in fade-in-delay-2">
               <div className="relative rounded-lg overflow-hidden border border-[#27272A] glow-cyan">
-                <img 
-                  src="https://images.pexels.com/photos/32912506/pexels-photo-32912506.jpeg"
-                  alt="Premium Chinese EV"
-                  className="w-full h-[400px] object-cover"
-                />
+                {/* Carousel Navigation Arrows */}
+                <button
+                  onClick={prevSlide}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-black/50 hover:bg-[#00E5FF]/30 rounded-full flex items-center justify-center transition-all"
+                  data-testid="carousel-prev"
+                >
+                  <ChevronLeft className="text-white" size={24} />
+                </button>
+                <button
+                  onClick={nextSlide}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-black/50 hover:bg-[#00E5FF]/30 rounded-full flex items-center justify-center transition-all"
+                  data-testid="carousel-next"
+                >
+                  <ChevronRight className="text-white" size={24} />
+                </button>
+
+                {/* Car Image with Fade Animation */}
+                <div className={`transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+                  <img 
+                    src={popularCars[currentCarIndex].image}
+                    alt={popularCars[currentCarIndex].name}
+                    className="w-full h-[400px] object-cover"
+                  />
+                </div>
+                
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0B0F14] via-transparent to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-6">
+                
+                {/* Car Info Overlay */}
+                <div className={`absolute bottom-0 left-0 right-0 p-6 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
                   <p className="text-slate-400 text-sm mb-1">Популярный выбор</p>
-                  <p className="text-white text-xl font-semibold">Li Auto L9 Max</p>
+                  <p className="text-white text-xl font-semibold mb-2">{popularCars[currentCarIndex].name}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#00E5FF] text-2xl font-bold">
+                      ${popularCars[currentCarIndex].priceUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-slate-500 text-sm">под ключ в Беларуси</span>
+                  </div>
+                </div>
+
+                {/* Dots Navigation */}
+                <div className="absolute bottom-24 left-0 right-0 flex justify-center gap-2 z-20">
+                  {popularCars.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => goToSlide(index)}
+                      data-testid={`carousel-dot-${index}`}
+                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                        index === currentCarIndex 
+                          ? 'bg-[#00E5FF] w-6' 
+                          : 'bg-white/30 hover:bg-white/50'
+                      }`}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
