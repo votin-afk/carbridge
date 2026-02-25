@@ -774,15 +774,17 @@ class ProAuctionsParser:
         return models
     
     @classmethod
-    async def search_cars(cls, brand: str = None, page: int = 1, limit: int = 20) -> Dict:
-        """Search cars from catalog with optional brand filter"""
-        cache_key = f"pro_auctions_cars_{brand or 'all'}_{page}_{limit}"
+    async def search_cars(cls, brand: str = None, model: str = None, page: int = 1, limit: int = 20) -> Dict:
+        """Search cars from catalog with optional brand and model filter"""
+        cache_key = f"pro_auctions_cars_{brand or 'all'}_{model or 'all'}_{page}_{limit}"
         cached = get_cached(cache_key)
         if cached:
             return cached
         
-        # Build URL
-        if brand:
+        # Build URL - can include brand and model
+        if brand and model:
+            url = f"{cls.BASE_URL}{brand}/{model}/"
+        elif brand:
             url = f"{cls.BASE_URL}{brand}/"
         else:
             url = cls.BASE_URL
