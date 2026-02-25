@@ -76,10 +76,51 @@ const LandingPage = () => {
   const [chatLoading, setChatLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const chatEndRef = useRef(null);
+  
+  // Popular cars carousel state
+  const [currentCarIndex, setCurrentCarIndex] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
+
+  // Auto-rotate carousel
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentCarIndex((prev) => (prev + 1) % popularCars.length);
+        setIsTransitioning(false);
+      }, 300);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const goToSlide = useCallback((index) => {
+    if (index === currentCarIndex) return;
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setCurrentCarIndex(index);
+      setIsTransitioning(false);
+    }, 300);
+  }, [currentCarIndex]);
+
+  const nextSlide = useCallback(() => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setCurrentCarIndex((prev) => (prev + 1) % popularCars.length);
+      setIsTransitioning(false);
+    }, 300);
+  }, []);
+
+  const prevSlide = useCallback(() => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setCurrentCarIndex((prev) => (prev - 1 + popularCars.length) % popularCars.length);
+      setIsTransitioning(false);
+    }, 300);
+  }, []);
 
   const sendChatMessage = async () => {
     if (!chatInput.trim() || chatLoading) return;
