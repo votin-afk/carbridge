@@ -1304,6 +1304,306 @@ async def select_offer(tender_id: str, offer_id: str, current_user: dict = Depen
     
     return {"message": "Offer selected successfully"}
 
+# ==================== CONTRACTOR ENDPOINTS ====================
+
+# Demo contractor data
+DEMO_CONTRACTORS = [
+    # Inspection companies
+    {
+        "id": "insp-001",
+        "name": "ChinaAutoCheck",
+        "contractor_type": "inspection",
+        "description": "Профессиональная проверка автомобилей в Китае с выездом на место. Полный технический осмотр, проверка документов и истории авто.",
+        "services": "Визуальный осмотр, диагностика ходовой, проверка ЛКП толщиномером, сканирование ошибок, проверка VIN и документов, фото/видео отчет",
+        "price_range": "$150 - $300",
+        "phone": "+86 138 1234 5678",
+        "email": "check@chinaautocheck.com",
+        "website": "https://chinaautocheck.com",
+        "whatsapp": "+86 138 1234 5678",
+        "wechat": "chinaautocheck",
+        "telegram": "@chinaautocheck",
+        "rating": 4.8,
+        "deals_count": 342,
+        "is_verified": True,
+        "logo_url": None,
+        "created_at": "2024-01-01T00:00:00Z"
+    },
+    {
+        "id": "insp-002",
+        "name": "AutoExpert China",
+        "contractor_type": "inspection",
+        "description": "Независимая экспертиза автомобилей. Работаем по всему Китаю. Гарантия объективной оценки.",
+        "services": "Полная диагностика, проверка на ДТП, юридическая чистота, оценка рыночной стоимости, онлайн-консультация",
+        "price_range": "$100 - $250",
+        "phone": "+86 139 8765 4321",
+        "email": "info@autoexpert-china.com",
+        "website": "https://autoexpert-china.com",
+        "whatsapp": "+86 139 8765 4321",
+        "wechat": "autoexpertcn",
+        "telegram": "@autoexpertchina",
+        "rating": 4.6,
+        "deals_count": 218,
+        "is_verified": True,
+        "logo_url": None,
+        "created_at": "2024-02-15T00:00:00Z"
+    },
+    {
+        "id": "insp-003",
+        "name": "DriveCheck Pro",
+        "contractor_type": "inspection",
+        "description": "Быстрая и качественная проверка авто перед покупкой. Специализируемся на электромобилях и гибридах.",
+        "services": "Проверка батареи EV, диагностика электросистем, тест-драйв, проверка зарядных систем",
+        "price_range": "$200 - $400",
+        "phone": "+86 186 5555 1234",
+        "email": "pro@drivecheck.cn",
+        "website": None,
+        "whatsapp": "+86 186 5555 1234",
+        "wechat": "drivecheckpro",
+        "telegram": None,
+        "rating": 4.9,
+        "deals_count": 156,
+        "is_verified": False,
+        "logo_url": None,
+        "created_at": "2024-03-20T00:00:00Z"
+    },
+    # Export companies
+    {
+        "id": "exp-001",
+        "name": "SinoExport Group",
+        "contractor_type": "export",
+        "description": "Крупнейшая экспортная компания в Китае. Полное сопровождение сделки от покупки до отправки.",
+        "services": "Выкуп авто, оформление экспортных документов, таможенное оформление в Китае, страхование груза",
+        "price_range": "$500 - $1500",
+        "phone": "+86 21 5888 8888",
+        "email": "export@sinoexport.com",
+        "website": "https://sinoexport.com",
+        "whatsapp": "+86 21 5888 8888",
+        "wechat": "sinoexport",
+        "telegram": "@sinoexport",
+        "rating": 4.7,
+        "deals_count": 1250,
+        "is_verified": True,
+        "logo_url": None,
+        "created_at": "2023-06-01T00:00:00Z"
+    },
+    {
+        "id": "exp-002",
+        "name": "Dragon Auto Export",
+        "contractor_type": "export",
+        "description": "Надежный партнер для экспорта авто из Китая. Работаем с 2015 года.",
+        "services": "Покупка на аукционах, переговоры с продавцом, экспортное оформление, контроль качества перед отправкой",
+        "price_range": "$400 - $1200",
+        "phone": "+86 755 2666 8888",
+        "email": "info@dragonexport.cn",
+        "website": "https://dragonexport.cn",
+        "whatsapp": "+86 755 2666 8888",
+        "wechat": "dragonautoexp",
+        "telegram": "@dragonautoexport",
+        "rating": 4.5,
+        "deals_count": 890,
+        "is_verified": True,
+        "logo_url": None,
+        "created_at": "2023-08-15T00:00:00Z"
+    },
+    {
+        "id": "exp-003",
+        "name": "FastTrade China",
+        "contractor_type": "export",
+        "description": "Быстрый экспорт автомобилей. Минимальные сроки оформления документов.",
+        "services": "Срочный выкуп, ускоренное оформление, VIP-сопровождение сделки",
+        "price_range": "$600 - $2000",
+        "phone": "+86 20 3888 6666",
+        "email": "fast@fasttrade.cn",
+        "website": None,
+        "whatsapp": "+86 20 3888 6666",
+        "wechat": "fasttradecn",
+        "telegram": "@fasttradechina",
+        "rating": 4.3,
+        "deals_count": 445,
+        "is_verified": False,
+        "logo_url": None,
+        "created_at": "2024-01-10T00:00:00Z"
+    },
+    # Logistics companies
+    {
+        "id": "log-001",
+        "name": "EuroAsia Logistics",
+        "contractor_type": "logistics",
+        "description": "Международная логистика автомобилей. Доставка из Китая в Беларусь, Россию, Казахстан.",
+        "services": "Морская доставка, ж/д перевозка, автовозы, страхование, отслеживание груза онлайн",
+        "price_range": "$1500 - $3500",
+        "phone": "+375 29 111 2233",
+        "email": "logistics@euroasia-log.com",
+        "website": "https://euroasia-logistics.com",
+        "whatsapp": "+375 29 111 2233",
+        "wechat": None,
+        "telegram": "@euroasialog",
+        "rating": 4.8,
+        "deals_count": 2100,
+        "is_verified": True,
+        "logo_url": None,
+        "created_at": "2022-03-01T00:00:00Z"
+    },
+    {
+        "id": "log-002",
+        "name": "Silk Road Transport",
+        "contractor_type": "logistics",
+        "description": "Перевозка по Новому Шелковому пути. Оптимальное сочетание цены и скорости.",
+        "services": "Контейнерные перевозки, доставка до двери, таможенное оформление в РБ, хранение на складе",
+        "price_range": "$1200 - $2800",
+        "phone": "+375 33 444 5566",
+        "email": "info@silkroad-transport.by",
+        "website": "https://silkroad-transport.by",
+        "whatsapp": "+375 33 444 5566",
+        "wechat": "silkroadtrans",
+        "telegram": "@silkroadtransport",
+        "rating": 4.6,
+        "deals_count": 1560,
+        "is_verified": True,
+        "logo_url": None,
+        "created_at": "2022-09-15T00:00:00Z"
+    },
+    {
+        "id": "log-003",
+        "name": "Belarus Auto Delivery",
+        "contractor_type": "logistics",
+        "description": "Специализируемся на доставке авто в Беларусь. Собственный автопарк.",
+        "services": "Доставка автовозами, временное хранение, помощь в растаможке, доставка до города",
+        "price_range": "$800 - $2000",
+        "phone": "+375 44 777 8899",
+        "email": "delivery@belauto.by",
+        "website": None,
+        "whatsapp": "+375 44 777 8899",
+        "wechat": None,
+        "telegram": "@belautodelivery",
+        "rating": 4.4,
+        "deals_count": 670,
+        "is_verified": False,
+        "logo_url": None,
+        "created_at": "2023-11-20T00:00:00Z"
+    }
+]
+
+@api_router.get("/contractors", response_model=List[ContractorResponse])
+async def get_contractors(contractor_type: Optional[str] = None):
+    """Get all contractors, optionally filtered by type"""
+    # Get from database
+    query = {}
+    if contractor_type:
+        query["contractor_type"] = contractor_type
+    
+    db_contractors = await db.contractors.find(query, {"_id": 0}).to_list(100)
+    
+    # Combine with demo data (if not already in DB)
+    demo_ids = {c["id"] for c in db_contractors}
+    demo_filtered = [c for c in DEMO_CONTRACTORS if c["id"] not in demo_ids]
+    
+    if contractor_type:
+        demo_filtered = [c for c in demo_filtered if c["contractor_type"] == contractor_type]
+    
+    all_contractors = db_contractors + demo_filtered
+    
+    # Sort by rating and deals count
+    all_contractors.sort(key=lambda x: (-x.get("is_verified", False), -x.get("rating", 0), -x.get("deals_count", 0)))
+    
+    return all_contractors
+
+@api_router.get("/contractors/{contractor_id}", response_model=ContractorResponse)
+async def get_contractor(contractor_id: str):
+    """Get contractor by ID"""
+    # Check database first
+    contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0})
+    if contractor:
+        return contractor
+    
+    # Check demo data
+    for c in DEMO_CONTRACTORS:
+        if c["id"] == contractor_id:
+            return c
+    
+    raise HTTPException(status_code=404, detail="Contractor not found")
+
+@api_router.post("/contractors", response_model=ContractorResponse)
+async def create_contractor(contractor: ContractorCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new contractor (admin only)"""
+    contractor_id = str(uuid.uuid4())
+    contractor_data = {
+        "id": contractor_id,
+        **contractor.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.contractors.insert_one(contractor_data)
+    contractor_data.pop("_id", None)
+    return ContractorResponse(**contractor_data)
+
+@api_router.delete("/contractors/{contractor_id}")
+async def delete_contractor(contractor_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a contractor"""
+    # Can't delete demo contractors, only database ones
+    result = await db.contractors.delete_one({"id": contractor_id})
+    if result.deleted_count == 0:
+        # Check if it's a demo contractor
+        for c in DEMO_CONTRACTORS:
+            if c["id"] == contractor_id:
+                raise HTTPException(status_code=400, detail="Cannot delete demo contractor")
+        raise HTTPException(status_code=404, detail="Contractor not found")
+    return {"message": "Contractor deleted"}
+
+@api_router.post("/garage/{car_id}/assign-contractor")
+async def assign_contractor_to_car(
+    car_id: str, 
+    assignment: ContractorAssignment,
+    current_user: dict = Depends(get_current_user)
+):
+    """Assign a contractor to a car for a specific stage"""
+    # Verify car belongs to user
+    car = await db.garage.find_one({"id": car_id, "user_id": current_user["id"]})
+    if not car:
+        raise HTTPException(status_code=404, detail="Car not found")
+    
+    # Verify contractor exists
+    contractor = await db.contractors.find_one({"id": assignment.contractor_id}, {"_id": 0})
+    if not contractor:
+        # Check demo data
+        contractor = next((c for c in DEMO_CONTRACTORS if c["id"] == assignment.contractor_id), None)
+    
+    if not contractor:
+        raise HTTPException(status_code=404, detail="Contractor not found")
+    
+    # Update car with contractor assignment
+    update_field = f"contractors.{assignment.stage}"
+    await db.garage.update_one(
+        {"id": car_id},
+        {"$set": {
+            update_field: {
+                "contractor_id": assignment.contractor_id,
+                "contractor_name": contractor["name"],
+                "assigned_at": datetime.now(timezone.utc).isoformat()
+            }
+        }}
+    )
+    
+    return {"message": f"Contractor assigned to {assignment.stage} stage"}
+
+@api_router.delete("/garage/{car_id}/contractor/{stage}")
+async def remove_contractor_from_car(
+    car_id: str,
+    stage: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Remove contractor assignment from a car"""
+    car = await db.garage.find_one({"id": car_id, "user_id": current_user["id"]})
+    if not car:
+        raise HTTPException(status_code=404, detail="Car not found")
+    
+    update_field = f"contractors.{stage}"
+    await db.garage.update_one(
+        {"id": car_id},
+        {"$unset": {update_field: ""}}
+    )
+    
+    return {"message": f"Contractor removed from {stage} stage"}
+
 # ==================== DOCUMENTS ENDPOINTS ====================
 
 @api_router.post("/documents", response_model=DocumentResponse)
