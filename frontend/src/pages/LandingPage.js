@@ -733,6 +733,52 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <Logo />
+            
+            {/* Social Media Icons */}
+            <div className="flex items-center gap-4">
+              <a
+                href="https://wa.me/37296699557"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 bg-[#27272A] rounded-full flex items-center justify-center text-slate-400 hover:bg-[#25D366] hover:text-white transition-colors"
+                aria-label="WhatsApp"
+                data-testid="footer-whatsapp"
+              >
+                <WhatsAppIcon />
+              </a>
+              <a
+                href="viber://chat?number=+37296699557"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 bg-[#27272A] rounded-full flex items-center justify-center text-slate-400 hover:bg-[#7360F2] hover:text-white transition-colors"
+                aria-label="Viber"
+                data-testid="footer-viber"
+              >
+                <ViberIcon />
+              </a>
+              <a
+                href="https://t.me/kiryl_votsintsau"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 bg-[#27272A] rounded-full flex items-center justify-center text-slate-400 hover:bg-[#0088CC] hover:text-white transition-colors"
+                aria-label="Telegram"
+                data-testid="footer-telegram"
+              >
+                <TelegramIcon />
+              </a>
+              <div
+                onClick={() => {
+                  navigator.clipboard.writeText('wxid_fuzh2yfspean12');
+                  alert('WeChat ID скопирован: wxid_fuzh2yfspean12');
+                }}
+                className="w-9 h-9 bg-[#27272A] rounded-full flex items-center justify-center text-slate-400 hover:bg-[#07C160] hover:text-white transition-colors cursor-pointer"
+                aria-label="WeChat"
+                data-testid="footer-wechat"
+              >
+                <WeChatIcon />
+              </div>
+            </div>
+
             <p className="text-slate-500 text-sm">
               © 2024 CARBRIDGE. Все права защищены.
             </p>
