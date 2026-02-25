@@ -291,6 +291,50 @@ const MyGarage = () => {
     setDeleteConfirmId(null);
   };
 
+  // Contractor functions
+  const openContractorDialog = async (carId, stage) => {
+    setContractorDialogOpen({ carId, stage });
+    setLoadingContractors(true);
+    try {
+      const response = await axios.get(`${API}/contractors`, {
+        params: { contractor_type: stage }
+      });
+      setContractors(response.data);
+    } catch (error) {
+      toast.error('Ошибка загрузки подрядчиков');
+    } finally {
+      setLoadingContractors(false);
+    }
+  };
+
+  const assignContractor = async (contractorId) => {
+    if (!contractorDialogOpen) return;
+    
+    try {
+      await axios.post(`${API}/garage/${contractorDialogOpen.carId}/assign-contractor`, {
+        car_id: contractorDialogOpen.carId,
+        contractor_id: contractorId,
+        stage: contractorDialogOpen.stage
+      }, { headers });
+      
+      toast.success('Подрядчик выбран');
+      setContractorDialogOpen(null);
+      fetchCars();
+    } catch (error) {
+      toast.error('Ошибка при выборе подрядчика');
+    }
+  };
+
+  const removeContractor = async (carId, stage) => {
+    try {
+      await axios.delete(`${API}/garage/${carId}/contractor/${stage}`, { headers });
+      toast.success('Подрядчик удален');
+      fetchCars();
+    } catch (error) {
+      toast.error('Ошибка при удалении подрядчика');
+    }
+  };
+
   const handleStartTender = async (carId) => {
     if (!contractSigned) {
       toast.error('Для запуска тендера необходимо подписать договор');
