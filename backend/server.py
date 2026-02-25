@@ -118,6 +118,7 @@ class CarResponse(BaseModel):
     description: Optional[str] = None
     calculated_price_usd: Optional[float] = None
     calculated_price_byn: Optional[float] = None
+    contractors: Optional[dict] = None
     status: str
     created_at: str
 
