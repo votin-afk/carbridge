@@ -830,13 +830,35 @@ const MyGarage = () => {
                         <ExternalLink size={16} />
                       </a>
                     )}
-                    <button
-                      data-testid={`delete-car-${car.id}`}
-                      onClick={() => handleDeleteCar(car.id)}
-                      className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-red-400 hover:border-red-400"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    
+                    {/* Delete Button with Confirmation */}
+                    {deleteConfirmId === car.id ? (
+                      <div className="flex gap-1">
+                        <button
+                          data-testid={`confirm-delete-${car.id}`}
+                          onClick={() => handleDeleteCar(car.id)}
+                          disabled={deleting}
+                          className="p-2 bg-red-500 rounded-sm text-white hover:bg-red-600 disabled:opacity-50"
+                        >
+                          {deleting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                        </button>
+                        <button
+                          data-testid={`cancel-delete-${car.id}`}
+                          onClick={cancelDelete}
+                          className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-white"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        data-testid={`delete-car-${car.id}`}
+                        onClick={() => confirmDelete(car.id)}
+                        className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-red-400 hover:border-red-400"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
                   
                   {/* Request Report Button */}
