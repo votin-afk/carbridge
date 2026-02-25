@@ -1856,6 +1856,8 @@ async def search_catalog(
         # Try to get live data from pro-auctions
         # Find brand slug if brand name provided
         brand_slug = None
+        model_slug = None
+        
         if brand:
             live_brands = await ProAuctionsParser.get_brands()
             for b in live_brands:
@@ -1863,13 +1865,22 @@ async def search_catalog(
                     brand_slug = b["slug"]
                     break
         
-        live_result = await ProAuctionsParser.search_cars(brand=brand_slug, page=page, limit=limit)
+        # Find model slug if model name provided
+        if brand_slug and model:
+            live_models = await ProAuctionsParser.get_models(brand_slug)
+            for m in live_models:
+                if m["name"].lower() == model.lower() or model.lower() in m["name"].lower():
+                    model_slug = m["slug"]
+                    break
+        
+        live_result = await ProAuctionsParser.search_cars(brand=brand_slug, model=model_slug, page=page, limit=limit)
         
         if live_result["cars"]:
             # Apply additional filters to live data
             filtered = live_result["cars"]
             
-            if model:
+            # Only filter by model if we didn't find a model_slug (fuzzy match)
+            if model and not model_slug:
                 filtered = [c for c in filtered if model.lower() in c["model"].lower()]
             
             if min_price:
