@@ -710,6 +710,70 @@ class ProAuctionsParser:
         return brands
     
     @classmethod
+    async def get_models(cls, brand_slug: str) -> List[Dict]:
+        """Get list of all models for a specific brand from the brand page"""
+        cache_key = f"pro_auctions_models_{brand_slug}"
+        cached = get_cached(cache_key)
+        if cached:
+            return cached
+        
+        url = f"{cls.BASE_URL}{brand_slug}/"
+        html = await cls.fetch_page(url)
+        if not html:
+            return []
+        
+        soup = BeautifulSoup(html, 'lxml')
+        models = []
+        seen_models = set()
+        
+        # Find model links in the brands_models_list section
+        model_links = soup.select('.brands_models__link')
+        
+        for link in model_links:
+            href = link.get('href', '')
+            if not href or href == '#':
+                continue
+            
+            # Extract model slug from URL (e.g., "binrui/" -> "binrui")
+            model_slug = href.rstrip('/').split('/')[-1]
+            
+            if model_slug and model_slug not in seen_models:
+                spans = link.find_all('span')
+                
+                if spans and len(spans) >= 2:
+                    model_name = spans[0].get_text(strip=True)
+                    count_text = spans[1].get_text(strip=True)
+                elif spans and len(spans) == 1:
+                    model_name = spans[0].get_text(strip=True)
+                    count_text = "0"
+                else:
+                    model_name = link.get_text(strip=True)
+                    count_text = "0"
+                
+                # Extract count
+                count = 0
+                if count_text:
+                    digits = re.sub(r'[^\d]', '', count_text)
+                    if digits:
+                        try:
+                            count = int(digits)
+                        except ValueError:
+                            count = 0
+                
+                if model_name and model_name not in ['Показать все', '...']:
+                    seen_models.add(model_slug)
+                    models.append({
+                        "name": model_name,
+                        "slug": model_slug,
+                        "count": count
+                    })
+        
+        # Sort by count descending
+        models.sort(key=lambda x: x["count"], reverse=True)
+        set_cache(cache_key, models)
+        return models
+    
+    @classmethod
     async def search_cars(cls, brand: str = None, page: int = 1, limit: int = 20) -> Dict:
         """Search cars from catalog with optional brand filter"""
         cache_key = f"pro_auctions_cars_{brand or 'all'}_{page}_{limit}"
