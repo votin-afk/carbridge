@@ -253,11 +253,6 @@ const MyGarage = () => {
   const cancelDelete = () => {
     setDeleteConfirmId(null);
   };
-    } catch (error) {
-      console.error('Delete error:', error);
-      toast.error('Ошибка при удалении');
-    }
-  };
 
   const handleStartTender = async (carId) => {
     if (!contractSigned) {
