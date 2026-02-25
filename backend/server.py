@@ -1082,6 +1082,47 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         created_at=current_user["created_at"]
     )
 
+# ==================== USER ACCOUNT ENDPOINT ====================
+
+@api_router.get("/user/account")
+async def get_user_account(current_user: dict = Depends(get_current_user)):
+    """Get user account details including balance, verification status, and contract status"""
+    # Try to get account from database, create if not exists
+    account = await db.accounts.find_one({"user_id": current_user["id"]}, {"_id": 0})
+    
+    if not account:
+        # Create default account
+        account = {
+            "user_id": current_user["id"],
+            "balance": 0.0,
+            "is_verified": False,
+            "contract_signed": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.accounts.insert_one(account)
+        # Remove _id before returning
+        account.pop("_id", None)
+    
+    return {
+        "balance": account.get("balance", 0.0),
+        "is_verified": account.get("is_verified", False),
+        "contract_signed": account.get("contract_signed", False)
+    }
+
+@api_router.post("/user/account/deposit")
+async def deposit_to_account(amount: float, current_user: dict = Depends(get_current_user)):
+    """Deposit funds to user account"""
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+    
+    result = await db.accounts.update_one(
+        {"user_id": current_user["id"]},
+        {"$inc": {"balance": amount}},
+        upsert=True
+    )
+    
+    return {"message": f"Successfully deposited ${amount}", "new_balance": amount}
+
 # ==================== GARAGE ENDPOINTS ====================
 
 @api_router.post("/garage", response_model=CarResponse)
