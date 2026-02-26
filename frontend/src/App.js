@@ -11,6 +11,8 @@ import Documents from "./pages/dashboard/Documents";
 import Calculator from "./pages/Calculator";
 import CatalogPage from "./pages/CatalogPage";
 import ContractorsPage from "./pages/ContractorsPage";
+import ContractorRegisterPage from "./pages/ContractorRegisterPage";
+import ModeratorPage from "./pages/ModeratorPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AIChat from "./components/AIChat";
 import "@/App.css";
@@ -25,6 +27,8 @@ function App() {
           <Route path="/calculator" element={<Calculator />} />
           <Route path="/catalog" element={<CatalogPage />} />
           <Route path="/contractors" element={<ContractorsPage />} />
+          <Route path="/contractor-register" element={<ContractorRegisterPage />} />
+          <Route path="/moderator" element={<ModeratorPage />} />
           
           <Route path="/dashboard" element={
             <ProtectedRoute>
