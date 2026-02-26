@@ -1605,6 +1605,226 @@ async def remove_contractor_from_car(
     
     return {"message": f"Contractor removed from {stage} stage"}
 
+# ==================== CONTRACTOR APPLICATIONS ENDPOINTS ====================
+
+class ContractorApplicationCreate(BaseModel):
+    company_name: str
+    contractor_type: str
+    registration_number: Optional[str] = None
+    country: Optional[str] = None
+    city: Optional[str] = None
+    contact_person: str
+    position: Optional[str] = None
+    phone: str
+    email: str
+    whatsapp: Optional[str] = None
+    wechat: Optional[str] = None
+    telegram: Optional[str] = None
+    website: Optional[str] = None
+    description: str
+    services: str
+    price_range: Optional[str] = None
+    experience_years: Optional[int] = 0
+    deals_completed: Optional[int] = 0
+    license_info: Optional[str] = None
+    additional_info: Optional[str] = None
+
+@api_router.post("/contractor-applications")
+async def create_contractor_application(application: ContractorApplicationCreate):
+    """Submit a new contractor application (public endpoint)"""
+    app_id = str(uuid.uuid4())
+    app_data = {
+        "id": app_id,
+        **application.model_dump(),
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "reviewed_at": None,
+        "reviewed_by": None
+    }
+    await db.contractor_applications.insert_one(app_data)
+    return {"message": "Application submitted successfully", "application_id": app_id}
+
+# ==================== MODERATOR ENDPOINTS ====================
+
+@api_router.get("/moderator/applications")
+async def get_contractor_applications(current_user: dict = Depends(get_current_user)):
+    """Get all contractor applications (moderator only)"""
+    applications = await db.contractor_applications.find({}, {"_id": 0}).to_list(100)
+    return applications
+
+@api_router.post("/moderator/applications/{app_id}/approve")
+async def approve_contractor_application(app_id: str, current_user: dict = Depends(get_current_user)):
+    """Approve a contractor application"""
+    application = await db.contractor_applications.find_one({"id": app_id})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    # Create contractor from application
+    contractor_id = str(uuid.uuid4())
+    contractor_data = {
+        "id": contractor_id,
+        "name": application["company_name"],
+        "contractor_type": application["contractor_type"],
+        "description": application["description"],
+        "services": application["services"],
+        "price_range": application.get("price_range"),
+        "phone": application["phone"],
+        "email": application["email"],
+        "website": application.get("website"),
+        "whatsapp": application.get("whatsapp"),
+        "wechat": application.get("wechat"),
+        "telegram": application.get("telegram"),
+        "rating": 5.0,
+        "deals_count": application.get("deals_completed", 0),
+        "is_verified": True,
+        "logo_url": None,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.contractors.insert_one(contractor_data)
+    
+    # Update application status
+    await db.contractor_applications.update_one(
+        {"id": app_id},
+        {"$set": {
+            "status": "approved",
+            "reviewed_at": datetime.now(timezone.utc).isoformat(),
+            "reviewed_by": current_user["id"]
+        }}
+    )
+    
+    return {"message": "Application approved", "contractor_id": contractor_id}
+
+@api_router.post("/moderator/applications/{app_id}/reject")
+async def reject_contractor_application(app_id: str, current_user: dict = Depends(get_current_user)):
+    """Reject a contractor application"""
+    result = await db.contractor_applications.update_one(
+        {"id": app_id},
+        {"$set": {
+            "status": "rejected",
+            "reviewed_at": datetime.now(timezone.utc).isoformat(),
+            "reviewed_by": current_user["id"]
+        }}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return {"message": "Application rejected"}
+
+@api_router.get("/moderator/deals")
+async def get_all_deals(current_user: dict = Depends(get_current_user)):
+    """Get all deals for moderator view"""
+    # Get all garage items that have tenders or are in progress
+    deals = await db.garage.find(
+        {"status": {"$in": ["tender_active", "in_progress"]}},
+        {"_id": 0}
+    ).to_list(100)
+    
+    result = []
+    for deal in deals:
+        # Get user info
+        user = await db.users.find_one({"id": deal["user_id"]}, {"_id": 0})
+        result.append({
+            "id": deal["id"],
+            "car_brand": deal["brand"],
+            "car_model": deal["model"],
+            "client_name": user.get("name", "Unknown") if user else "Unknown",
+            "amount": deal.get("calculated_price_usd", 0),
+            "current_stage": deal.get("current_stage", "inspection"),
+            "completed_stages": deal.get("completed_stages", []),
+            "status": deal["status"]
+        })
+    
+    return result
+
+@api_router.post("/moderator/deals/{deal_id}/confirm-stage")
+async def confirm_deal_stage(deal_id: str, stage: dict, current_user: dict = Depends(get_current_user)):
+    """Confirm a stage of a deal"""
+    stage_name = stage.get("stage")
+    if not stage_name:
+        raise HTTPException(status_code=400, detail="Stage name required")
+    
+    deal = await db.garage.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Deal not found")
+    
+    completed_stages = deal.get("completed_stages", [])
+    if stage_name not in completed_stages:
+        completed_stages.append(stage_name)
+    
+    # Determine next stage
+    stages_order = ["inspection", "export", "logistics", "customs", "delivery"]
+    current_idx = stages_order.index(stage_name) if stage_name in stages_order else 0
+    next_stage = stages_order[current_idx + 1] if current_idx + 1 < len(stages_order) else "completed"
+    
+    await db.garage.update_one(
+        {"id": deal_id},
+        {"$set": {
+            "completed_stages": completed_stages,
+            "current_stage": next_stage,
+            "status": "completed" if next_stage == "completed" else "in_progress"
+        }}
+    )
+    
+    return {"message": f"Stage {stage_name} confirmed"}
+
+@api_router.get("/moderator/tenders")
+async def get_all_tenders_moderator(current_user: dict = Depends(get_current_user)):
+    """Get all tenders for moderator"""
+    tenders = await db.tenders.find({}, {"_id": 0}).to_list(100)
+    
+    result = []
+    for tender in tenders:
+        car = await db.garage.find_one({"id": tender["car_id"]}, {"_id": 0})
+        result.append({
+            "id": tender["id"],
+            "brand": car["brand"] if car else "Unknown",
+            "model": car["model"] if car else "Unknown",
+            "budget": car.get("calculated_price_usd", 0) if car else 0,
+            "offers_count": len(tender.get("offers", [])),
+            "status": tender["status"],
+            "created_at": tender["created_at"]
+        })
+    
+    return result
+
+class ModeratorTenderCreate(BaseModel):
+    brand: str
+    model: str
+    budget: Optional[str] = None
+
+@api_router.post("/moderator/tenders")
+async def create_tender_by_moderator(tender_data: ModeratorTenderCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new tender by moderator (independent of client)"""
+    # Create a virtual car entry
+    car_id = str(uuid.uuid4())
+    car_doc = {
+        "id": car_id,
+        "user_id": "moderator",
+        "brand": tender_data.brand,
+        "model": tender_data.model,
+        "year": datetime.now().year,
+        "price_cny": 0,
+        "engine_type": "electric",
+        "calculated_price_usd": float(tender_data.budget) if tender_data.budget else 0,
+        "status": "tender_active",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.garage.insert_one(car_doc)
+    
+    # Create tender
+    tender_id = str(uuid.uuid4())
+    tender_doc = {
+        "id": tender_id,
+        "user_id": "moderator",
+        "car_id": car_id,
+        "status": "active",
+        "offers": [],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by_moderator": True
+    }
+    await db.tenders.insert_one(tender_doc)
+    
+    return {"message": "Tender created", "tender_id": tender_id}
+
 # ==================== DOCUMENTS ENDPOINTS ====================
 
 @api_router.post("/documents", response_model=DocumentResponse)
