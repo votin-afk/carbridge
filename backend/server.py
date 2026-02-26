@@ -63,6 +63,9 @@ logger = logging.getLogger(__name__)
 
 # ==================== MODELS ====================
 
+# User roles
+ROLES = ["user", "moderator", "admin"]
+
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
@@ -81,6 +84,7 @@ class UserResponse(BaseModel):
     name: str
     phone: Optional[str] = None
     user_type: str
+    role: str = "user"
     created_at: str
 
 class TokenResponse(BaseModel):
