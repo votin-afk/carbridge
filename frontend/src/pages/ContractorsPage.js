@@ -204,13 +204,29 @@ const ContractorsPage = () => {
   return (
     <div className="min-h-screen bg-[#0B0F14] py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Back Button */}
+        <div className="mb-6">
+          <Link to="/">
+            <Button variant="ghost" className="text-slate-400 hover:text-white">
+              <ArrowLeft size={18} className="mr-2" />
+              На главную
+            </Button>
+          </Link>
+        </div>
+
         {/* Header */}
         <div className="text-center mb-12">
           <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">Партнеры</p>
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">Наши подрядчики</h1>
-          <p className="text-slate-400 max-w-2xl mx-auto">
+          <p className="text-slate-400 max-w-2xl mx-auto mb-6">
             Проверенные компании для каждого этапа покупки автомобиля из Китая
           </p>
+          <Link to="/contractor-register">
+            <Button className="bg-gradient-to-r from-[#00E5FF] to-[#22D3EE] text-black">
+              <UserPlus size={18} className="mr-2" />
+              Стать подрядчиком
+            </Button>
+          </Link>
         </div>
 
         {/* Tabs */}
