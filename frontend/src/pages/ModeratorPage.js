@@ -11,6 +11,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { 
   Shield,
   Users,
@@ -31,7 +38,10 @@ import {
   Car,
   Play,
   Pause,
-  MessageSquare
+  MessageSquare,
+  UserCog,
+  Crown,
+  User
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -45,6 +55,12 @@ const statusConfig = {
   rejected: { label: 'Отклонено', color: 'text-red-400', bg: 'bg-red-500/10' }
 };
 
+const roleConfig = {
+  admin: { label: 'Администратор', color: 'text-amber-400', bg: 'bg-amber-500/10', icon: Crown },
+  moderator: { label: 'Модератор', color: 'text-blue-400', bg: 'bg-blue-500/10', icon: Shield },
+  user: { label: 'Пользователь', color: 'text-slate-400', bg: 'bg-slate-500/10', icon: User }
+};
+
 const dealStages = {
   inspection: { label: 'Проверка', icon: FileCheck },
   export: { label: 'Экспорт', icon: Building2 },
@@ -54,7 +70,7 @@ const dealStages = {
 };
 
 const ModeratorPage = () => {
-  const { token, user } = useAuth();
+  const { token, user, isModerator, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState('applications');
   const [loading, setLoading] = useState(true);
   
@@ -62,6 +78,7 @@ const ModeratorPage = () => {
   const [applications, setApplications] = useState([]);
   const [deals, setDeals] = useState([]);
   const [tenders, setTenders] = useState([]);
+  const [users, setUsers] = useState([]);
   
   // Dialog states
   const [selectedApplication, setSelectedApplication] = useState(null);
@@ -70,9 +87,6 @@ const ModeratorPage = () => {
   const [newTenderData, setNewTenderData] = useState({ brand: '', model: '', budget: '' });
   
   const headers = { Authorization: `Bearer ${token}` };
-
-  // Check if user is moderator (simplified - in real app check user role)
-  const isModerator = user?.email === 'admin@carbridge.by' || user?.email === 'test@test.com';
 
   useEffect(() => {
     if (isModerator) {
