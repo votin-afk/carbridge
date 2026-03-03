@@ -241,7 +241,7 @@ const ContractorsPage = () => {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <TabsList className="bg-[#15191E] p-1 rounded-sm">
+            <TabsList className="bg-[#15191E] p-1 rounded-sm flex-wrap">
               <TabsTrigger 
                 value="inspection"
                 className="data-[state=active]:bg-blue-500 data-[state=active]:text-white rounded-sm flex items-center gap-2 px-4"
@@ -262,6 +262,13 @@ const ContractorsPage = () => {
               >
                 <Truck size={16} />
                 Логистика
+              </TabsTrigger>
+              <TabsTrigger 
+                value="leasing"
+                className="data-[state=active]:bg-purple-500 data-[state=active]:text-white rounded-sm flex items-center gap-2 px-4"
+              >
+                <CreditCard size={16} />
+                Лизинг
               </TabsTrigger>
             </TabsList>
 
