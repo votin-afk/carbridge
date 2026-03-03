@@ -155,6 +155,7 @@ const LandingPage = () => {
   const sendChatMessage = async () => {
     if (!chatInput.trim() || chatLoading) return;
     
+    setHasUserInteracted(true);
     const userMessage = chatInput.trim();
     setChatInput('');
     setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
