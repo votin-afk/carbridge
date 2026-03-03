@@ -303,6 +303,43 @@ class CatalogSearchResult(BaseModel):
     pages: int
     search_links: dict
 
+# ==================== HOT DEALS MODELS ====================
+
+class HotDealCreate(BaseModel):
+    brand: str
+    model: str
+    year: int
+    price_cny: float
+    special_price_cny: Optional[float] = None  # Специальная цена (если есть скидка)
+    mileage: Optional[int] = None
+    engine_type: Literal["ice", "hybrid", "electric"] = "ice"
+    engine_volume: Optional[int] = None
+    image_url: Optional[str] = None
+    description: Optional[str] = None
+    expires_at: str  # ISO datetime when deal expires
+    contact_info: Optional[str] = None
+
+class HotDealResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    brand: str
+    model: str
+    year: int
+    price_cny: float
+    special_price_cny: Optional[float] = None
+    calculated_price_usd: Optional[float] = None
+    mileage: Optional[int] = None
+    engine_type: str
+    engine_volume: Optional[int] = None
+    image_url: Optional[str] = None
+    description: Optional[str] = None
+    expires_at: str
+    seller_id: str
+    seller_name: str
+    seller_type: str  # "moderator" or "contractor"
+    is_verified_seller: bool = False
+    created_at: str
+
 # ==================== CHINESE CAR CATALOG DATA ====================
 
 CHINESE_CAR_CATALOG = [
