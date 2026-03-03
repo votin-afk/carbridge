@@ -1089,11 +1089,17 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 
 # ==================== AUTH ENDPOINTS ====================
 
+# Admin email - automatically gets admin role
+ADMIN_EMAILS = ["votin@tut.by", "admin@carbridge.by"]
+
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register(user: UserCreate):
     existing = await db.users.find_one({"email": user.email})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Determine role - admin emails get admin role automatically
+    role = "admin" if user.email in ADMIN_EMAILS else "user"
     
     user_id = str(uuid.uuid4())
     user_doc = {
@@ -1103,6 +1109,7 @@ async def register(user: UserCreate):
         "name": user.name,
         "phone": user.phone,
         "user_type": user.user_type,
+        "role": role,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.users.insert_one(user_doc)
@@ -1110,7 +1117,7 @@ async def register(user: UserCreate):
     token = create_token(user_id, user.email)
     user_response = UserResponse(
         id=user_id, email=user.email, name=user.name,
-        phone=user.phone, user_type=user.user_type, created_at=user_doc["created_at"]
+        phone=user.phone, user_type=user.user_type, role=role, created_at=user_doc["created_at"]
     )
     return TokenResponse(access_token=token, user=user_response)
 
@@ -1120,10 +1127,16 @@ async def login(credentials: UserLogin):
     if not user or not verify_password(credentials.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
+    # Update role for admin emails if not already set
+    role = user.get("role", "user")
+    if credentials.email in ADMIN_EMAILS and role != "admin":
+        role = "admin"
+        await db.users.update_one({"email": credentials.email}, {"$set": {"role": "admin"}})
+    
     token = create_token(user["id"], user["email"])
     user_response = UserResponse(
         id=user["id"], email=user["email"], name=user["name"],
-        phone=user.get("phone"), user_type=user["user_type"], created_at=user["created_at"]
+        phone=user.get("phone"), user_type=user["user_type"], role=role, created_at=user["created_at"]
     )
     return TokenResponse(access_token=token, user=user_response)
 
@@ -1132,8 +1145,47 @@ async def get_me(current_user: dict = Depends(get_current_user)):
     return UserResponse(
         id=current_user["id"], email=current_user["email"], name=current_user["name"],
         phone=current_user.get("phone"), user_type=current_user["user_type"],
-        created_at=current_user["created_at"]
+        role=current_user.get("role", "user"), created_at=current_user["created_at"]
     )
+
+# ==================== ROLE MANAGEMENT ENDPOINTS ====================
+
+def require_role(allowed_roles: list):
+    """Dependency to check if user has required role"""
+    async def check_role(current_user: dict = Depends(get_current_user)):
+        user_role = current_user.get("role", "user")
+        if user_role not in allowed_roles:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        return current_user
+    return check_role
+
+@api_router.get("/admin/users")
+async def get_all_users(current_user: dict = Depends(require_role(["admin"]))):
+    """Get all users (admin only)"""
+    users = await db.users.find({}, {"_id": 0, "password_hash": 0}).to_list(500)
+    return users
+
+@api_router.put("/admin/users/{user_id}/role")
+async def update_user_role(user_id: str, role_data: dict, current_user: dict = Depends(require_role(["admin"]))):
+    """Update user role (admin only)"""
+    new_role = role_data.get("role")
+    if new_role not in ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {ROLES}")
+    
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"role": new_role}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"message": f"User role updated to {new_role}"}
+
+@api_router.get("/user/role")
+async def get_user_role(current_user: dict = Depends(get_current_user)):
+    """Get current user's role"""
+    return {"role": current_user.get("role", "user")}
 
 # ==================== USER ACCOUNT ENDPOINT ====================
 
