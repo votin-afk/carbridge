@@ -1,0 +1,95 @@
+{
+  "summary": "Comprehensive testing of 'Горящие предложения' (Hot Deals) feature. All core functionality working correctly: hot deals page displays deals with countdown timers, discount badges, seller info; modal opens on card click with full details; add-to-garage with auto-seller assignment works; navigation from landing page works; API endpoints functioning properly.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/garage",
+        "issue": "CarResponse model doesn't include 'from_hot_deal' and 'hot_deal_id' fields - data is stored in DB but not returned in API response",
+        "priority": "LOW"
+      }
+    ]
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "passed_tests": [
+    "API GET /api/hot-deals - returns list of hot deals with all required fields",
+    "API GET /api/hot-deals?limit=4 - limit parameter works correctly",
+    "API GET /api/hot-deals/{deal_id} - returns specific deal",
+    "API GET /api/hot-deals/{invalid_id} - returns 404 for nonexistent deal",
+    "API POST /api/hot-deals/{deal_id}/add-to-garage - adds car to garage with seller assignment",
+    "API POST /api/hot-deals/{deal_id}/add-to-garage - requires authentication (401)",
+    "API POST /api/hot-deals - unauthenticated users cannot create deals (403)",
+    "API POST /api/hot-deals - admin/moderator can create deals",
+    "Hot deals have discount info (special_price_cny < price_cny)",
+    "Hot deals have timer info (expires_at field)",
+    "Hot deals have seller info (seller_name, seller_type, is_verified_seller)",
+    "Demo deals seeded correctly (BYD Seal, Zeekr 001, GEELY Monjaro, Li Auto L7)",
+    "Calculated USD price present in deals",
+    "Frontend - /hot-deals page loads with deal cards",
+    "Frontend - Countdown timers display correctly (days, hours, minutes, seconds)",
+    "Frontend - Discount badges show percentage (-9%, -11%, -10%, -14%)",
+    "Frontend - 'ГОРЯЩЕЕ' badges on all cards",
+    "Frontend - Seller badges (GlobalAutoExport, ChinaMotors Direct)",
+    "Frontend - Modal opens on card click with full details",
+    "Frontend - Modal shows: car image, name, year, engine type, mileage, description",
+    "Frontend - Modal shows: price with discount, USD price, seller info, countdown timer",
+    "Frontend - 'Добавить в гараж' button works",
+    "Frontend - Auto-seller assignment note displayed",
+    "Frontend - Toast message shows success with seller name",
+    "Frontend - Landing page has 'Горящие' link in navigation (with orange dot)",
+    "Frontend - Landing page has 'Горящие предложения' section with 4 deals",
+    "Frontend - 'Все предложения' button navigates to /hot-deals"
+  ],
+  
+  "test_report_links": [
+    "/app/backend/tests/test_hot_deals.py",
+    "/app/test_reports/pytest/hot_deals_results.xml"
+  ],
+  
+  "action_items": [
+    "OPTIONAL: Add 'from_hot_deal' and 'hot_deal_id' fields to CarResponse model to expose hot deal origin in garage API"
+  ],
+  
+  "critical_code_review_comments": [],
+  
+  "updated_files": [
+    "/app/backend/tests/test_hot_deals.py - Created comprehensive test suite for hot deals feature"
+  ],
+  
+  "success_rate": {
+    "backend": "100% (15/15 tests passed)",
+    "frontend": "100% (all hot deals features working)"
+  },
+  
+  "test_credentials": {
+    "email": "test@test.com",
+    "password": "test",
+    "role": "admin"
+  },
+  
+  "seed_data_creation": "Demo hot deals seeded via /api/hot-deals/seed-demo: BYD Seal, Zeekr 001, GEELY Monjaro, Li Auto L7",
+  
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  
+  "context_for_next_testing_agent": "Hot Deals feature fully tested. Key verifications: 1) /hot-deals page shows deals with countdown timers 2) Modal opens on card click with full details 3) 'Добавить в гараж' adds car with auto-seller assignment 4) Landing page has hot deals section with 4 cards 5) Navigation 'Горящие' link works 6) Admin/moderator can create deals, regular users cannot 7) Demo deals: BYD Seal, Zeekr 001, GEELY Monjaro, Li Auto L7 from GlobalAutoExport and ChinaMotors Direct",
+  
+  "verified_requirements": {
+    "hot_deals_page": "✓ /hot-deals displays горящие предложения",
+    "countdown_timer": "✓ Карточки с таймером обратного отсчёта работают корректно",
+    "modal_details": "✓ Модальное окно с деталями предложения открывается при клике",
+    "api_get_hot_deals": "✓ GET /api/hot-deals возвращает список горящих предложений",
+    "api_add_to_garage": "✓ POST /api/hot-deals/{deal_id}/add-to-garage добавляет авто в гараж с привязкой продавца",
+    "landing_page_section": "✓ Секция 'Горящие предложения' на главной странице отображает 4 предложения",
+    "navigation_link": "✓ Ссылка 'Горящие' в навигации ведёт на /hot-deals",
+    "discount_display": "✓ Скидки отображаются корректно (процент скидки)",
+    "auto_seller_assignment": "✓ При добавлении в гараж продавец автоматически выбирается как подрядчик"
+  }
+}
