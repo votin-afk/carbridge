@@ -1033,6 +1033,41 @@ const MyGarage = () => {
                       </div>
                     );
                   })}
+                  
+                  {/* Leasing Section - Special */}
+                  {car.calculated_price_usd && (
+                    <div 
+                      className={`flex items-center justify-between p-2 rounded-sm border ${
+                        car.contractors?.leasing ? 'border-purple-500/30 bg-purple-500/10' : 'border-[#27272A] bg-[#0B0F14]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Banknote size={14} className="text-purple-400" />
+                        <span className="text-slate-400 text-sm">Лизинг</span>
+                      </div>
+                      
+                      {car.contractors?.leasing ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-white text-sm font-medium">{car.contractors.leasing.contractor_name}</span>
+                          <button
+                            onClick={() => removeContractor(car.id, 'leasing')}
+                            className="text-slate-500 hover:text-red-400"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          data-testid={`open-leasing-calc-${car.id}`}
+                          onClick={() => openLeasingDialog(car)}
+                          className="text-xs px-2 py-1 rounded-sm bg-purple-500/10 text-purple-400 hover:opacity-80 flex items-center gap-1"
+                        >
+                          <Calculator size={12} />
+                          Калькулятор
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}
