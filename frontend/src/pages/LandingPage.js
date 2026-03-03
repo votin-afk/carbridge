@@ -234,6 +234,13 @@ const LandingPage = () => {
             
             <nav className="hidden md:flex items-center gap-8">
               <Link to="/catalog" className="text-slate-400 hover:text-[#00E5FF] transition-colors font-medium">Каталог</Link>
+              <Link to="/hot-deals" className="text-orange-400 hover:text-orange-300 transition-colors font-medium flex items-center gap-1">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                </span>
+                Горящие
+              </Link>
               <Link to="/contractors" className="text-slate-400 hover:text-[#00E5FF] transition-colors font-medium">Подрядчики</Link>
               <a href="#ai-agent" className="text-slate-400 hover:text-white transition-colors">AI Подбор</a>
               <a href="#process" className="text-slate-400 hover:text-white transition-colors">Процесс</a>
