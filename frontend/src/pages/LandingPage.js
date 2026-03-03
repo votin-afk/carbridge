@@ -243,6 +243,14 @@ const LandingPage = () => {
                   Калькулятор
                 </Button>
               </Link>
+              {isModerator && (
+                <Link to="/moderator">
+                  <Button variant="ghost" className="hidden sm:flex text-amber-400 hover:text-amber-300">
+                    <Shield size={18} className="mr-2" />
+                    Панель модератора
+                  </Button>
+                </Link>
+              )}
               {isAuthenticated ? (
                 <Link to="/dashboard">
                   <Button data-testid="header-dashboard-btn" className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black font-medium rounded-sm">
