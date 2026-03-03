@@ -1260,6 +1260,204 @@ const MyGarage = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Leasing Calculator Dialog */}
+      <Dialog open={!!leasingDialogOpen} onOpenChange={() => setLeasingDialogOpen(null)}>
+        <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calculator size={20} className="text-purple-400" />
+              Калькулятор лизинга
+            </DialogTitle>
+          </DialogHeader>
+
+          {leasingDialogOpen && (
+            <div className="space-y-6 mt-4">
+              {/* Car Info */}
+              <div className="p-4 bg-[#0B0F14] rounded-sm border border-[#27272A]">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-white font-medium">
+                      {leasingDialogOpen.brand} {leasingDialogOpen.model} ({leasingDialogOpen.year})
+                    </h4>
+                    <p className="text-slate-400 text-sm">Стоимость под ключ в Беларуси</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[#00E5FF] text-xl font-bold">
+                      ${formatNumber(leasingDialogOpen.calculated_price_usd)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Leasing Company Selection */}
+              <div>
+                <Label className="text-slate-300 mb-2 block">Лизинговая компания</Label>
+                {loadingLeasingCompanies ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 size={24} className="text-purple-400 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {leasingCompanies.map(company => (
+                      <div
+                        key={company.id}
+                        onClick={() => setSelectedLeasingCompany(company)}
+                        className={`p-3 rounded-sm border cursor-pointer transition-colors ${
+                          selectedLeasingCompany?.id === company.id
+                            ? 'border-purple-500 bg-purple-500/10'
+                            : 'border-[#27272A] bg-[#0B0F14] hover:border-purple-500/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <h5 className="text-white font-medium">{company.name}</h5>
+                            {company.is_verified && (
+                              <CheckCircle2 size={14} className="text-purple-400" />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Star size={12} className="text-amber-400 fill-amber-400" />
+                            <span className="text-white text-sm">{company.rating?.toFixed(1)}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-slate-500 text-xs">{company.deals_count} сделок</span>
+                          <span className="text-purple-400 text-sm font-medium">{company.price_range}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Leasing Parameters */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-slate-300 mb-2 block flex items-center gap-1">
+                    <Percent size={14} />
+                    Первоначальный взнос
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min="10"
+                      max="90"
+                      value={leasingParams.down_payment_percent}
+                      onChange={(e) => setLeasingParams(prev => ({
+                        ...prev,
+                        down_payment_percent: Math.min(90, Math.max(10, parseInt(e.target.value) || 10))
+                      }))}
+                      className="bg-[#0B0F14] border-[#27272A]"
+                    />
+                    <span className="text-slate-400">%</span>
+                  </div>
+                  <p className="text-slate-500 text-xs mt-1">
+                    ${formatNumber(leasingDialogOpen.calculated_price_usd * leasingParams.down_payment_percent / 100)}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-slate-300 mb-2 block flex items-center gap-1">
+                    <Calendar size={14} />
+                    Срок лизинга
+                  </Label>
+                  <select
+                    value={leasingParams.term_months}
+                    onChange={(e) => setLeasingParams(prev => ({
+                      ...prev,
+                      term_months: parseInt(e.target.value)
+                    }))}
+                    className="w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white"
+                  >
+                    <option value={12}>12 месяцев</option>
+                    <option value={24}>24 месяца</option>
+                    <option value={36}>36 месяцев</option>
+                    <option value={48}>48 месяцев</option>
+                    <option value={60}>60 месяцев</option>
+                    <option value={72}>72 месяца</option>
+                    <option value={84}>84 месяца</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Calculate Button */}
+              <Button
+                data-testid="calculate-leasing-btn"
+                onClick={calculateLeasing}
+                disabled={calculatingLeasing || !selectedLeasingCompany}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                {calculatingLeasing ? (
+                  <Loader2 size={16} className="mr-2 animate-spin" />
+                ) : (
+                  <Calculator size={16} className="mr-2" />
+                )}
+                Рассчитать
+              </Button>
+
+              {/* Leasing Result */}
+              {leasingResult && (
+                <div className="p-4 bg-gradient-to-br from-purple-500/20 to-purple-600/10 rounded-sm border border-purple-500/30">
+                  <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
+                    <Sparkles size={16} className="text-purple-400" />
+                    Результат расчёта
+                  </h4>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 bg-[#0B0F14]/50 rounded-sm">
+                      <p className="text-slate-400 text-xs mb-1">Первый платёж</p>
+                      <p className="text-white text-lg font-bold">${formatNumber(leasingResult.first_payment)}</p>
+                    </div>
+                    <div className="p-3 bg-[#0B0F14]/50 rounded-sm">
+                      <p className="text-slate-400 text-xs mb-1">Ежемесячный платёж</p>
+                      <p className="text-purple-400 text-lg font-bold">${formatNumber(leasingResult.monthly_payment)}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Первоначальный взнос:</span>
+                      <span className="text-white">${formatNumber(leasingResult.down_payment)} ({leasingResult.down_payment_percent}%)</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Сумма финансирования:</span>
+                      <span className="text-white">${formatNumber(leasingResult.financed_amount)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Срок:</span>
+                      <span className="text-white">{leasingResult.term_months} мес.</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Годовая ставка:</span>
+                      <span className="text-white">{leasingResult.annual_rate}%</span>
+                    </div>
+                    <div className="border-t border-[#27272A] my-2 pt-2">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Общая стоимость:</span>
+                        <span className="text-white font-medium">${formatNumber(leasingResult.total_cost)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Переплата:</span>
+                        <span className="text-amber-400">${formatNumber(leasingResult.overpayment)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Assign Company Button */}
+                  <Button
+                    data-testid="assign-leasing-company-btn"
+                    onClick={() => assignLeasingCompany(selectedLeasingCompany.id)}
+                    className="w-full mt-4 bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
+                  >
+                    <CheckCircle2 size={16} className="mr-2" />
+                    Выбрать {selectedLeasingCompany?.name}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
