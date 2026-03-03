@@ -270,6 +270,12 @@ const ModeratorPage = () => {
               <Gavel size={16} className="mr-2" />
               Тендеры
             </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="users" className="data-[state=active]:bg-amber-500 data-[state=active]:text-black">
+                <UserCog size={16} className="mr-2" />
+                Пользователи
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Applications Tab */}
