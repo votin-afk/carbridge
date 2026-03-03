@@ -106,13 +106,14 @@ const LandingPage = () => {
   // Popular cars carousel state
   const [currentCarIndex, setCurrentCarIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
-  // Scroll to bottom of chat only when new messages are added (not on initial load)
+  // Scroll to bottom of chat only after user sends a message
   useEffect(() => {
-    if (chatMessages.length > 0) {
+    if (hasUserInteracted && chatMessages.length > 0) {
       chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [chatMessages]);
+  }, [chatMessages, hasUserInteracted]);
 
   // Auto-rotate carousel
   useEffect(() => {
