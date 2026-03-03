@@ -100,6 +100,21 @@ const MyGarage = () => {
   const [contractors, setContractors] = useState([]);
   const [loadingContractors, setLoadingContractors] = useState(false);
   
+  // Leasing calculator state
+  const [leasingDialogOpen, setLeasingDialogOpen] = useState(null); // car object
+  const [leasingCompanies, setLeasingCompanies] = useState([]);
+  const [selectedLeasingCompany, setSelectedLeasingCompany] = useState(null);
+  const [leasingParams, setLeasingParams] = useState({
+    down_payment_percent: 20,
+    term_months: 36
+  });
+  const [leasingResult, setLeasingResult] = useState(null);
+  const [calculatingLeasing, setCalculatingLeasing] = useState(false);
+  const [loadingLeasingCompanies, setLoadingLeasingCompanies] = useState(false);
+  
+  // Manager help state
+  const [requestingHelp, setRequestingHelp] = useState(null); // car id
+  
   const [formData, setFormData] = useState({
     brand: '',
     model: '',
