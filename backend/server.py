@@ -1871,6 +1871,191 @@ async def request_manager_help(car_id: str, current_user: dict = Depends(get_cur
         "new_balance": balance - MANAGER_HELP_COST
     }
 
+# ==================== HOT DEALS ENDPOINTS ====================
+
+@api_router.get("/hot-deals", response_model=List[HotDealResponse])
+async def get_hot_deals(limit: int = 10, active_only: bool = True):
+    """Get hot deals, optionally filtering expired ones"""
+    query = {}
+    if active_only:
+        query["expires_at"] = {"$gt": datetime.now(timezone.utc).isoformat()}
+    
+    deals = await db.hot_deals.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Auto-delete expired deals
+    await db.hot_deals.delete_many({"expires_at": {"$lt": datetime.now(timezone.utc).isoformat()}})
+    
+    return deals
+
+@api_router.get("/hot-deals/{deal_id}", response_model=HotDealResponse)
+async def get_hot_deal(deal_id: str):
+    """Get a specific hot deal"""
+    deal = await db.hot_deals.find_one({"id": deal_id}, {"_id": 0})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Предложение не найдено")
+    
+    # Check if expired
+    if deal.get("expires_at") and deal["expires_at"] < datetime.now(timezone.utc).isoformat():
+        await db.hot_deals.delete_one({"id": deal_id})
+        raise HTTPException(status_code=404, detail="Предложение истекло")
+    
+    return deal
+
+@api_router.post("/hot-deals", response_model=HotDealResponse)
+async def create_hot_deal(deal: HotDealCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new hot deal - only moderators and verified contractors"""
+    user_role = current_user.get("role", "user")
+    
+    # Check if user is moderator/admin or verified contractor
+    is_moderator = user_role in ["moderator", "admin"]
+    
+    # Check if user is a verified contractor
+    contractor = await db.contractors.find_one({
+        "email": current_user["email"],
+        "is_verified": True
+    })
+    is_verified_contractor = contractor is not None
+    
+    if not is_moderator and not is_verified_contractor:
+        raise HTTPException(
+            status_code=403, 
+            detail="Только модераторы и верифицированные подрядчики могут создавать горящие предложения"
+        )
+    
+    # Calculate price for Belarus
+    calc_result = None
+    try:
+        current_year = datetime.now().year
+        car_age = current_year - deal.year
+        age_category = "under3" if car_age < 3 else ("3to5" if car_age < 5 else "over5")
+        
+        calc_input = CalculatorInput(
+            price_cny=deal.special_price_cny or deal.price_cny,
+            age=age_category,
+            engine_type=deal.engine_type,
+            engine_volume=deal.engine_volume or 2000,
+            user_type="individual",
+            use_decree_140=False,
+            payment_via_platform=True
+        )
+        # Use calculator logic directly
+        # ... simplified calculation
+        cny_rate = 12.5  # Approximate CNY to USD
+        calculated_price_usd = (deal.special_price_cny or deal.price_cny) / cny_rate * 1.3  # +30% for customs etc
+    except:
+        calculated_price_usd = None
+    
+    deal_id = str(uuid.uuid4())
+    seller_name = contractor["name"] if is_verified_contractor else current_user["name"]
+    seller_type = "contractor" if is_verified_contractor else "moderator"
+    
+    new_deal = {
+        "id": deal_id,
+        "brand": deal.brand,
+        "model": deal.model,
+        "year": deal.year,
+        "price_cny": deal.price_cny,
+        "special_price_cny": deal.special_price_cny,
+        "calculated_price_usd": round(calculated_price_usd, 2) if calculated_price_usd else None,
+        "mileage": deal.mileage,
+        "engine_type": deal.engine_type,
+        "engine_volume": deal.engine_volume,
+        "image_url": deal.image_url,
+        "description": deal.description,
+        "expires_at": deal.expires_at,
+        "seller_id": contractor["id"] if is_verified_contractor else current_user["id"],
+        "seller_name": seller_name,
+        "seller_type": seller_type,
+        "is_verified_seller": is_verified_contractor or is_moderator,
+        "contact_info": deal.contact_info,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.hot_deals.insert_one(new_deal)
+    
+    # Return without _id
+    del new_deal["contact_info"]  # Don't expose in response
+    return new_deal
+
+@api_router.delete("/hot-deals/{deal_id}")
+async def delete_hot_deal(deal_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a hot deal - only owner or admin"""
+    deal = await db.hot_deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Предложение не найдено")
+    
+    user_role = current_user.get("role", "user")
+    is_admin = user_role in ["moderator", "admin"]
+    is_owner = deal.get("seller_id") == current_user["id"]
+    
+    if not is_admin and not is_owner:
+        raise HTTPException(status_code=403, detail="Нет прав на удаление")
+    
+    await db.hot_deals.delete_one({"id": deal_id})
+    return {"message": "Предложение удалено"}
+
+@api_router.post("/hot-deals/{deal_id}/add-to-garage")
+async def add_hot_deal_to_garage(deal_id: str, current_user: dict = Depends(get_current_user)):
+    """Add a hot deal car to user's garage with seller pre-selected"""
+    deal = await db.hot_deals.find_one({"id": deal_id}, {"_id": 0})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Предложение не найдено")
+    
+    # Check if expired
+    if deal.get("expires_at") and deal["expires_at"] < datetime.now(timezone.utc).isoformat():
+        await db.hot_deals.delete_one({"id": deal_id})
+        raise HTTPException(status_code=404, detail="Предложение истекло")
+    
+    # Create car in garage
+    car_id = str(uuid.uuid4())
+    
+    # Get seller contractor info if seller is a contractor
+    seller_contractor = None
+    if deal.get("seller_type") == "contractor":
+        seller_contractor = await db.contractors.find_one({"id": deal.get("seller_id")}, {"_id": 0})
+    
+    new_car = {
+        "id": car_id,
+        "user_id": current_user["id"],
+        "brand": deal["brand"],
+        "model": deal["model"],
+        "year": deal["year"],
+        "price_cny": deal.get("special_price_cny") or deal["price_cny"],
+        "engine_type": deal.get("engine_type", "ice"),
+        "engine_volume": deal.get("engine_volume"),
+        "mileage": deal.get("mileage"),
+        "image_url": deal.get("image_url"),
+        "source_url": None,
+        "description": deal.get("description"),
+        "calculated_price_usd": deal.get("calculated_price_usd"),
+        "calculated_price_byn": deal.get("calculated_price_usd", 0) * 3.2 if deal.get("calculated_price_usd") else None,
+        "status": "saved",
+        "from_hot_deal": True,
+        "hot_deal_id": deal_id,
+        "contractors": {},
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Auto-assign seller as contractor if they're a verified contractor
+    if seller_contractor:
+        # Determine contractor type to assign
+        contractor_type = seller_contractor.get("contractor_type", "export")
+        if contractor_type in ["inspection", "export", "logistics", "leasing"]:
+            new_car["contractors"][contractor_type] = {
+                "contractor_id": seller_contractor["id"],
+                "contractor_name": seller_contractor["name"],
+                "assigned_at": datetime.now(timezone.utc).isoformat()
+            }
+    
+    await db.garage.insert_one(new_car)
+    
+    return {
+        "message": "Автомобиль добавлен в гараж",
+        "car_id": car_id,
+        "seller_assigned": seller_contractor is not None,
+        "seller_name": deal.get("seller_name")
+    }
+
 # ==================== CONTRACTOR APPLICATIONS ENDPOINTS ====================
 
 class ContractorApplicationCreate(BaseModel):
