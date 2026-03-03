@@ -1,0 +1,85 @@
+{
+  "summary": "Comprehensive testing of Leasing Calculator feature in 'Мой гараж' section. All features working correctly: leasing calculator modal, 3 leasing companies selection, calculation with different rates, parameter changes (10-90% down payment, 12-84 months term), 'Выбрать [компания]' button, and 'Помощь менеджера — $200' button. Fixed bug in ContractorAssignment model that was missing 'leasing' stage.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "passed_tests": [
+    "API /api/contractors?contractor_type=leasing - returns 3 leasing companies (АвтоЛизинг БЕЛ, ПромЛизинг, СмартЛиз)",
+    "API /api/leasing/calculate - basic calculation works correctly",
+    "API /api/leasing/calculate - company-specific rates applied (8.5%, 9.0%, 10.5%)",
+    "API /api/leasing/calculate - down payment range 10-90% works",
+    "API /api/leasing/calculate - term range 12-84 months works",
+    "API /api/leasing/calculate - first payment = down payment + monthly payment",
+    "API /api/leasing/calculate - overpayment = total cost - car price",
+    "API /api/garage/{car_id}/request-manager-help - requires authentication",
+    "API /api/garage/{car_id}/request-manager-help - returns error when balance < $200",
+    "API /api/garage/{car_id}/assign-contractor - assigns leasing company to car",
+    "Frontend - Leasing calculator modal opens on 'Калькулятор' button click",
+    "Frontend - 3 leasing companies displayed with ratings and rates",
+    "Frontend - Down payment input (% Первоначальный взнос) works",
+    "Frontend - Term dropdown (Срок лизинга) has 12-84 months options",
+    "Frontend - 'Рассчитать' button triggers calculation",
+    "Frontend - Calculation results show: first payment, monthly payment, down payment, financed amount, term, rate, total cost, overpayment",
+    "Frontend - 'Выбрать [компания]' button appears after calculation",
+    "Frontend - 'Помощь менеджера — $200' button visible and disabled when balance < $200"
+  ],
+  
+  "test_report_links": [
+    "/app/backend/tests/test_leasing.py",
+    "/app/test_reports/pytest/leasing_results.xml"
+  ],
+  
+  "action_items": [],
+  
+  "critical_code_review_comments": [],
+  
+  "updated_files": [
+    "/app/backend/server.py - Fixed ContractorAssignment model to include 'leasing' stage",
+    "/app/backend/tests/test_leasing.py - Created comprehensive test suite for leasing feature"
+  ],
+  
+  "success_rate": {
+    "backend": "100% (14/14 tests passed)",
+    "frontend": "100% (all leasing calculator features working)"
+  },
+  
+  "test_credentials": {
+    "email": "test@test.com",
+    "password": "test"
+  },
+  
+  "seed_data_creation": "None - using existing car in garage (BYD Seal)",
+  
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  
+  "context_for_next_testing_agent": "Leasing calculator feature fully tested. Key verifications: 1) Modal opens from 'Калькулятор' button in Лизинг section 2) 3 companies: АвтоЛизинг БЕЛ (8.5%), ПромЛизинг (9.0%), СмартЛиз (10.5%) 3) Parameters: down payment 10-90%, term 12-84 months 4) Calculation shows all required fields 5) 'Выбрать' button assigns company to car 6) 'Помощь менеджера — $200' button disabled when balance < $200",
+  
+  "bug_fixed": {
+    "issue": "ContractorAssignment model stage field was missing 'leasing' option",
+    "file": "/app/backend/server.py",
+    "line": 213,
+    "fix": "Added 'leasing' to Literal['inspection', 'export', 'logistics', 'leasing']",
+    "impact": "Frontend could not assign leasing companies to cars - returned 422 validation error"
+  },
+  
+  "verified_requirements": {
+    "leasing_calculator_modal": "✓ Opens on 'Калькулятор' button click",
+    "three_leasing_companies": "✓ АвтоЛизинг БЕЛ, ПромЛизинг, СмартЛиз displayed",
+    "calculation_correctness": "✓ First payment, monthly payment, overpayment calculated correctly",
+    "parameter_changes": "✓ Down payment 10-90%, term 12-84 months",
+    "select_company_button": "✓ 'Выбрать [компания]' button works after calculation",
+    "manager_help_button": "✓ 'Помощь менеджера — $200' displayed and disabled when balance < $200",
+    "api_leasing_calculate": "✓ /api/leasing/calculate works correctly",
+    "api_contractors_leasing": "✓ /api/contractors?contractor_type=leasing returns 3 companies"
+  }
+}
