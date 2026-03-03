@@ -1703,13 +1703,13 @@ async def create_contractor_application(application: ContractorApplicationCreate
 # ==================== MODERATOR ENDPOINTS ====================
 
 @api_router.get("/moderator/applications")
-async def get_contractor_applications(current_user: dict = Depends(get_current_user)):
+async def get_contractor_applications(current_user: dict = Depends(require_role(["admin", "moderator"]))):
     """Get all contractor applications (moderator only)"""
     applications = await db.contractor_applications.find({}, {"_id": 0}).to_list(100)
     return applications
 
 @api_router.post("/moderator/applications/{app_id}/approve")
-async def approve_contractor_application(app_id: str, current_user: dict = Depends(get_current_user)):
+async def approve_contractor_application(app_id: str, current_user: dict = Depends(require_role(["admin", "moderator"]))):
     """Approve a contractor application"""
     application = await db.contractor_applications.find_one({"id": app_id})
     if not application:
