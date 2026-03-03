@@ -89,7 +89,7 @@ const popularCars = [
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const LandingPage = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isModerator, isAdmin, user } = useAuth();
   
   // AI Chat state
   const [chatMessages, setChatMessages] = useState([
