@@ -1823,7 +1823,7 @@ async def confirm_deal_stage(deal_id: str, stage: dict, current_user: dict = Dep
     return {"message": f"Stage {stage_name} confirmed"}
 
 @api_router.get("/moderator/tenders")
-async def get_all_tenders_moderator(current_user: dict = Depends(get_current_user)):
+async def get_all_tenders_moderator(current_user: dict = Depends(require_role(["admin", "moderator"]))):
     """Get all tenders for moderator"""
     tenders = await db.tenders.find({}, {"_id": 0}).to_list(100)
     
