@@ -1766,7 +1766,7 @@ async def reject_contractor_application(app_id: str, current_user: dict = Depend
     return {"message": "Application rejected"}
 
 @api_router.get("/moderator/deals")
-async def get_all_deals(current_user: dict = Depends(get_current_user)):
+async def get_all_deals(current_user: dict = Depends(require_role(["admin", "moderator"]))):
     """Get all deals for moderator view"""
     # Get all garage items that have tenders or are in progress
     deals = await db.garage.find(
