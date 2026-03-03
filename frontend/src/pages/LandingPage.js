@@ -29,7 +29,10 @@ import {
   Sparkles,
   Car,
   ChevronLeft,
-  MessageCircle
+  MessageCircle,
+  Flame,
+  Clock,
+  ShoppingCart
 } from 'lucide-react';
 
 // Messenger icons as SVG components
