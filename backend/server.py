@@ -210,7 +210,7 @@ class ContractorResponse(BaseModel):
 class ContractorAssignment(BaseModel):
     car_id: str
     contractor_id: str
-    stage: Literal["inspection", "export", "logistics"]
+    stage: Literal["inspection", "export", "logistics", "leasing"]
 
 class CalculatorInput(BaseModel):
     price_cny: float
