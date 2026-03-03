@@ -420,6 +420,80 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* Hot Deals Section */}
+      {hotDeals.length > 0 && (
+        <section className="py-16 bg-gradient-to-b from-[#0B0F14] to-[#15191E]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/30 rounded-full mb-4">
+                  <Flame size={16} className="text-orange-500" />
+                  <span className="text-orange-400 text-sm font-medium">Ограниченное время</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white">Горящие предложения</h2>
+              </div>
+              <Link to="/hot-deals">
+                <Button variant="outline" className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10">
+                  Все предложения
+                  <ArrowRight size={16} className="ml-2" />
+                </Button>
+              </Link>
+            </div>
+
+            {hotDealsLoading ? (
+              <div className="flex items-center justify-center h-48">
+                <Loader2 size={32} className="text-orange-500 animate-spin" />
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {hotDeals.slice(0, 4).map((deal) => (
+                  <Link 
+                    key={deal.id} 
+                    to="/hot-deals"
+                    className="bg-[#15191E] border border-[#27272A] rounded-sm overflow-hidden hover:border-orange-500/50 transition-colors group"
+                  >
+                    <div className="h-36 bg-[#1C2128] relative overflow-hidden">
+                      {deal.image_url ? (
+                        <img 
+                          src={deal.image_url} 
+                          alt={`${deal.brand} ${deal.model}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Car size={36} className="text-slate-600" />
+                        </div>
+                      )}
+                      <div className="absolute top-2 left-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1">
+                        <Flame size={10} />
+                        ГОРЯЩЕЕ
+                      </div>
+                      {deal.special_price_cny && deal.special_price_cny < deal.price_cny && (
+                        <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-0.5 rounded text-xs font-bold">
+                          -{Math.round((1 - deal.special_price_cny / deal.price_cny) * 100)}%
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <h4 className="text-white font-medium text-sm mb-1 truncate">{deal.brand} {deal.model}</h4>
+                      <div className="flex items-center justify-between">
+                        <span className="text-orange-400 font-bold">
+                          ¥{(deal.special_price_cny || deal.price_cny).toLocaleString()}
+                        </span>
+                        <div className="flex items-center gap-1 text-slate-500 text-xs">
+                          <Clock size={10} />
+                          <span>Спешите!</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* AI Agent Section */}
       <section id="ai-agent" className="py-16 bg-[#15191E]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
