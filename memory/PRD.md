@@ -77,6 +77,11 @@
   - POST /api/leasing/calculate - расчёт лизинговых платежей
   - GET /api/contractors?contractor_type=leasing - 3 лизинговые компании
   - POST /api/garage/{car_id}/request-manager-help - платная помощь менеджера ($200)
+- ✅ **ГОРЯЩИЕ ПРЕДЛОЖЕНИЯ (Dec 2025)**
+  - GET /api/hot-deals - список горящих предложений с таймером
+  - POST /api/hot-deals - создание предложения (модераторы/подрядчики)
+  - POST /api/hot-deals/{deal_id}/add-to-garage - добавление в гараж с авто-привязкой продавца
+  - Автоудаление истёкших предложений
 
 ### Frontend (100% работает)
 - ✅ Landing page со всеми секциями
