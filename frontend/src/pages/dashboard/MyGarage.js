@@ -394,6 +394,89 @@ const MyGarage = () => {
     toast.success('Запрос на отчёт о состоянии отправлен');
   };
 
+  // Leasing functions
+  const openLeasingDialog = async (car) => {
+    setLeasingDialogOpen(car);
+    setLeasingResult(null);
+    setSelectedLeasingCompany(null);
+    setLeasingParams({ down_payment_percent: 20, term_months: 36 });
+    setLoadingLeasingCompanies(true);
+    
+    try {
+      const response = await axios.get(`${API}/contractors`, {
+        params: { contractor_type: 'leasing' }
+      });
+      setLeasingCompanies(response.data);
+      if (response.data.length > 0) {
+        setSelectedLeasingCompany(response.data[0]);
+      }
+    } catch (error) {
+      toast.error('Ошибка загрузки лизинговых компаний');
+    } finally {
+      setLoadingLeasingCompanies(false);
+    }
+  };
+
+  const calculateLeasing = async () => {
+    if (!leasingDialogOpen?.calculated_price_usd) {
+      toast.error('Цена авто не рассчитана');
+      return;
+    }
+
+    setCalculatingLeasing(true);
+    try {
+      const response = await axios.post(`${API}/leasing/calculate`, {
+        car_price_usd: leasingDialogOpen.calculated_price_usd,
+        down_payment_percent: leasingParams.down_payment_percent,
+        term_months: leasingParams.term_months,
+        leasing_company_id: selectedLeasingCompany?.id || null
+      });
+      setLeasingResult(response.data);
+    } catch (error) {
+      toast.error('Ошибка расчёта лизинга');
+    } finally {
+      setCalculatingLeasing(false);
+    }
+  };
+
+  const handleRequestManagerHelp = async (carId) => {
+    if (userBalance < 200) {
+      toast.error('Недостаточно средств. Требуется $200 для запроса помощи менеджера');
+      return;
+    }
+
+    setRequestingHelp(carId);
+    try {
+      await axios.post(`${API}/garage/${carId}/request-manager-help`, {}, { headers });
+      toast.success('Запрос на помощь менеджера отправлен! С вашего баланса списано $200');
+      fetchUserAccount(); // Refresh balance
+      fetchCars(); // Refresh car status
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Ошибка при запросе помощи';
+      toast.error(message);
+    } finally {
+      setRequestingHelp(null);
+    }
+  };
+
+  const assignLeasingCompany = async (companyId) => {
+    if (!leasingDialogOpen) return;
+    
+    try {
+      await axios.post(`${API}/garage/${leasingDialogOpen.id}/assign-contractor`, {
+        car_id: leasingDialogOpen.id,
+        contractor_id: companyId,
+        stage: 'leasing'
+      }, { headers });
+      
+      toast.success('Лизинговая компания выбрана');
+      setLeasingDialogOpen(null);
+      fetchCars();
+    } catch (error) {
+      toast.error('Ошибка при выборе лизинговой компании');
+    }
+  };
+
   const canPerformActions = contractSigned && userBalance > 0;
 
   const getStatusBadge = (status) => {
