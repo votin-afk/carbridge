@@ -1728,6 +1728,112 @@ async def remove_contractor_from_car(
     
     return {"message": f"Contractor removed from {stage} stage"}
 
+# ==================== LEASING CALCULATOR ====================
+
+class LeasingCalculation(BaseModel):
+    car_price_usd: float
+    down_payment_percent: float
+    term_months: int
+    leasing_company_id: Optional[str] = None
+
+@api_router.post("/leasing/calculate")
+async def calculate_leasing(data: LeasingCalculation):
+    """Calculate leasing payments"""
+    # Get leasing rate from company or use default
+    rate = 9.0  # Default annual rate
+    
+    if data.leasing_company_id:
+        for c in DEMO_CONTRACTORS:
+            if c["id"] == data.leasing_company_id and c.get("leasing_rate"):
+                rate = c["leasing_rate"]
+                break
+    
+    # Calculate
+    down_payment = data.car_price_usd * (data.down_payment_percent / 100)
+    financed_amount = data.car_price_usd - down_payment
+    
+    # Monthly rate
+    monthly_rate = rate / 100 / 12
+    
+    # Monthly payment (annuity formula)
+    if monthly_rate > 0:
+        monthly_payment = financed_amount * (monthly_rate * (1 + monthly_rate)**data.term_months) / ((1 + monthly_rate)**data.term_months - 1)
+    else:
+        monthly_payment = financed_amount / data.term_months
+    
+    # First payment = down payment + first monthly
+    first_payment = down_payment + monthly_payment
+    
+    # Total cost
+    total_cost = down_payment + (monthly_payment * data.term_months)
+    overpayment = total_cost - data.car_price_usd
+    
+    return {
+        "car_price_usd": data.car_price_usd,
+        "down_payment": round(down_payment, 2),
+        "down_payment_percent": data.down_payment_percent,
+        "financed_amount": round(financed_amount, 2),
+        "term_months": data.term_months,
+        "annual_rate": rate,
+        "monthly_payment": round(monthly_payment, 2),
+        "first_payment": round(first_payment, 2),
+        "total_cost": round(total_cost, 2),
+        "overpayment": round(overpayment, 2)
+    }
+
+# ==================== MANAGER HELP REQUEST ====================
+
+MANAGER_HELP_COST = 200  # USD
+
+@api_router.post("/garage/{car_id}/request-manager-help")
+async def request_manager_help(car_id: str, current_user: dict = Depends(get_current_user)):
+    """Request manager help for car selection ($200)"""
+    car = await db.garage.find_one({"id": car_id, "user_id": current_user["id"]})
+    if not car:
+        raise HTTPException(status_code=404, detail="Car not found")
+    
+    # Check user balance
+    account = await db.accounts.find_one({"user_id": current_user["id"]})
+    balance = account.get("balance", 0) if account else 0
+    
+    if balance < MANAGER_HELP_COST:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Недостаточно средств. Требуется ${MANAGER_HELP_COST}, на балансе ${balance}"
+        )
+    
+    # Deduct from balance
+    await db.accounts.update_one(
+        {"user_id": current_user["id"]},
+        {"$inc": {"balance": -MANAGER_HELP_COST}}
+    )
+    
+    # Create help request
+    request_id = str(uuid.uuid4())
+    help_request = {
+        "id": request_id,
+        "user_id": current_user["id"],
+        "car_id": car_id,
+        "type": "manager_help",
+        "cost": MANAGER_HELP_COST,
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.help_requests.insert_one(help_request)
+    
+    # Update car status
+    await db.garage.update_one(
+        {"id": car_id},
+        {"$set": {"manager_help_requested": True, "manager_help_request_id": request_id}}
+    )
+    
+    return {
+        "message": "Запрос на помощь менеджера отправлен",
+        "request_id": request_id,
+        "cost": MANAGER_HELP_COST,
+        "new_balance": balance - MANAGER_HELP_COST
+    }
+
 # ==================== CONTRACTOR APPLICATIONS ENDPOINTS ====================
 
 class ContractorApplicationCreate(BaseModel):
