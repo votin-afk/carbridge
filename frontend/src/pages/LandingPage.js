@@ -107,8 +107,11 @@ const LandingPage = () => {
   const [currentCarIndex, setCurrentCarIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
+  // Scroll to bottom of chat only when new messages are added (not on initial load)
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatMessages.length > 0) {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [chatMessages]);
 
   // Auto-rotate carousel
