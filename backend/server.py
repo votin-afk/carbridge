@@ -1994,6 +1994,100 @@ async def delete_hot_deal(deal_id: str, current_user: dict = Depends(get_current
     await db.hot_deals.delete_one({"id": deal_id})
     return {"message": "Предложение удалено"}
 
+@api_router.post("/hot-deals/seed-demo")
+async def seed_demo_hot_deals():
+    """Seed demo hot deals for testing"""
+    # Check if already have deals
+    existing = await db.hot_deals.count_documents({})
+    if existing > 0:
+        return {"message": "Demo deals already exist", "count": existing}
+    
+    demo_deals = [
+        {
+            "id": "hot-001",
+            "brand": "BYD",
+            "model": "Seal",
+            "year": 2024,
+            "price_cny": 219800,
+            "special_price_cny": 189800,
+            "calculated_price_usd": 28500,
+            "mileage": 5000,
+            "engine_type": "electric",
+            "engine_volume": None,
+            "image_url": "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800",
+            "description": "Срочная продажа! Электромобиль в идеальном состоянии, на гарантии.",
+            "expires_at": (datetime.now(timezone.utc) + timedelta(hours=48)).isoformat(),
+            "seller_id": "exp-001",
+            "seller_name": "GlobalAutoExport",
+            "seller_type": "contractor",
+            "is_verified_seller": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": "hot-002",
+            "brand": "Zeekr",
+            "model": "001",
+            "year": 2023,
+            "price_cny": 289000,
+            "special_price_cny": 259000,
+            "calculated_price_usd": 38900,
+            "mileage": 12000,
+            "engine_type": "electric",
+            "engine_volume": None,
+            "image_url": "https://images.unsplash.com/photo-1617788138017-80ad40651399?w=800",
+            "description": "Премиальный электрокроссовер Zeekr. Полная комплектация.",
+            "expires_at": (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat(),
+            "seller_id": "exp-002",
+            "seller_name": "ChinaMotors Direct",
+            "seller_type": "contractor",
+            "is_verified_seller": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": "hot-003",
+            "brand": "GEELY",
+            "model": "Monjaro",
+            "year": 2024,
+            "price_cny": 178000,
+            "special_price_cny": 158000,
+            "calculated_price_usd": 23700,
+            "mileage": 3000,
+            "engine_type": "hybrid",
+            "engine_volume": 2000,
+            "image_url": "https://customer-assets.emergentagent.com/job_china-motors-by/artifacts/os4c665q_GEELY%20MANJARO.jpg",
+            "description": "Новый гибридный кроссовер от Geely. Выгодное предложение!",
+            "expires_at": (datetime.now(timezone.utc) + timedelta(hours=72)).isoformat(),
+            "seller_id": "exp-001",
+            "seller_name": "GlobalAutoExport",
+            "seller_type": "contractor",
+            "is_verified_seller": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": "hot-004",
+            "brand": "Li Auto",
+            "model": "L7",
+            "year": 2024,
+            "price_cny": 339800,
+            "special_price_cny": 309800,
+            "calculated_price_usd": 46500,
+            "mileage": 8000,
+            "engine_type": "hybrid",
+            "engine_volume": 1500,
+            "image_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800",
+            "description": "Премиальный гибридный внедорожник с запасом хода 1000+ км.",
+            "expires_at": (datetime.now(timezone.utc) + timedelta(hours=36)).isoformat(),
+            "seller_id": "exp-002",
+            "seller_name": "ChinaMotors Direct",
+            "seller_type": "contractor",
+            "is_verified_seller": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+    ]
+    
+    await db.hot_deals.insert_many(demo_deals)
+    return {"message": "Demo hot deals created", "count": len(demo_deals)}
+
 @api_router.post("/hot-deals/{deal_id}/add-to-garage")
 async def add_hot_deal_to_garage(deal_id: str, current_user: dict = Depends(get_current_user)):
     """Add a hot deal car to user's garage with seller pre-selected"""
