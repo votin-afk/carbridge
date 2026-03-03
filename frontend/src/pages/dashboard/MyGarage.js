@@ -1148,6 +1148,34 @@ const MyGarage = () => {
                       Запросить отчёт о состоянии
                     </Button>
                   )}
+                  
+                  {/* Manager Help Button - $200 paid service */}
+                  {car.status === 'saved' && !car.manager_help_requested && (
+                    <Button
+                      data-testid={`request-manager-help-${car.id}`}
+                      onClick={() => handleRequestManagerHelp(car.id)}
+                      disabled={requestingHelp === car.id || userBalance < 200}
+                      variant="outline"
+                      className={`w-full text-sm ${
+                        userBalance >= 200
+                          ? 'border-purple-500/50 text-purple-400 hover:border-purple-400 hover:bg-purple-500/10'
+                          : 'border-slate-700 text-slate-500 cursor-not-allowed'
+                      }`}
+                    >
+                      {requestingHelp === car.id ? (
+                        <Loader2 size={14} className="mr-1 animate-spin" />
+                      ) : (
+                        <Headphones size={14} className="mr-1" />
+                      )}
+                      Помощь менеджера — $200
+                    </Button>
+                  )}
+                  {car.manager_help_requested && (
+                    <div className="flex items-center gap-2 p-2 bg-purple-500/10 border border-purple-500/30 rounded-sm">
+                      <CheckCircle2 size={14} className="text-purple-400" />
+                      <span className="text-purple-400 text-sm">Менеджер назначен</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
