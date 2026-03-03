@@ -106,6 +106,9 @@ const ModeratorPage = () => {
       } else if (activeTab === 'tenders') {
         const response = await axios.get(`${API}/moderator/tenders`, { headers });
         setTenders(response.data);
+      } else if (activeTab === 'users' && isAdmin) {
+        const response = await axios.get(`${API}/admin/users`, { headers });
+        setUsers(response.data);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -119,6 +122,16 @@ const ModeratorPage = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateUserRole = async (userId, newRole) => {
+    try {
+      await axios.put(`${API}/admin/users/${userId}/role`, { role: newRole }, { headers });
+      toast.success('Роль пользователя обновлена');
+      fetchData();
+    } catch (error) {
+      toast.error('Ошибка при обновлении роли');
     }
   };
 
