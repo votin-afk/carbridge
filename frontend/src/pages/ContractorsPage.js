@@ -29,7 +29,9 @@ import {
   MessageCircle,
   ExternalLink,
   ArrowLeft,
-  UserPlus
+  UserPlus,
+  CreditCard,
+  Percent
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -76,6 +78,13 @@ const contractorTypes = {
     color: 'text-emerald-400',
     bgColor: 'bg-emerald-500/10',
     borderColor: 'border-emerald-500/30'
+  },
+  leasing: {
+    label: 'Лизинг',
+    icon: CreditCard,
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-500/10',
+    borderColor: 'border-purple-500/30'
   }
 };
 
