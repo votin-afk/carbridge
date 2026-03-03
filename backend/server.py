@@ -1848,7 +1848,7 @@ class ModeratorTenderCreate(BaseModel):
     budget: Optional[str] = None
 
 @api_router.post("/moderator/tenders")
-async def create_tender_by_moderator(tender_data: ModeratorTenderCreate, current_user: dict = Depends(get_current_user)):
+async def create_tender_by_moderator(tender_data: ModeratorTenderCreate, current_user: dict = Depends(require_role(["admin", "moderator"]))):
     """Create a new tender by moderator (independent of client)"""
     # Create a virtual car entry
     car_id = str(uuid.uuid4())
