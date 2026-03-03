@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 
 class CarbridgeAPITester:
-    def __init__(self, base_url="https://china-motors-by.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://car-leasing-calc.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.token = None
         self.user_id = None
