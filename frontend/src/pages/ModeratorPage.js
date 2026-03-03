@@ -343,6 +343,73 @@ const ModeratorPage = () => {
               <EmptyState text="Нет активных тендеров" />
             )}
           </TabsContent>
+
+          {/* Users Tab (Admin Only) */}
+          {isAdmin && (
+            <TabsContent value="users">
+              {loading ? (
+                <LoadingState />
+              ) : users.length > 0 ? (
+                <div className="bg-[#15191E] border border-[#27272A] rounded-sm overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-[#0B0F14]">
+                      <tr>
+                        <th className="text-left text-slate-400 text-sm font-medium p-4">Пользователь</th>
+                        <th className="text-left text-slate-400 text-sm font-medium p-4">Email</th>
+                        <th className="text-left text-slate-400 text-sm font-medium p-4">Роль</th>
+                        <th className="text-left text-slate-400 text-sm font-medium p-4">Дата регистрации</th>
+                        <th className="text-left text-slate-400 text-sm font-medium p-4">Действия</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.map(u => {
+                        const role = roleConfig[u.role] || roleConfig.user;
+                        const RoleIcon = role.icon;
+                        return (
+                          <tr key={u.id} className="border-t border-[#27272A]">
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-full ${role.bg} flex items-center justify-center`}>
+                                  <RoleIcon size={16} className={role.color} />
+                                </div>
+                                <span className="text-white font-medium">{u.name}</span>
+                              </div>
+                            </td>
+                            <td className="p-4 text-slate-400">{u.email}</td>
+                            <td className="p-4">
+                              <span className={`px-2 py-1 rounded-full text-xs ${role.bg} ${role.color}`}>
+                                {role.label}
+                              </span>
+                            </td>
+                            <td className="p-4 text-slate-400 text-sm">
+                              {new Date(u.created_at).toLocaleDateString('ru')}
+                            </td>
+                            <td className="p-4">
+                              <Select
+                                value={u.role || 'user'}
+                                onValueChange={(value) => handleUpdateUserRole(u.id, value)}
+                              >
+                                <SelectTrigger className="w-36 bg-[#0B0F14] border-[#27272A]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-[#15191E] border-[#27272A]">
+                                  <SelectItem value="user" className="text-white">Пользователь</SelectItem>
+                                  <SelectItem value="moderator" className="text-white">Модератор</SelectItem>
+                                  <SelectItem value="admin" className="text-white">Администратор</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <EmptyState text="Нет пользователей" />
+              )}
+            </TabsContent>
+          )}
         </Tabs>
 
         {/* Application Detail Dialog */}
