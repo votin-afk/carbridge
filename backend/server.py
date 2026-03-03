@@ -1792,7 +1792,7 @@ async def get_all_deals(current_user: dict = Depends(require_role(["admin", "mod
     return result
 
 @api_router.post("/moderator/deals/{deal_id}/confirm-stage")
-async def confirm_deal_stage(deal_id: str, stage: dict, current_user: dict = Depends(get_current_user)):
+async def confirm_deal_stage(deal_id: str, stage: dict, current_user: dict = Depends(require_role(["admin", "moderator"]))):
     """Confirm a stage of a deal"""
     stage_name = stage.get("stage")
     if not stage_name:
