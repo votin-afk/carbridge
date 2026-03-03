@@ -287,7 +287,7 @@ const ContractorsPage = () => {
           </div>
 
           {/* Content */}
-          {['inspection', 'export', 'logistics'].map(type => (
+          {['inspection', 'export', 'logistics', 'leasing'].map(type => (
             <TabsContent key={type} value={type} className="mt-0">
               {loading ? (
                 <div className="flex items-center justify-center h-64">
