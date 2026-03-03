@@ -110,6 +110,25 @@ const LandingPage = () => {
   const [currentCarIndex, setCurrentCarIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  
+  // Hot deals state
+  const [hotDeals, setHotDeals] = useState([]);
+  const [hotDealsLoading, setHotDealsLoading] = useState(true);
+
+  // Fetch hot deals
+  useEffect(() => {
+    const fetchHotDeals = async () => {
+      try {
+        const response = await axios.get(`${API}/hot-deals?limit=4`);
+        setHotDeals(response.data);
+      } catch (error) {
+        console.error('Error fetching hot deals:', error);
+      } finally {
+        setHotDealsLoading(false);
+      }
+    };
+    fetchHotDeals();
+  }, []);
 
   // Scroll to bottom of chat only after user sends a message
   useEffect(() => {
