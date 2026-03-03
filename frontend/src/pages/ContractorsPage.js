@@ -344,7 +344,7 @@ const ContractorCard = ({ contractor, onDelete, isAuthenticated }) => {
               <span className={`text-xs ${typeConfig.color}`}>{typeConfig.label}</span>
             </div>
           </div>
-          {isAuthenticated && !contractor.id.startsWith('insp-') && !contractor.id.startsWith('exp-') && !contractor.id.startsWith('log-') && (
+          {isAuthenticated && !contractor.id.startsWith('insp-') && !contractor.id.startsWith('exp-') && !contractor.id.startsWith('log-') && !contractor.id.startsWith('leas-') && (
             <button
               onClick={() => onDelete(contractor.id)}
               className="text-slate-500 hover:text-red-400 p-1"
