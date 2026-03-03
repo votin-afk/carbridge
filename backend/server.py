@@ -1751,7 +1751,7 @@ async def approve_contractor_application(app_id: str, current_user: dict = Depen
     return {"message": "Application approved", "contractor_id": contractor_id}
 
 @api_router.post("/moderator/applications/{app_id}/reject")
-async def reject_contractor_application(app_id: str, current_user: dict = Depends(get_current_user)):
+async def reject_contractor_application(app_id: str, current_user: dict = Depends(require_role(["admin", "moderator"]))):
     """Reject a contractor application"""
     result = await db.contractor_applications.update_one(
         {"id": app_id},
