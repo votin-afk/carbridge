@@ -33,7 +33,12 @@ import {
   Star,
   Users,
   ChevronDown,
-  X
+  X,
+  Calculator,
+  Banknote,
+  Headphones,
+  Percent,
+  Calendar
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
