@@ -234,12 +234,16 @@
 - **ProAuctionsParser** в server.py обрабатывает HTML с BeautifulSoup
 
 ## Ключевые файлы
-- `/app/backend/server.py` - Все API endpoints + класс ProAuctionsParser
+- `/app/backend/server.py` - Все API endpoints + класс ProAuctionsParser (4600+ строк)
 - `/app/frontend/src/pages/CatalogPage.js` - Страница каталога
 - `/app/frontend/src/pages/LandingPage.js` - Главная страница с AI-чатом
 - `/app/frontend/src/pages/Calculator.js` - Калькулятор растаможки
 - `/app/frontend/src/pages/dashboard/MyGarage.js` - Гараж с AI-парсингом
+- `/app/frontend/src/pages/dashboard/Verification.js` - Верификация клиента (NEW)
+- `/app/frontend/src/pages/dashboard/Applications.js` - Заявки на подбор (NEW)
 - `/app/frontend/src/pages/ModeratorPage.js` - Панель модератора
 - `/app/frontend/src/pages/UserProfileModerator.js` - Профиль пользователя для модератора
+- `/app/frontend/src/pages/ContractorRegisterPage.js` - Регистрация подрядчика
+- `/app/frontend/src/pages/ContractorDashboard.js` - Личный кабинет подрядчика (NEW)
 - `/app/frontend/src/pages/HotDealsPage.js` - Горящие предложения
 - `/app/frontend/src/pages/AffiliatePage.js` - Партнёрская программа
