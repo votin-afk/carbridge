@@ -264,6 +264,7 @@ const LandingPage = () => {
                 Горящие
               </Link>
               <Link to="/contractors" className="text-slate-400 hover:text-[#00E5FF] transition-colors font-medium">Подрядчики</Link>
+              <Link to="/partners" className="text-emerald-400 hover:text-emerald-300 transition-colors font-medium">Партнёрам</Link>
               <a href="#ai-agent" className="text-slate-400 hover:text-white transition-colors">AI Подбор</a>
               <a href="#process" className="text-slate-400 hover:text-white transition-colors">Процесс</a>
               <a href="#faq" className="text-slate-400 hover:text-white transition-colors">FAQ</a>
