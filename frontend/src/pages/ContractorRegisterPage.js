@@ -113,16 +113,28 @@ const ContractorRegisterPage = () => {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      await axios.post(`${API}/contractor-applications`, {
-        ...formData,
-        experience_years: formData.experience_years ? parseInt(formData.experience_years) : 0,
-        deals_completed: formData.deals_completed ? parseInt(formData.deals_completed) : 0
+      await axios.post(`${API}/contractors/register`, {
+        company_name: formData.company_name,
+        country: formData.country,
+        registration_number: formData.registration_number,
+        legal_address: formData.legal_address,
+        contact_person: formData.contact_person,
+        position: formData.position,
+        phone: formData.phone,
+        email: formData.email,
+        whatsapp: formData.whatsapp,
+        wechat: formData.wechat,
+        telegram: formData.telegram,
+        website: formData.website,
+        services: formData.services,
+        description: formData.description,
+        experience_years: formData.experience_years ? parseInt(formData.experience_years) : null
       });
       
       setSubmitted(true);
       toast.success('Заявка отправлена!');
     } catch (error) {
-      toast.error('Ошибка при отправке заявки');
+      toast.error(error.response?.data?.detail || 'Ошибка при отправке заявки');
     } finally {
       setSubmitting(false);
     }
