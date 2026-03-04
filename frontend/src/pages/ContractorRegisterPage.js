@@ -21,6 +21,15 @@ import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+const serviceOptions = [
+  { value: 'inspection', label: 'Инспекция авто', description: 'Техническая проверка автомобилей' },
+  { value: 'purchase', label: 'Выкуп/Покупка', description: 'Выкуп автомобилей на аукционах' },
+  { value: 'export', label: 'Экспорт', description: 'Таможенное оформление в КНР' },
+  { value: 'logistics', label: 'Логистика', description: 'Доставка авто в Беларусь' },
+  { value: 'leasing', label: 'Лизинг', description: 'Лизинговые услуги' },
+  { value: 'customs', label: 'Растаможка в РБ', description: 'Таможенное оформление в Беларуси' }
+];
+
 const contractorTypes = {
   inspection: {
     label: 'Проверка авто',
