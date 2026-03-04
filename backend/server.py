@@ -1257,6 +1257,86 @@ async def update_user_role(user_id: str, role_data: dict, current_user: dict = D
     
     return {"message": f"User role updated to {new_role}"}
 
+class BalanceUpdate(BaseModel):
+    amount: float
+    reason: Optional[str] = None
+
+@api_router.post("/admin/users/{user_id}/balance")
+async def update_user_balance(user_id: str, data: BalanceUpdate, current_user: dict = Depends(require_role(["admin"]))):
+    """Add or subtract balance from user account (admin only)"""
+    # Check if user exists
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    # Get current account or create
+    account = await db.accounts.find_one({"user_id": user_id})
+    current_balance = account.get("balance", 0.0) if account else 0.0
+    
+    new_balance = current_balance + data.amount
+    if new_balance < 0:
+        raise HTTPException(status_code=400, detail="Баланс не может быть отрицательным")
+    
+    # Update or create account
+    await db.accounts.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                "balance": new_balance,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            },
+            "$setOnInsert": {
+                "is_verified": False,
+                "contract_signed": False,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+        },
+        upsert=True
+    )
+    
+    # Record transaction
+    transaction_doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "type": "admin_adjustment",
+        "amount": data.amount,
+        "reason": data.reason or "Корректировка администратором",
+        "admin_id": current_user["id"],
+        "admin_email": current_user["email"],
+        "balance_before": current_balance,
+        "balance_after": new_balance,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.balance_transactions.insert_one(transaction_doc)
+    
+    return {
+        "message": f"Баланс {'начислен' if data.amount > 0 else 'списан'}",
+        "amount": data.amount,
+        "new_balance": new_balance,
+        "user_email": user.get("email")
+    }
+
+@api_router.get("/admin/users/{user_id}/account")
+async def get_user_account_admin(user_id: str, current_user: dict = Depends(require_role(["admin"]))):
+    """Get user account details (admin only)"""
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    account = await db.accounts.find_one({"user_id": user_id}, {"_id": 0})
+    
+    # Get recent transactions
+    transactions = await db.balance_transactions.find(
+        {"user_id": user_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(10).to_list(10)
+    
+    return {
+        "user": user,
+        "account": account or {"balance": 0.0, "is_verified": False, "contract_signed": False},
+        "transactions": transactions
+    }
+
 @api_router.get("/user/role")
 async def get_user_role(current_user: dict = Depends(get_current_user)):
     """Get current user's role"""
