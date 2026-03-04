@@ -91,26 +91,6 @@ const UserProfileModerator = () => {
     fetchUserData();
   }, [userId]);
 
-  // Verify user
-  const handleVerifyUser = async (action) => {
-    setProcessing(true);
-    try {
-      await axios.post(`${API}/moderator/users/${userId}/verify`, {
-        action,
-        reason: actionComment
-      }, { headers });
-      
-      toast.success(action === 'approve' ? 'Пользователь верифицирован' : 'Верификация отклонена');
-      setVerifyDialog(false);
-      setActionComment('');
-      fetchUserData();
-    } catch (error) {
-      toast.error('Ошибка при верификации');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
   // Sign contract
   const handleSignContract = async (action) => {
     setProcessing(true);
