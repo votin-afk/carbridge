@@ -1732,6 +1732,206 @@ async def get_pending_approvals(current_user: dict = Depends(require_role(["mode
         "pending_deals": pending_deals
     }
 
+# ==================== MODERATOR VERIFICATION DOCUMENTS ====================
+
+@api_router.get("/moderator/verifications")
+async def get_all_verifications(current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Get all client verifications for review"""
+    verifications = await db.verifications.find(
+        {},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+    
+    # Get user info for each verification
+    user_ids = [v.get("user_id") for v in verifications if v.get("user_id")]
+    users_info = {}
+    if user_ids:
+        users = await db.users.find(
+            {"id": {"$in": user_ids}},
+            {"_id": 0, "password_hash": 0}
+        ).to_list(200)
+        users_info = {u["id"]: u for u in users}
+    
+    # Enrich verifications with user info
+    result = []
+    for v in verifications:
+        user_info = users_info.get(v.get("user_id"), {})
+        v["user_name"] = user_info.get("name", v.get("full_name", ""))
+        v["user_email"] = user_info.get("email", v.get("email", ""))
+        result.append(v)
+    
+    return result
+
+@api_router.get("/moderator/verifications/pending")
+async def get_pending_verifications(current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Get verifications pending review"""
+    verifications = await db.verifications.find(
+        {"status": {"$in": ["pending", "documents_uploaded", "under_review"]}},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    # Get user info
+    user_ids = [v.get("user_id") for v in verifications if v.get("user_id")]
+    users_info = {}
+    if user_ids:
+        users = await db.users.find(
+            {"id": {"$in": user_ids}},
+            {"_id": 0, "password_hash": 0}
+        ).to_list(100)
+        users_info = {u["id"]: u for u in users}
+    
+    result = []
+    for v in verifications:
+        user_info = users_info.get(v.get("user_id"), {})
+        v["user_name"] = user_info.get("name", v.get("full_name", ""))
+        v["user_email"] = user_info.get("email", v.get("email", ""))
+        result.append(v)
+    
+    return result
+
+@api_router.get("/moderator/verifications/{verification_id}")
+async def get_verification_details(verification_id: str, current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Get detailed verification info including documents"""
+    verification = await db.verifications.find_one(
+        {"id": verification_id},
+        {"_id": 0}
+    )
+    
+    if not verification:
+        raise HTTPException(status_code=404, detail="Верификация не найдена")
+    
+    # Get user info
+    user = await db.users.find_one(
+        {"id": verification.get("user_id")},
+        {"_id": 0, "password_hash": 0}
+    )
+    
+    verification["user"] = user
+    return verification
+
+@api_router.post("/moderator/verifications/{verification_id}/review")
+async def review_verification(verification_id: str, data: dict, current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Approve or reject client verification"""
+    action = data.get("action")  # "approve" or "reject"
+    comment = data.get("comment", "")
+    
+    if action not in ["approve", "reject"]:
+        raise HTTPException(status_code=400, detail="Неверное действие")
+    
+    verification = await db.verifications.find_one({"id": verification_id})
+    if not verification:
+        raise HTTPException(status_code=404, detail="Верификация не найдена")
+    
+    is_approved = action == "approve"
+    new_status = "approved" if is_approved else "rejected"
+    
+    await db.verifications.update_one(
+        {"id": verification_id},
+        {
+            "$set": {
+                "status": new_status,
+                "reviewed_at": datetime.now(timezone.utc).isoformat(),
+                "reviewed_by": current_user["id"],
+                "reviewed_by_name": current_user.get("name", ""),
+                "review_comment": comment,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    # Update user account verification status
+    await db.accounts.update_one(
+        {"user_id": verification.get("user_id")},
+        {
+            "$set": {
+                "is_verified": is_approved,
+                "verification_status": new_status,
+                "verification_date": datetime.now(timezone.utc).isoformat()
+            }
+        },
+        upsert=True
+    )
+    
+    # Log action
+    await db.moderation_logs.insert_one({
+        "id": str(uuid.uuid4()),
+        "action": "client_verification_review",
+        "target_type": "verification",
+        "target_id": verification_id,
+        "user_id": verification.get("user_id"),
+        "moderator_id": current_user["id"],
+        "moderator_name": current_user.get("name", ""),
+        "result": new_status,
+        "comment": comment,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {
+        "message": f"Верификация {'подтверждена' if is_approved else 'отклонена'}",
+        "status": new_status
+    }
+
+@api_router.post("/moderator/verifications/{verification_id}/documents/{doc_id}/verify")
+async def verify_client_document(verification_id: str, doc_id: str, data: dict, current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Verify a specific document within client verification"""
+    action = data.get("action")  # "approve" or "reject"
+    comment = data.get("comment", "")
+    
+    if action not in ["approve", "reject"]:
+        raise HTTPException(status_code=400, detail="Неверное действие")
+    
+    verification = await db.verifications.find_one({"id": verification_id})
+    if not verification:
+        raise HTTPException(status_code=404, detail="Верификация не найдена")
+    
+    # Find document in verification
+    documents = verification.get("documents", [])
+    doc_found = False
+    
+    for doc in documents:
+        if doc.get("id") == doc_id:
+            doc["verified"] = action == "approve"
+            doc["verification_status"] = "approved" if action == "approve" else "rejected"
+            doc["verified_at"] = datetime.now(timezone.utc).isoformat()
+            doc["verified_by"] = current_user["id"]
+            doc["verification_comment"] = comment
+            doc_found = True
+            break
+    
+    if not doc_found:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    
+    # Update verification with modified documents
+    await db.verifications.update_one(
+        {"id": verification_id},
+        {
+            "$set": {
+                "documents": documents,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    # Log action
+    await db.moderation_logs.insert_one({
+        "id": str(uuid.uuid4()),
+        "action": "document_verification",
+        "target_type": "verification_document",
+        "target_id": doc_id,
+        "verification_id": verification_id,
+        "user_id": verification.get("user_id"),
+        "moderator_id": current_user["id"],
+        "moderator_name": current_user.get("name", ""),
+        "result": "approved" if action == "approve" else "rejected",
+        "comment": comment,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {
+        "message": f"Документ {'подтверждён' if action == 'approve' else 'отклонён'}",
+        "verified": action == "approve"
+    }
+
 @api_router.get("/user/role")
 async def get_user_role(current_user: dict = Depends(get_current_user)):
     """Get current user's role"""
