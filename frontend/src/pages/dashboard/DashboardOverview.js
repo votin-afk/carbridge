@@ -281,6 +281,112 @@ const DashboardOverview = () => {
           ))}
         </div>
       </div>
+
+      {/* Affiliate Section */}
+      {affiliateData ? (
+        <div className="bg-gradient-to-r from-emerald-500/10 to-[#00E5FF]/10 border border-emerald-500/20 rounded-sm p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              {affiliateData.is_partner ? (
+                <div className="w-12 h-12 bg-amber-500/10 rounded-full flex items-center justify-center">
+                  <BadgeCheck size={24} className="text-amber-400" />
+                </div>
+              ) : (
+                <div className="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center">
+                  <Users size={24} className="text-emerald-400" />
+                </div>
+              )}
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold text-white">Партнёрская программа</h2>
+                  {affiliateData.is_partner && (
+                    <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-xs rounded-full">
+                      Партнёр ✓
+                    </span>
+                  )}
+                </div>
+                <p className="text-slate-400 text-sm">
+                  {affiliateData.is_partner 
+                    ? 'Вы официальный партнёр CarBridge' 
+                    : `До статуса партнёра: ${3 - affiliateData.completed_deals} сделок`
+                  }
+                </p>
+              </div>
+            </div>
+            <Link to="/partners">
+              <Button variant="outline" size="sm" className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10">
+                Подробнее
+                <ArrowRight size={14} className="ml-1" />
+              </Button>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="bg-[#15191E]/50 rounded-sm p-3">
+              <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+                <Users size={12} />
+                Рефералов
+              </div>
+              <p className="text-white font-semibold">{affiliateData.total_referrals}</p>
+            </div>
+            <div className="bg-[#15191E]/50 rounded-sm p-3">
+              <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+                <CheckCircle2 size={12} />
+                Сделок
+              </div>
+              <p className="text-white font-semibold">{affiliateData.completed_deals}</p>
+            </div>
+            <div className="bg-[#15191E]/50 rounded-sm p-3">
+              <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+                <DollarSign size={12} />
+                Заработано
+              </div>
+              <p className="text-emerald-400 font-semibold">${affiliateData.total_earnings?.toFixed(2)}</p>
+            </div>
+            <div className="bg-[#15191E]/50 rounded-sm p-3">
+              <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+                <Wallet size={12} />
+                К выводу
+              </div>
+              <p className="text-[#00E5FF] font-semibold">${affiliateData.available_balance?.toFixed(2)}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 bg-[#15191E]/50 rounded-sm p-3">
+            <Gift size={16} className="text-emerald-400 flex-shrink-0" />
+            <code className="text-emerald-400 text-sm flex-1 truncate">{affiliateData.referral_link}</code>
+            <Button
+              size="sm"
+              onClick={copyReferralLink}
+              className={`${copied ? 'bg-emerald-500' : 'bg-emerald-500/20'} hover:bg-emerald-500/30 text-emerald-400`}
+            >
+              {copied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center">
+                <Gift size={24} className="text-emerald-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white">Партнёрская программа</h2>
+                <p className="text-slate-400 text-sm">
+                  Приглашайте друзей и получайте 20% от комиссии CarBridge
+                </p>
+              </div>
+            </div>
+            <Link to="/partners">
+              <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
+                <Users size={16} className="mr-2" />
+                Стать партнёром
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
