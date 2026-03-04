@@ -1584,6 +1584,148 @@ const MyGarage = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Edit Car Dialog */}
+      <Dialog open={!!editDialogOpen} onOpenChange={() => setEditDialogOpen(null)}>
+        <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit3 size={20} className="text-[#00E5FF]" />
+              Редактировать автомобиль
+            </DialogTitle>
+          </DialogHeader>
+
+          {editDialogOpen && (
+            <div className="space-y-4 mt-4">
+              {/* Car name (read-only) */}
+              <div className="p-3 bg-[#0B0F14] rounded-sm border border-[#27272A]">
+                <p className="text-slate-400 text-xs">Автомобиль</p>
+                <p className="text-white font-medium">{editDialogOpen.brand} {editDialogOpen.model}</p>
+              </div>
+
+              {/* Year */}
+              <div>
+                <Label className="text-slate-300 flex items-center gap-1">
+                  <Calendar size={14} />
+                  Год выпуска
+                </Label>
+                <Input
+                  type="number"
+                  name="year"
+                  value={editFormData.year}
+                  onChange={handleEditChange}
+                  min="2000"
+                  max={new Date().getFullYear() + 1}
+                  className="mt-1 bg-[#0B0F14] border-[#27272A]"
+                />
+              </div>
+
+              {/* Mileage */}
+              <div>
+                <Label className="text-slate-300 flex items-center gap-1">
+                  <Gauge size={14} />
+                  Пробег (км)
+                </Label>
+                <Input
+                  type="number"
+                  name="mileage"
+                  value={editFormData.mileage}
+                  onChange={handleEditChange}
+                  placeholder="0"
+                  className="mt-1 bg-[#0B0F14] border-[#27272A]"
+                />
+              </div>
+
+              {/* Price */}
+              <div>
+                <Label className="text-slate-300 flex items-center gap-1">
+                  <CreditCard size={14} />
+                  Цена (¥)
+                </Label>
+                <Input
+                  type="number"
+                  name="price_cny"
+                  value={editFormData.price_cny}
+                  onChange={handleEditChange}
+                  className="mt-1 bg-[#0B0F14] border-[#27272A]"
+                />
+                <p className="text-slate-500 text-xs mt-1">Стоимость автоматически пересчитается</p>
+              </div>
+
+              {/* Engine Type */}
+              <div>
+                <Label className="text-slate-300">Тип двигателя</Label>
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  {[
+                    { value: 'ice', label: 'ДВС' },
+                    { value: 'hybrid', label: 'Гибрид' },
+                    { value: 'electric', label: 'Электро' }
+                  ].map(option => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setEditFormData(prev => ({ ...prev, engine_type: option.value }))}
+                      className={`py-2 px-3 rounded-sm border text-sm transition-colors ${
+                        editFormData.engine_type === option.value
+                          ? 'bg-[#00E5FF] text-black border-[#00E5FF]'
+                          : 'bg-[#0B0F14] text-slate-400 border-[#27272A] hover:border-slate-500'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Engine Volume */}
+              {editFormData.engine_type !== 'electric' && (
+                <div>
+                  <Label className="text-slate-300">Объем двигателя (см³)</Label>
+                  <Input
+                    type="number"
+                    name="engine_volume"
+                    value={editFormData.engine_volume}
+                    onChange={handleEditChange}
+                    placeholder="2000"
+                    className="mt-1 bg-[#0B0F14] border-[#27272A]"
+                  />
+                </div>
+              )}
+
+              {/* Notes */}
+              <div>
+                <Label className="text-slate-300 flex items-center gap-1">
+                  <StickyNote size={14} />
+                  Заметки
+                </Label>
+                <textarea
+                  name="notes"
+                  value={editFormData.notes}
+                  onChange={handleEditChange}
+                  placeholder="Ваши заметки по этому автомобилю..."
+                  className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500 focus:border-[#00E5FF] min-h-[100px]"
+                />
+                <p className="text-slate-500 text-xs mt-1">Заметки видны только вам</p>
+              </div>
+
+              {/* Save Button */}
+              <Button
+                data-testid="save-car-edit-btn"
+                onClick={handleSaveEdit}
+                disabled={savingEdit}
+                className="w-full bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
+              >
+                {savingEdit ? (
+                  <Loader2 size={16} className="mr-2 animate-spin" />
+                ) : (
+                  <Save size={16} className="mr-2" />
+                )}
+                Сохранить изменения
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
