@@ -538,7 +538,10 @@ const Verification = () => {
                     Просмотреть договор
                   </Button>
                   <Button
-                    onClick={fetchContract}
+                    onClick={() => {
+                      // Download PDF directly
+                      window.open(`${API}/verification/contract/download`, '_blank');
+                    }}
                     variant="outline"
                     className="border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10"
                   >
