@@ -341,6 +341,15 @@ const ModeratorPage = () => {
               <Gavel size={16} className="mr-2" />
               Тендеры
             </TabsTrigger>
+            <TabsTrigger value="documents" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black">
+              <FileText size={16} className="mr-2" />
+              Документы
+              {verifications.length > 0 && (
+                <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                  {verifications.length}
+                </span>
+              )}
+            </TabsTrigger>
             {isAdmin && (
               <TabsTrigger value="users" className="data-[state=active]:bg-amber-500 data-[state=active]:text-black">
                 <UserCog size={16} className="mr-2" />
