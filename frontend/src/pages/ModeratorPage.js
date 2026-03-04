@@ -126,6 +126,9 @@ const ModeratorPage = () => {
       } else if (activeTab === 'users' && isAdmin) {
         const response = await axios.get(`${API}/admin/users`, { headers });
         setUsers(response.data);
+      } else if (activeTab === 'documents') {
+        const response = await axios.get(`${API}/moderator/verifications/pending`, { headers });
+        setVerifications(response.data);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
