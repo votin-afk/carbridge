@@ -412,13 +412,14 @@ const ModeratorPage = () => {
               {loading ? (
                 <LoadingState />
               ) : users.length > 0 ? (
-                <div className="bg-[#15191E] border border-[#27272A] rounded-sm overflow-hidden">
-                  <table className="w-full">
+                <div className="bg-[#15191E] border border-[#27272A] rounded-sm overflow-hidden overflow-x-auto">
+                  <table className="w-full min-w-[900px]">
                     <thead className="bg-[#0B0F14]">
                       <tr>
                         <th className="text-left text-slate-400 text-sm font-medium p-4">Пользователь</th>
                         <th className="text-left text-slate-400 text-sm font-medium p-4">Email</th>
                         <th className="text-left text-slate-400 text-sm font-medium p-4">Роль</th>
+                        <th className="text-left text-slate-400 text-sm font-medium p-4">Баланс</th>
                         <th className="text-left text-slate-400 text-sm font-medium p-4">Дата регистрации</th>
                         <th className="text-left text-slate-400 text-sm font-medium p-4">Действия</th>
                       </tr>
@@ -427,8 +428,9 @@ const ModeratorPage = () => {
                       {users.map(u => {
                         const role = roleConfig[u.role] || roleConfig.user;
                         const RoleIcon = role.icon;
+                        const userAccount = userAccounts[u.id];
                         return (
-                          <tr key={u.id} className="border-t border-[#27272A]">
+                          <tr key={u.id} className="border-t border-[#27272A] hover:bg-[#1C2128]">
                             <td className="p-4">
                               <div className="flex items-center gap-3">
                                 <div className={`w-8 h-8 rounded-full ${role.bg} flex items-center justify-center`}>
@@ -443,23 +445,48 @@ const ModeratorPage = () => {
                                 {role.label}
                               </span>
                             </td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[#00E5FF] font-medium">
+                                  ${userAccount?.balance?.toFixed(2) || '0.00'}
+                                </span>
+                                <button
+                                  onClick={() => openBalanceDialog(u)}
+                                  className="p-1 rounded hover:bg-[#00E5FF]/10 text-slate-400 hover:text-[#00E5FF]"
+                                  title="Управление балансом"
+                                >
+                                  <Wallet size={14} />
+                                </button>
+                              </div>
+                            </td>
                             <td className="p-4 text-slate-400 text-sm">
                               {new Date(u.created_at).toLocaleDateString('ru')}
                             </td>
                             <td className="p-4">
-                              <Select
-                                value={u.role || 'user'}
-                                onValueChange={(value) => handleUpdateUserRole(u.id, value)}
-                              >
-                                <SelectTrigger className="w-36 bg-[#0B0F14] border-[#27272A]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-[#15191E] border-[#27272A]">
-                                  <SelectItem value="user" className="text-white">Пользователь</SelectItem>
-                                  <SelectItem value="moderator" className="text-white">Модератор</SelectItem>
-                                  <SelectItem value="admin" className="text-white">Администратор</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <div className="flex items-center gap-2">
+                                <Select
+                                  value={u.role || 'user'}
+                                  onValueChange={(value) => handleUpdateUserRole(u.id, value)}
+                                >
+                                  <SelectTrigger className="w-36 bg-[#0B0F14] border-[#27272A]">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-[#15191E] border-[#27272A]">
+                                    <SelectItem value="user" className="text-white">Пользователь</SelectItem>
+                                    <SelectItem value="moderator" className="text-white">Модератор</SelectItem>
+                                    <SelectItem value="admin" className="text-white">Администратор</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openBalanceDialog(u)}
+                                  className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                                >
+                                  <DollarSign size={14} className="mr-1" />
+                                  Баланс
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         );
