@@ -90,6 +90,13 @@ const ModeratorPage = () => {
   const [newTenderDialog, setNewTenderDialog] = useState(false);
   const [newTenderData, setNewTenderData] = useState({ brand: '', model: '', budget: '' });
   
+  // Balance management states
+  const [balanceDialogUser, setBalanceDialogUser] = useState(null);
+  const [balanceAmount, setBalanceAmount] = useState('');
+  const [balanceReason, setBalanceReason] = useState('');
+  const [updatingBalance, setUpdatingBalance] = useState(false);
+  const [userAccounts, setUserAccounts] = useState({}); // user_id -> account data
+  
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
