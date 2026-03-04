@@ -97,6 +97,28 @@
   - POST /api/moderator/deals/{deal_id}/approve-stage - одобрение этапов сделки
   - GET /api/admin/users/{user_id}/account - данные аккаунта пользователя
   - POST /api/admin/users/{user_id}/balance - управление балансом
+- ✅ **ВЕРИФИКАЦИЯ КЛИЕНТОВ (Mar 2026)**
+  - POST /api/verification/submit - отправка паспортных данных
+  - GET /api/verification/status - статус верификации
+  - POST /api/verification/upload-document - загрузка сканов документов
+  - GET /api/verification/contract - генерация договора CarBridge
+  - POST /api/verification/sign-contract - подписание договора
+  - Номер договора формат: CB-YYYYMMDD-XXXXXXXX
+- ✅ **ЗАЯВКИ НА ПОДБОР АВТОМОБИЛЯ (Mar 2026)**
+  - POST /api/applications/create - создание заявки с параметрами
+  - GET /api/applications/my - список заявок пользователя
+  - GET /api/applications/{id} - детали заявки
+  - DELETE /api/applications/{id} - отмена заявки
+  - Номер заявки формат: APP-YYYYMMDD-XXXXXX
+  - Поддержка Указа 140 (льготы)
+- ✅ **СИСТЕМА ПОДРЯДЧИКОВ (Mar 2026)**
+  - POST /api/contractors/register - регистрация (BY/CN)
+  - POST /api/contractors/login - вход подрядчика
+  - GET /api/contractors/dashboard - личный кабинет
+  - POST /api/contractors/submit-offer - отправка предложения
+  - GET /api/moderator/contractor-applications - заявки на модерации
+  - POST /api/moderator/contractors/{id}/approve - одобрение
+  - POST /api/moderator/contractors/{id}/reject - отклонение
 
 ### Frontend (100% работает)
 - ✅ Landing page со всеми секциями
