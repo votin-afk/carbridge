@@ -120,6 +120,21 @@ const MyGarage = () => {
   // Manager help state
   const [requestingHelp, setRequestingHelp] = useState(null); // car id
   
+  // Card expansion state
+  const [expandedCardId, setExpandedCardId] = useState(null);
+  
+  // Edit car state
+  const [editDialogOpen, setEditDialogOpen] = useState(null); // car object
+  const [editFormData, setEditFormData] = useState({
+    year: '',
+    mileage: '',
+    price_cny: '',
+    engine_type: '',
+    engine_volume: '',
+    notes: ''
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
+  
   const [formData, setFormData] = useState({
     brand: '',
     model: '',
