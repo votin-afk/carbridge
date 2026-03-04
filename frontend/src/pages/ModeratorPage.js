@@ -897,6 +897,115 @@ const TenderCard = ({ tender }) => {
   );
 };
 
+const VerificationCard = ({ verification, onView, onApprove, onReject }) => {
+  const statusMap = {
+    pending: { label: 'Ожидает', color: 'text-amber-400', bg: 'bg-amber-500/10' },
+    documents_uploaded: { label: 'Документы загружены', color: 'text-blue-400', bg: 'bg-blue-500/10' },
+    under_review: { label: 'На проверке', color: 'text-purple-400', bg: 'bg-purple-500/10' },
+    approved: { label: 'Подтверждено', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+    rejected: { label: 'Отклонено', color: 'text-red-400', bg: 'bg-red-500/10' }
+  };
+  
+  const status = statusMap[verification.status] || statusMap.pending;
+  const documents = verification.documents || [];
+  const approvedDocs = documents.filter(d => d.verified === true).length;
+  
+  return (
+    <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-4">
+      <div className="flex items-start justify-between">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 bg-[#00E5FF]/10 rounded-full flex items-center justify-center">
+            <FileText size={24} className="text-[#00E5FF]" />
+          </div>
+          <div>
+            <h3 className="text-white font-semibold">{verification.full_name || verification.user_name}</h3>
+            <p className="text-slate-400 text-sm">{verification.email || verification.user_email}</p>
+            <p className="text-slate-500 text-xs mt-1">
+              Договор: <span className="text-[#00E5FF]">{verification.contract_number}</span>
+            </p>
+          </div>
+        </div>
+        <span className={`px-3 py-1 rounded-full text-xs ${status.bg} ${status.color}`}>
+          {status.label}
+        </span>
+      </div>
+      
+      <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+        <div>
+          <p className="text-slate-500">Тип клиента</p>
+          <p className="text-white">{verification.client_type === 'legal' ? 'Юр. лицо' : 'Физ. лицо'}</p>
+        </div>
+        <div>
+          <p className="text-slate-500">Документов</p>
+          <p className="text-white">{documents.length} загружено</p>
+        </div>
+        <div>
+          <p className="text-slate-500">Проверено</p>
+          <p className={approvedDocs === documents.length && documents.length > 0 ? 'text-emerald-400' : 'text-amber-400'}>
+            {approvedDocs} / {documents.length}
+          </p>
+        </div>
+      </div>
+      
+      {/* Documents Preview */}
+      {documents.length > 0 && (
+        <div className="mt-4 p-3 bg-[#0B0F14] rounded-sm">
+          <p className="text-slate-400 text-xs mb-2">Загруженные документы:</p>
+          <div className="flex flex-wrap gap-2">
+            {documents.map((doc, idx) => (
+              <div
+                key={doc.id || idx}
+                className={`px-2 py-1 rounded text-xs flex items-center gap-1 ${
+                  doc.verified === true ? 'bg-emerald-500/10 text-emerald-400' :
+                  doc.verified === false ? 'bg-red-500/10 text-red-400' :
+                  'bg-slate-500/10 text-slate-400'
+                }`}
+              >
+                <Image size={12} />
+                {doc.type === 'passport_scan' ? 'Паспорт (разворот)' :
+                 doc.type === 'passport_back' ? 'Паспорт (прописка)' :
+                 doc.type === 'driver_license' ? 'Вод. удостоверение' :
+                 doc.name || doc.type}
+                {doc.verified === true && <CheckCircle2 size={12} />}
+                {doc.verified === false && <XCircle size={12} />}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      <div className="mt-4 flex gap-2">
+        <Button 
+          variant="outline" 
+          className="flex-1 border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10"
+          onClick={onView}
+        >
+          <Eye size={16} className="mr-2" />
+          Подробнее
+        </Button>
+        {verification.status !== 'approved' && verification.status !== 'rejected' && (
+          <>
+            <Button 
+              className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white"
+              onClick={onApprove}
+            >
+              <CheckCircle2 size={16} className="mr-2" />
+              Подтвердить
+            </Button>
+            <Button 
+              variant="outline"
+              className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+              onClick={onReject}
+            >
+              <XCircle size={16} />
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const InfoField = ({ label, value }) => (
   <div>
     <Label className="text-slate-500">{label}</Label>
