@@ -31,7 +31,9 @@ const DashboardLayout = () => {
   const navItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Обзор', end: true },
     { to: '/dashboard/garage', icon: Car, label: 'Мой гараж' },
+    { to: '/dashboard/applications', icon: ClipboardList, label: 'Заявки' },
     { to: '/dashboard/tenders', icon: FileStack, label: 'Тендеры' },
+    { to: '/dashboard/verification', icon: Shield, label: 'Верификация' },
     { to: '/dashboard/documents', icon: FileText, label: 'Документы' },
   ];
 
