@@ -424,6 +424,27 @@ const ModeratorPage = () => {
             )}
           </TabsContent>
 
+          {/* Documents/Verifications Tab */}
+          <TabsContent value="documents">
+            {loading ? (
+              <LoadingState />
+            ) : verifications.length > 0 ? (
+              <div className="space-y-4">
+                {verifications.map(verification => (
+                  <VerificationCard
+                    key={verification.id}
+                    verification={verification}
+                    onView={() => setSelectedVerification(verification)}
+                    onApprove={() => handleApproveVerification(verification.id)}
+                    onReject={() => handleRejectVerification(verification.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState text="Нет документов на проверку" />
+            )}
+          </TabsContent>
+
           {/* Users Tab (Admin Only) */}
           {isAdmin && (
             <TabsContent value="users">
