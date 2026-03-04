@@ -576,7 +576,7 @@ const Verification = () => {
           {contractData && (
             <div className="mt-4 space-y-6">
               {/* Contract Preview */}
-              <div className="p-6 bg-white text-black rounded-sm font-serif text-sm leading-relaxed">
+              <div className="p-6 bg-white text-black rounded-sm font-serif text-sm leading-relaxed max-h-[60vh] overflow-y-auto">
                 <div className="text-center mb-6">
                   <h2 className="text-lg font-bold">ДОГОВОР № {contractData.contract_number}</h2>
                   <p>на оказание услуг по организации приобретения и доставки автомобиля</p>
@@ -584,41 +584,83 @@ const Verification = () => {
                 </div>
 
                 <p className="mb-4">
-                  <strong>{contractData.executor.name}</strong>, в лице директора {contractData.executor.director}, 
-                  действующего на основании Устава, именуемое в дальнейшем «Исполнитель», с одной стороны, и
+                  <strong>{contractData.executor.name}</strong>, именуемое в дальнейшем «Исполнитель», в лице директора {contractData.executor.director}, 
+                  действующего на основании Устава, с одной стороны, и
                 </p>
 
                 <p className="mb-4">
-                  Гражданин(ка) <strong>{contractData.client.full_name}</strong>, паспорт серия {contractData.client.passport_series} № {contractData.client.passport_number}, 
-                  выдан {contractData.client.passport_issued_by} {contractData.client.passport_issue_date}, 
-                  проживающий(ая) по адресу: {contractData.client.registration_address}, 
+                  Гражданин(ка) <strong>{contractData.client.full_name}</strong>, паспорт: серия № <strong>{contractData.client.passport_series} {contractData.client.passport_number}</strong>, 
+                  выдан <strong>{contractData.client.passport_issued_by}</strong> <strong>{contractData.client.passport_issue_date}</strong>, 
+                  проживающий(ая) по адресу: <strong>{contractData.client.registration_address}</strong>, 
                   именуемый(ая) в дальнейшем «Заказчик», с другой стороны,
                 </p>
 
-                <p className="mb-4">совместно именуемые «Стороны», заключили настоящий Договор о нижеследующем:</p>
+                <p className="mb-4">вместе именуемые «Стороны», заключили настоящий Договор о нижеследующем:</p>
 
                 <h3 className="font-bold mt-6 mb-2">1. ПРЕДМЕТ ДОГОВОРА</h3>
-                <p>1.1. Исполнитель обязуется оказать Заказчику услуги по организации приобретения и доставки автомобиля из Китайской Народной Республики через платформу CarBridge.</p>
+                <p className="mb-2">1.1. Исполнитель обязуется оказать Заказчику услуги по организации приобретения и доставки транспортного средства (далее – «Автомобиль») из Китайской Народной Республики через цифровую платформу CarBridge, а Заказчик обязуется принять и оплатить оказанные услуги.</p>
+                <p className="mb-2">1.2. В комплекс услуг Исполнителя входит:</p>
+                <p className="ml-4">1.2.1. Предоставление доступа к функционалу платформы CarBridge, включая AI-агента для подбора автомобиля;</p>
+                <p className="ml-4">1.2.2. Доступ к тендерной системе для получения предложений от китайских поставщиков;</p>
+                <p className="ml-4">1.2.3. Координация процесса проверки технического состояния автомобиля;</p>
+                <p className="ml-4">1.2.4. Взаимодействие с проверенными подрядчиками (продавцами) в КНР;</p>
+                <p className="ml-4">1.2.5. Организация логистики (выбор перевозчика через тендерную систему);</p>
+                <p className="ml-4">1.2.6. Предоставление доступа к системе GPS-мониторинга для отслеживания груза;</p>
+                <p className="ml-4">1.2.7. Консультационная поддержка по вопросам таможенного оформления.</p>
+
+                <h3 className="font-bold mt-6 mb-2">2. ПОРЯДОК ОКАЗАНИЯ УСЛУГ</h3>
+                <p className="mb-2">2.1. Оказание услуг осуществляется поэтапно через личный кабинет Заказчика на платформе CarBridge:</p>
+                <p className="ml-4">2.1.1. Регистрация Заказчика на платформе и получение доступа к личному кабинету.</p>
+                <p className="ml-4">2.1.2. Подбор автомобиля с использованием AI-агента или самостоятельный выбор из каталога.</p>
+                <p className="ml-4">2.1.3. Формирование и утверждение Заказчиком типовой формы запроса на автомобиль.</p>
+                <p className="ml-4">2.1.4. Внесение Заказчиком предоплаты для активации тендерной системы.</p>
+                <p className="ml-4">2.1.5. Автоматическая рассылка запроса подрядчикам в Китае.</p>
+                <p className="ml-4">2.1.6. Сбор и предоставление Заказчику коммерческих предложений.</p>
+                <p className="ml-4">2.1.7. Выбор Заказчиком конкретного предложения (автомобиля и поставщика).</p>
+                <p className="ml-4">2.1.8. Организация детальной проверки автомобиля (видеообзор, фото, отчет).</p>
+                <p className="ml-4">2.1.9. Заключение договора купли-продажи между Заказчиком и Продавцом.</p>
+                <p className="ml-4">2.1.10. Контроль процесса выкупа и перевода денежных средств.</p>
+                <p className="ml-4">2.1.11. Организация логистики: тендер среди перевозчиков.</p>
+                <p className="ml-4">2.1.12. GPS-мониторинг на всем пути следования автомобиля.</p>
+                <p className="ml-4">2.1.13. Организация таможенного оформления: тендер среди брокеров.</p>
+                <p className="ml-4">2.1.14. Передача автомобиля Заказчику.</p>
+                <p className="mt-2 mb-2">2.2. <strong>Важное условие:</strong> Исполнитель предоставляет информационно-техническую платформу для организации сделки, но не выступает Продавцом автомобиля. Договор купли-продажи заключается напрямую между Заказчиком и китайским поставщиком.</p>
 
                 <h3 className="font-bold mt-6 mb-2">4. СТОИМОСТЬ УСЛУГ И ПОРЯДОК РАСЧЕТОВ</h3>
-                <p>4.1. Предоплата для активации тендерной системы: <strong>{contractData.terms.prepayment_byn} белорусских рублей</strong></p>
-                <p>4.2. Комиссия Исполнителя: <strong>{contractData.terms.platform_commission}</strong> от стоимости автомобиля</p>
-                <p>4.3. Комиссия за оплату через платформу: <strong>{contractData.terms.payment_commission}</strong></p>
+                <p className="mb-2">4.1. Для начала работы Заказчик вносит Предоплату в размере <strong>1500 (Тысяча пятьсот) белорусских рублей</strong>. Данная сумма не подлежит возврату после запуска тендерной процедуры.</p>
+                <p className="mb-2">4.2. Вознаграждение (комиссия) Исполнителя составляет <strong>3% (три процента)</strong> от стоимости автомобиля.</p>
+                <p className="mb-2">4.3. Оплата комиссии производится после выбора автомобиля, но до момента перечисления средств за выкуп.</p>
+                <p className="mb-2">4.5.2. За организацию платежей через платформу взимается комиссия <strong>1,5%</strong> от суммы каждого платежа.</p>
 
-                <div className="mt-8 grid grid-cols-2 gap-8">
+                <h3 className="font-bold mt-6 mb-2">5. ОТВЕТСТВЕННОСТЬ СТОРОН</h3>
+                <p className="mb-2">5.1.1. Исполнитель не несет ответственности за скрытые дефекты и техническое состояние автомобиля.</p>
+                <p className="mb-2">5.1.2. Исполнитель не несет ответственности за нарушение сроков поставки перевозчиками.</p>
+                <p className="mb-2">5.1.3. Исполнитель не несет ответственности за действия таможенных органов.</p>
+
+                <h3 className="font-bold mt-6 mb-2">7. СРОК ДЕЙСТВИЯ</h3>
+                <p className="mb-2">7.1. Договор вступает в силу с момента регистрации на платформе и внесения предоплаты.</p>
+                <p className="mb-2">7.2. Договор действует до полного исполнения Сторонами обязательств.</p>
+
+                <h3 className="font-bold mt-6 mb-2">9. ЗАКЛЮЧИТЕЛЬНЫЕ ПОЛОЖЕНИЯ</h3>
+                <p className="mb-2">9.2. Регистрация на платформе и внесение предоплаты означает полное согласие со всеми условиями настоящего Договора (договор присоединения, ст. 398 ГК РБ).</p>
+
+                <div className="mt-8 grid grid-cols-2 gap-8 border-t pt-6">
                   <div>
                     <h4 className="font-bold mb-2">ИСПОЛНИТЕЛЬ:</h4>
                     <p>{contractData.executor.name}</p>
+                    <p>Юр. адрес: {contractData.executor.address}</p>
                     <p>УНП: {contractData.executor.unp}</p>
-                    <p>{contractData.executor.address}</p>
                     <p className="mt-4">Директор _____________ / К.М. Вотинцев /</p>
+                    <p className="mt-2">М.П.</p>
                   </div>
                   <div>
                     <h4 className="font-bold mb-2">ЗАКАЗЧИК:</h4>
-                    <p>{contractData.client.full_name}</p>
+                    <p>Ф.И.О.: {contractData.client.full_name}</p>
                     <p>Паспорт: {contractData.client.passport_series} {contractData.client.passport_number}</p>
-                    <p>{contractData.client.registration_address}</p>
-                    <p className="mt-4">_____________ / {contractData.client.full_name.split(' ')[0]} /</p>
+                    <p>Адрес: {contractData.client.registration_address}</p>
+                    <p>Телефон: {contractData.client.phone}</p>
+                    <p>Email: {contractData.client.email}</p>
+                    <p className="mt-4">Заказчик _____________ / _____________ /</p>
                   </div>
                 </div>
               </div>
@@ -627,8 +669,25 @@ const Verification = () => {
               <div className="flex gap-4">
                 <Button
                   onClick={() => {
-                    // Generate PDF download
-                    toast.success('PDF договора сохранён');
+                    // Download PDF with auth
+                    const link = document.createElement('a');
+                    link.href = `${API}/verification/contract/download`;
+                    link.target = '_blank';
+                    // Add auth header via fetch
+                    fetch(`${API}/verification/contract/download`, {
+                      headers: { Authorization: `Bearer ${token}` }
+                    })
+                    .then(res => res.blob())
+                    .then(blob => {
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `Dogovor_CarBridge_${contractData.contract_number}.pdf`;
+                      a.click();
+                      window.URL.revokeObjectURL(url);
+                      toast.success('PDF договора сохранён');
+                    })
+                    .catch(() => toast.error('Ошибка скачивания'));
                   }}
                   variant="outline"
                   className="flex-1 border-[#00E5FF]/50 text-[#00E5FF]"
