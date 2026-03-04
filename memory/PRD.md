@@ -82,6 +82,13 @@
   - POST /api/hot-deals - создание предложения (модераторы/подрядчики)
   - POST /api/hot-deals/{deal_id}/add-to-garage - добавление в гараж с авто-привязкой продавца
   - Автоудаление истёкших предложений
+- ✅ **ПАРТНЁРСКАЯ ПРОГРАММА (Dec 2025)**
+  - POST /api/affiliate/register - регистрация в программе
+  - GET /api/affiliate/status - статус партнёра
+  - GET /api/affiliate/referrals - список рефералов
+  - POST /api/affiliate/withdraw - вывод средств
+  - 20% от комиссии CarBridge (3%) с завершённых сделок
+  - Статус "Партнёр" после 3 завершённых сделок рефералов
 
 ### Frontend (100% работает)
 - ✅ Landing page со всеми секциями
