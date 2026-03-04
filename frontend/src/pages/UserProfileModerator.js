@@ -617,55 +617,6 @@ const UserProfileModerator = () => {
         </Tabs>
       </div>
 
-      {/* Verify User Dialog */}
-      <Dialog open={verifyDialog} onOpenChange={setVerifyDialog}>
-        <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Shield size={20} className="text-[#00E5FF]" />
-              Верификация пользователя
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4 mt-4">
-            <div className="p-3 bg-[#0B0F14] rounded-sm">
-              <p className="text-white font-medium">{user?.name}</p>
-              <p className="text-slate-400 text-sm">{user?.email}</p>
-            </div>
-
-            <div>
-              <label className="text-slate-300 text-sm">Комментарий (опционально)</label>
-              <Input
-                value={actionComment}
-                onChange={(e) => setActionComment(e.target.value)}
-                placeholder="Причина решения..."
-                className="mt-1 bg-[#0B0F14] border-[#27272A]"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                onClick={() => handleVerifyUser('approve')}
-                disabled={processing}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white"
-              >
-                {processing ? <Loader2 size={16} className="mr-2 animate-spin" /> : <CheckCircle2 size={16} className="mr-2" />}
-                Подтвердить
-              </Button>
-              <Button
-                onClick={() => handleVerifyUser('reject')}
-                disabled={processing}
-                variant="outline"
-                className="border-red-500/50 text-red-400 hover:bg-red-500/10"
-              >
-                <XCircle size={16} className="mr-2" />
-                Отклонить
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {/* Document Verification Dialog */}
       <Dialog open={!!documentDialog} onOpenChange={() => setDocumentDialog(null)}>
         <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-md">
