@@ -238,6 +238,50 @@ const ModeratorPage = () => {
     }
   };
 
+  const handleApproveVerification = async (verificationId) => {
+    try {
+      await axios.post(`${API}/moderator/verifications/${verificationId}/review`, {
+        action: 'approve',
+        comment: ''
+      }, { headers });
+      toast.success('Верификация подтверждена');
+      fetchData();
+      setSelectedVerification(null);
+    } catch (error) {
+      toast.error('Ошибка при подтверждении');
+    }
+  };
+
+  const handleRejectVerification = async (verificationId) => {
+    try {
+      await axios.post(`${API}/moderator/verifications/${verificationId}/review`, {
+        action: 'reject',
+        comment: ''
+      }, { headers });
+      toast.success('Верификация отклонена');
+      fetchData();
+      setSelectedVerification(null);
+    } catch (error) {
+      toast.error('Ошибка при отклонении');
+    }
+  };
+
+  const handleVerifyDocument = async (verificationId, docId, action) => {
+    try {
+      await axios.post(`${API}/moderator/verifications/${verificationId}/documents/${docId}/verify`, {
+        action,
+        comment: ''
+      }, { headers });
+      toast.success(`Документ ${action === 'approve' ? 'подтверждён' : 'отклонён'}`);
+      // Refresh verification data
+      const response = await axios.get(`${API}/moderator/verifications/${verificationId}`, { headers });
+      setSelectedVerification(response.data);
+      fetchData();
+    } catch (error) {
+      toast.error('Ошибка при проверке документа');
+    }
+  };
+
   const handleCreateTender = async () => {
     if (!newTenderData.brand || !newTenderData.model) {
       toast.error('Заполните марку и модель');
