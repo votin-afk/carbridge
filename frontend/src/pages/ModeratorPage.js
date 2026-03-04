@@ -464,6 +464,15 @@ const ModeratorPage = () => {
                             </td>
                             <td className="p-4">
                               <div className="flex items-center gap-2">
+                                <Link to={`/moderator/user/${u.id}`}>
+                                  <Button
+                                    size="sm"
+                                    className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
+                                  >
+                                    <Eye size={14} className="mr-1" />
+                                    Профиль
+                                  </Button>
+                                </Link>
                                 <Select
                                   value={u.role || 'user'}
                                   onValueChange={(value) => handleUpdateUserRole(u.id, value)}
