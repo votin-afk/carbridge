@@ -45,7 +45,11 @@ import {
   Wallet,
   DollarSign,
   PlusCircle,
-  MinusCircle
+  MinusCircle,
+  FileText,
+  Image,
+  Download,
+  ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
