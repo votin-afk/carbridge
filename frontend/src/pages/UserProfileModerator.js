@@ -229,21 +229,10 @@ const UserProfileModerator = () => {
               ? 'bg-emerald-500/10 border-emerald-500/30' 
               : 'bg-amber-500/10 border-amber-500/30'
           }`}>
-            <div className="flex items-center justify-between mb-2">
-              <Shield size={20} className={account?.is_verified ? 'text-emerald-400' : 'text-amber-400'} />
-              {!account?.is_verified && (
-                <Button
-                  size="sm"
-                  onClick={() => setVerifyDialog(true)}
-                  className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs"
-                >
-                  Проверить
-                </Button>
-              )}
-            </div>
+            <Shield size={20} className={`mb-2 ${account?.is_verified ? 'text-emerald-400' : 'text-amber-400'}`} />
             <p className="text-slate-400 text-xs">Верификация</p>
             <p className={`font-semibold ${account?.is_verified ? 'text-emerald-400' : 'text-amber-400'}`}>
-              {account?.is_verified ? 'Подтверждён' : 'Не подтверждён'}
+              {account?.is_verified ? 'Подтверждён' : 'Ожидает'}
             </p>
           </div>
 
