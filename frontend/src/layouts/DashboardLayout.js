@@ -13,7 +13,9 @@ import {
   X,
   Calculator,
   Bell,
-  ChevronRight
+  ChevronRight,
+  Shield,
+  ClipboardList
 } from 'lucide-react';
 
 const DashboardLayout = () => {
