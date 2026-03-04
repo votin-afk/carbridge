@@ -104,6 +104,11 @@
   - GET /api/verification/contract - генерация договора CarBridge
   - POST /api/verification/sign-contract - подписание договора
   - Номер договора формат: CB-YYYYMMDD-XXXXXXXX
+  - **Модераторский доступ к документам:**
+    - GET /api/moderator/verifications/pending - список на проверку
+    - GET /api/moderator/verifications/{id} - детали верификации
+    - POST /api/moderator/verifications/{id}/review - подтвердить/отклонить
+    - POST /api/moderator/verifications/{id}/documents/{doc_id}/verify - проверка документа
 - ✅ **ЗАЯВКИ НА ПОДБОР АВТОМОБИЛЯ (Mar 2026)**
   - POST /api/applications/create - создание заявки с параметрами
   - GET /api/applications/my - список заявок пользователя
