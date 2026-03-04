@@ -87,10 +87,12 @@ const ModeratorPage = () => {
   const [deals, setDeals] = useState([]);
   const [tenders, setTenders] = useState([]);
   const [users, setUsers] = useState([]);
+  const [verifications, setVerifications] = useState([]);
   
   // Dialog states
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [selectedDeal, setSelectedDeal] = useState(null);
+  const [selectedVerification, setSelectedVerification] = useState(null);
   const [newTenderDialog, setNewTenderDialog] = useState(false);
   const [newTenderData, setNewTenderData] = useState({ brand: '', model: '', budget: '' });
   
