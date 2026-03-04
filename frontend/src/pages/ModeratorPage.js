@@ -772,6 +772,162 @@ const ModeratorPage = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Verification Details Dialog */}
+        <Dialog open={!!selectedVerification} onOpenChange={() => setSelectedVerification(null)}>
+          <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText size={20} className="text-[#00E5FF]" />
+                Верификация клиента
+              </DialogTitle>
+            </DialogHeader>
+            
+            {selectedVerification && (
+              <div className="space-y-6 mt-4">
+                {/* Client Info */}
+                <div className="p-4 bg-[#0B0F14] rounded-sm border border-[#27272A]">
+                  <h4 className="text-[#00E5FF] font-medium mb-3">Данные клиента</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-slate-500">ФИО</p>
+                      <p className="text-white">{selectedVerification.full_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Тип</p>
+                      <p className="text-white">{selectedVerification.client_type === 'legal' ? 'Юр. лицо' : 'Физ. лицо'}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Паспорт</p>
+                      <p className="text-white">{selectedVerification.passport_series} {selectedVerification.passport_number}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Выдан</p>
+                      <p className="text-white">{selectedVerification.passport_issued_by}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Телефон</p>
+                      <p className="text-white">{selectedVerification.phone}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Email</p>
+                      <p className="text-white">{selectedVerification.email}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-slate-500">Адрес регистрации</p>
+                      <p className="text-white">{selectedVerification.registration_address}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contract Info */}
+                <div className="p-4 bg-[#0B0F14] rounded-sm border border-[#27272A]">
+                  <h4 className="text-[#00E5FF] font-medium mb-3">Договор</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-slate-500">Номер договора</p>
+                      <p className="text-white font-mono">{selectedVerification.contract_number}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Подписан клиентом</p>
+                      <p className={selectedVerification.contract_signed ? 'text-emerald-400' : 'text-amber-400'}>
+                        {selectedVerification.contract_signed ? 'Да' : 'Нет'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Documents */}
+                <div className="p-4 bg-[#0B0F14] rounded-sm border border-[#27272A]">
+                  <h4 className="text-[#00E5FF] font-medium mb-3">Загруженные документы</h4>
+                  {selectedVerification.documents?.length > 0 ? (
+                    <div className="space-y-3">
+                      {selectedVerification.documents.map((doc, idx) => (
+                        <div key={doc.id || idx} className="flex items-center justify-between p-3 bg-[#15191E] rounded-sm border border-[#27272A]">
+                          <div className="flex items-center gap-3">
+                            <Image size={20} className="text-slate-400" />
+                            <div>
+                              <p className="text-white text-sm">
+                                {doc.type === 'passport_scan' ? 'Скан паспорта (разворот)' :
+                                 doc.type === 'passport_back' ? 'Скан паспорта (прописка)' :
+                                 doc.type === 'driver_license' ? 'Водительское удостоверение' :
+                                 doc.name || doc.type}
+                              </p>
+                              <p className="text-slate-500 text-xs">
+                                Загружен: {new Date(doc.uploaded_at).toLocaleDateString('ru-RU')}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {doc.url && (
+                              <Button size="sm" variant="ghost" asChild className="text-slate-400 hover:text-[#00E5FF]">
+                                <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink size={16} />
+                                </a>
+                              </Button>
+                            )}
+                            {doc.verified === true ? (
+                              <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded flex items-center gap-1">
+                                <CheckCircle2 size={12} />
+                                Подтверждён
+                              </span>
+                            ) : doc.verified === false ? (
+                              <span className="px-2 py-1 bg-red-500/10 text-red-400 text-xs rounded flex items-center gap-1">
+                                <XCircle size={12} />
+                                Отклонён
+                              </span>
+                            ) : (
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  className="bg-emerald-500 hover:bg-emerald-600 text-white h-7 px-2"
+                                  onClick={() => handleVerifyDocument(selectedVerification.id, doc.id, 'approve')}
+                                >
+                                  <CheckCircle2 size={14} />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-red-500/50 text-red-400 h-7 px-2"
+                                  onClick={() => handleVerifyDocument(selectedVerification.id, doc.id, 'reject')}
+                                >
+                                  <XCircle size={14} />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-slate-500 text-sm">Документы не загружены</p>
+                  )}
+                </div>
+
+                {/* Actions */}
+                {selectedVerification.status !== 'approved' && selectedVerification.status !== 'rejected' && (
+                  <div className="flex gap-3">
+                    <Button
+                      className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white"
+                      onClick={() => handleApproveVerification(selectedVerification.id)}
+                    >
+                      <CheckCircle2 size={16} className="mr-2" />
+                      Подтвердить верификацию
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/10"
+                      onClick={() => handleRejectVerification(selectedVerification.id)}
+                    >
+                      <XCircle size={16} className="mr-2" />
+                      Отклонить
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
