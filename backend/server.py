@@ -1337,6 +1337,401 @@ async def get_user_account_admin(user_id: str, current_user: dict = Depends(requ
         "transactions": transactions
     }
 
+# ==================== MODERATOR USER MANAGEMENT ENDPOINTS ====================
+
+# Deal stages that require moderator approval
+DEAL_STAGES = ["verification", "contract", "inspection", "payment", "export", "logistics", "delivery"]
+
+@api_router.get("/moderator/users/{user_id}/full-profile")
+async def get_user_full_profile(user_id: str, current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Get complete user profile with all data for moderator review"""
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    account = await db.accounts.find_one({"user_id": user_id}, {"_id": 0})
+    
+    # Get user's cars in garage
+    cars = await db.garage.find({"user_id": user_id}, {"_id": 0}).to_list(100)
+    
+    # Get user's tenders
+    tenders = await db.tenders.find({"user_id": user_id}, {"_id": 0}).to_list(100)
+    
+    # Get user's documents
+    documents = await db.documents.find({"user_id": user_id}, {"_id": 0}).to_list(100)
+    
+    # Get user's deals
+    deals = await db.deals.find({"user_id": user_id}, {"_id": 0}).to_list(100)
+    
+    # Get affiliate status if exists
+    affiliate = await db.affiliates.find_one({"user_id": user_id}, {"_id": 0})
+    
+    return {
+        "user": user,
+        "account": account or {
+            "balance": 0.0, 
+            "is_verified": False, 
+            "contract_signed": False,
+            "verification_status": "pending"
+        },
+        "cars": cars,
+        "tenders": tenders,
+        "documents": documents,
+        "deals": deals,
+        "affiliate": affiliate
+    }
+
+@api_router.post("/moderator/users/{user_id}/verify")
+async def verify_user(user_id: str, data: dict, current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Verify or reject user verification"""
+    action = data.get("action")  # "approve" or "reject"
+    reason = data.get("reason", "")
+    
+    if action not in ["approve", "reject"]:
+        raise HTTPException(status_code=400, detail="Неверное действие")
+    
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    is_verified = action == "approve"
+    verification_status = "approved" if is_verified else "rejected"
+    
+    await db.accounts.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                "is_verified": is_verified,
+                "verification_status": verification_status,
+                "verification_date": datetime.now(timezone.utc).isoformat(),
+                "verified_by": current_user["id"],
+                "verified_by_name": current_user.get("name", ""),
+                "verification_reason": reason
+            },
+            "$setOnInsert": {
+                "balance": 0.0,
+                "contract_signed": False,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+        },
+        upsert=True
+    )
+    
+    # Log moderation action
+    await db.moderation_logs.insert_one({
+        "id": str(uuid.uuid4()),
+        "action": "user_verification",
+        "target_type": "user",
+        "target_id": user_id,
+        "moderator_id": current_user["id"],
+        "moderator_name": current_user.get("name", ""),
+        "result": verification_status,
+        "reason": reason,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {
+        "message": f"Пользователь {'верифицирован' if is_verified else 'отклонён'}",
+        "is_verified": is_verified,
+        "verification_status": verification_status
+    }
+
+@api_router.post("/moderator/users/{user_id}/sign-contract")
+async def sign_user_contract(user_id: str, data: dict, current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Approve or sign user contract"""
+    action = data.get("action")  # "approve" or "reject"
+    
+    if action not in ["approve", "reject"]:
+        raise HTTPException(status_code=400, detail="Неверное действие")
+    
+    contract_signed = action == "approve"
+    
+    await db.accounts.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                "contract_signed": contract_signed,
+                "contract_status": "signed" if contract_signed else "rejected",
+                "contract_date": datetime.now(timezone.utc).isoformat(),
+                "contract_approved_by": current_user["id"]
+            }
+        },
+        upsert=True
+    )
+    
+    return {
+        "message": f"Договор {'подписан' if contract_signed else 'отклонён'}",
+        "contract_signed": contract_signed
+    }
+
+@api_router.post("/moderator/documents/{doc_id}/verify")
+async def verify_document(doc_id: str, data: dict, current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Verify a user document"""
+    action = data.get("action")  # "approve" or "reject"
+    comment = data.get("comment", "")
+    
+    if action not in ["approve", "reject"]:
+        raise HTTPException(status_code=400, detail="Неверное действие")
+    
+    doc = await db.documents.find_one({"id": doc_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    
+    is_verified = action == "approve"
+    
+    await db.documents.update_one(
+        {"id": doc_id},
+        {
+            "$set": {
+                "is_verified": is_verified,
+                "verification_status": "approved" if is_verified else "rejected",
+                "verified_at": datetime.now(timezone.utc).isoformat(),
+                "verified_by": current_user["id"],
+                "verified_by_name": current_user.get("name", ""),
+                "verification_comment": comment
+            }
+        }
+    )
+    
+    # Log moderation action
+    await db.moderation_logs.insert_one({
+        "id": str(uuid.uuid4()),
+        "action": "document_verification",
+        "target_type": "document",
+        "target_id": doc_id,
+        "user_id": doc.get("user_id"),
+        "moderator_id": current_user["id"],
+        "moderator_name": current_user.get("name", ""),
+        "result": "approved" if is_verified else "rejected",
+        "comment": comment,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {
+        "message": f"Документ {'проверен' if is_verified else 'отклонён'}",
+        "is_verified": is_verified
+    }
+
+@api_router.post("/moderator/deals/{deal_id}/approve-stage")
+async def approve_deal_stage(deal_id: str, data: dict, current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Approve current deal stage and allow progression to next stage"""
+    action = data.get("action")  # "approve" or "reject"
+    comment = data.get("comment", "")
+    
+    if action not in ["approve", "reject"]:
+        raise HTTPException(status_code=400, detail="Неверное действие")
+    
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    current_stage = deal.get("current_stage", "verification")
+    is_approved = action == "approve"
+    
+    # Update stage approval
+    stage_approvals = deal.get("stage_approvals", {})
+    stage_approvals[current_stage] = {
+        "approved": is_approved,
+        "approved_by": current_user["id"],
+        "approved_by_name": current_user.get("name", ""),
+        "approved_at": datetime.now(timezone.utc).isoformat(),
+        "comment": comment
+    }
+    
+    update_data = {
+        "stage_approvals": stage_approvals,
+        f"stages.{current_stage}.moderator_approved": is_approved,
+        f"stages.{current_stage}.approval_date": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # If approved, move to next stage
+    next_stage = None
+    if is_approved:
+        current_idx = DEAL_STAGES.index(current_stage) if current_stage in DEAL_STAGES else 0
+        if current_idx < len(DEAL_STAGES) - 1:
+            next_stage = DEAL_STAGES[current_idx + 1]
+            update_data["current_stage"] = next_stage
+            update_data["can_proceed"] = True
+        else:
+            # Final stage
+            update_data["status"] = "completed"
+            update_data["completed_at"] = datetime.now(timezone.utc).isoformat()
+    else:
+        update_data["can_proceed"] = False
+        update_data["rejection_reason"] = comment
+    
+    await db.deals.update_one({"id": deal_id}, {"$set": update_data})
+    
+    # Log moderation action
+    await db.moderation_logs.insert_one({
+        "id": str(uuid.uuid4()),
+        "action": "deal_stage_approval",
+        "target_type": "deal",
+        "target_id": deal_id,
+        "stage": current_stage,
+        "moderator_id": current_user["id"],
+        "moderator_name": current_user.get("name", ""),
+        "result": "approved" if is_approved else "rejected",
+        "comment": comment,
+        "next_stage": next_stage,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {
+        "message": f"Этап '{current_stage}' {'одобрен' if is_approved else 'отклонён'}",
+        "current_stage": current_stage,
+        "next_stage": next_stage if is_approved else None,
+        "can_proceed": is_approved
+    }
+
+@api_router.get("/moderator/deals/{deal_id}")
+async def get_deal_details(deal_id: str, current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Get detailed deal information for moderator"""
+    deal = await db.deals.find_one({"id": deal_id}, {"_id": 0})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # Get related user
+    user = await db.users.find_one({"id": deal.get("user_id")}, {"_id": 0, "password_hash": 0})
+    
+    # Get related car
+    car = await db.garage.find_one({"id": deal.get("car_id")}, {"_id": 0})
+    
+    # Get related documents
+    documents = await db.documents.find(
+        {"deal_id": deal_id},
+        {"_id": 0}
+    ).to_list(100)
+    
+    return {
+        "deal": deal,
+        "user": user,
+        "car": car,
+        "documents": documents,
+        "stages": DEAL_STAGES
+    }
+
+@api_router.post("/deals/create")
+async def create_deal(data: dict, current_user: dict = Depends(get_current_user)):
+    """Create a new deal from a car in garage"""
+    car_id = data.get("car_id")
+    
+    car = await db.garage.find_one({"id": car_id, "user_id": current_user["id"]})
+    if not car:
+        raise HTTPException(status_code=404, detail="Автомобиль не найден")
+    
+    # Check if user is verified
+    account = await db.accounts.find_one({"user_id": current_user["id"]})
+    if not account or not account.get("is_verified"):
+        raise HTTPException(status_code=403, detail="Для создания сделки необходима верификация")
+    
+    deal_id = str(uuid.uuid4())
+    
+    deal_doc = {
+        "id": deal_id,
+        "user_id": current_user["id"],
+        "car_id": car_id,
+        "car_info": {
+            "brand": car.get("brand"),
+            "model": car.get("model"),
+            "year": car.get("year"),
+            "price_cny": car.get("price_cny"),
+            "calculated_price_usd": car.get("calculated_price_usd")
+        },
+        "status": "active",
+        "current_stage": "verification",
+        "can_proceed": False,  # Needs moderator approval
+        "stage_approvals": {},
+        "stages": {
+            "verification": {"status": "pending", "moderator_approved": False},
+            "contract": {"status": "pending", "moderator_approved": False},
+            "inspection": {"status": "pending", "moderator_approved": False},
+            "payment": {"status": "pending", "moderator_approved": False},
+            "export": {"status": "pending", "moderator_approved": False},
+            "logistics": {"status": "pending", "moderator_approved": False},
+            "delivery": {"status": "pending", "moderator_approved": False}
+        },
+        "contractors": car.get("contractors", {}),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.deals.insert_one(deal_doc)
+    
+    # Update car status
+    await db.garage.update_one(
+        {"id": car_id},
+        {"$set": {"status": "in_deal", "deal_id": deal_id}}
+    )
+    
+    return {
+        "message": "Сделка создана",
+        "deal_id": deal_id,
+        "current_stage": "verification"
+    }
+
+@api_router.get("/deals")
+async def get_user_deals(current_user: dict = Depends(get_current_user)):
+    """Get all deals for current user"""
+    deals = await db.deals.find(
+        {"user_id": current_user["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return deals
+
+@api_router.get("/deals/{deal_id}")
+async def get_deal(deal_id: str, current_user: dict = Depends(get_current_user)):
+    """Get specific deal for current user"""
+    deal = await db.deals.find_one(
+        {"id": deal_id, "user_id": current_user["id"]},
+        {"_id": 0}
+    )
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    return deal
+
+@api_router.get("/moderator/pending-approvals")
+async def get_pending_approvals(current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Get all items pending moderator approval"""
+    # Users pending verification
+    pending_users = await db.accounts.find(
+        {"verification_status": {"$in": [None, "pending"]}},
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Get user info for pending accounts
+    pending_user_ids = [u.get("user_id") for u in pending_users if u.get("user_id")]
+    users_info = {}
+    if pending_user_ids:
+        users = await db.users.find(
+            {"id": {"$in": pending_user_ids}},
+            {"_id": 0, "password_hash": 0}
+        ).to_list(100)
+        users_info = {u["id"]: u for u in users}
+    
+    # Documents pending verification
+    pending_documents = await db.documents.find(
+        {"is_verified": {"$ne": True}},
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Deals pending stage approval
+    pending_deals = await db.deals.find(
+        {"can_proceed": False, "status": "active"},
+        {"_id": 0}
+    ).to_list(100)
+    
+    return {
+        "pending_users": [
+            {**u, "user_info": users_info.get(u.get("user_id"), {})}
+            for u in pending_users
+        ],
+        "pending_documents": pending_documents,
+        "pending_deals": pending_deals
+    }
+
 @api_router.get("/user/role")
 async def get_user_role(current_user: dict = Depends(get_current_user)):
     """Get current user's role"""
