@@ -14,6 +14,7 @@ import ContractorsPage from "./pages/ContractorsPage";
 import ContractorRegisterPage from "./pages/ContractorRegisterPage";
 import ModeratorPage from "./pages/ModeratorPage";
 import HotDealsPage from "./pages/HotDealsPage";
+import AffiliatePage from "./pages/AffiliatePage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AIChat from "./components/AIChat";
 import "@/App.css";
@@ -31,6 +32,7 @@ function App() {
           <Route path="/contractor-register" element={<ContractorRegisterPage />} />
           <Route path="/moderator" element={<ModeratorPage />} />
           <Route path="/hot-deals" element={<HotDealsPage />} />
+          <Route path="/partners" element={<AffiliatePage />} />
           
           <Route path="/dashboard" element={
             <ProtectedRoute>
