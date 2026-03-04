@@ -999,13 +999,19 @@ const MyGarage = () => {
       {/* Cars Grid */}
       {cars.length > 0 ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {cars.map((car) => (
+          {cars.map((car) => {
+            const isExpanded = expandedCardId === car.id;
+            
+            return (
             <div 
               key={car.id}
               className="bg-[#15191E] border border-[#27272A] rounded-sm overflow-hidden card-hover"
             >
-              {/* Image */}
-              <div className="h-40 bg-[#1C2128] relative">
+              {/* Image - Clickable to expand */}
+              <div 
+                className="h-40 bg-[#1C2128] relative cursor-pointer"
+                onClick={() => toggleCardExpansion(car.id)}
+              >
                 {car.image_url ? (
                   <img 
                     src={car.image_url} 
@@ -1020,17 +1026,42 @@ const MyGarage = () => {
                 <div className="absolute top-3 right-3">
                   {getStatusBadge(car.status)}
                 </div>
+                {/* Expand indicator */}
+                <div className="absolute bottom-2 right-2 bg-black/50 rounded-full p-1">
+                  {isExpanded ? (
+                    <ChevronUp size={16} className="text-white" />
+                  ) : (
+                    <ChevronDown size={16} className="text-white" />
+                  )}
+                </div>
               </div>
 
               {/* Content */}
               <div className="p-4">
+                {/* Header with title and actions */}
                 <div className="flex items-start justify-between mb-2">
-                  <h3 className="text-white font-semibold text-lg">
-                    {car.brand} {car.model}
-                  </h3>
-                  <span className="text-slate-400 text-sm">
-                    ¥{car.price_cny?.toLocaleString()}
-                  </span>
+                  <div 
+                    className="flex-1 cursor-pointer"
+                    onClick={() => toggleCardExpansion(car.id)}
+                  >
+                    <h3 className="text-white font-semibold text-lg">
+                      {car.brand} {car.model}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {/* Edit Button */}
+                    <button
+                      data-testid={`edit-car-${car.id}`}
+                      onClick={(e) => { e.stopPropagation(); openEditDialog(car); }}
+                      className="p-1.5 border border-[#27272A] rounded-sm text-slate-400 hover:text-[#00E5FF] hover:border-[#00E5FF]"
+                      title="Редактировать"
+                    >
+                      <Edit3 size={14} />
+                    </button>
+                    <span className="text-slate-400 text-sm">
+                      ¥{car.price_cny?.toLocaleString()}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Belarus Price */}
@@ -1042,7 +1073,7 @@ const MyGarage = () => {
                   </div>
                 )}
 
-                <div className="flex flex-wrap gap-2 text-sm text-slate-400 mb-4">
+                <div className="flex flex-wrap gap-2 text-sm text-slate-400 mb-3">
                   <span>{car.year}</span>
                   <span>•</span>
                   <span>{getEngineTypeLabel(car.engine_type)}</span>
@@ -1060,194 +1091,221 @@ const MyGarage = () => {
                   )}
                 </div>
 
-                {/* Contractor Selection Stages */}
-                <div className="mb-4 space-y-2">
-                  <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Выбор подрядчиков</p>
-                  {['inspection', 'export', 'logistics'].map(stage => {
-                    const config = stageConfig[stage];
-                    const StageIcon = config.icon;
-                    const assignedContractor = car.contractors?.[stage];
-                    
-                    return (
-                      <div 
-                        key={stage}
-                        className={`flex items-center justify-between p-2 rounded-sm border ${
-                          assignedContractor ? config.borderColor : 'border-[#27272A]'
-                        } ${assignedContractor ? config.bgColor : 'bg-[#0B0F14]'}`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <StageIcon size={14} className={config.color} />
-                          <span className="text-slate-400 text-sm">{config.label}</span>
-                        </div>
+                {/* Notes preview */}
+                {car.notes && (
+                  <div className="mb-3 p-2 bg-amber-500/10 border border-amber-500/20 rounded-sm">
+                    <div className="flex items-start gap-2">
+                      <StickyNote size={14} className="text-amber-400 mt-0.5 flex-shrink-0" />
+                      <p className="text-amber-300 text-sm line-clamp-2">{car.notes}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Expandable Section */}
+                {isExpanded && (
+                  <div className="border-t border-[#27272A] pt-4 mt-3 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                    {/* Contractor Selection Stages */}
+                    <div className="space-y-2">
+                      <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Выбор подрядчиков</p>
+                      {['inspection', 'export', 'logistics'].map(stage => {
+                        const config = stageConfig[stage];
+                        const StageIcon = config.icon;
+                        const assignedContractor = car.contractors?.[stage];
                         
-                        {assignedContractor ? (
+                        return (
+                          <div 
+                            key={stage}
+                            className={`flex items-center justify-between p-2 rounded-sm border ${
+                              assignedContractor ? config.borderColor : 'border-[#27272A]'
+                            } ${assignedContractor ? config.bgColor : 'bg-[#0B0F14]'}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <StageIcon size={14} className={config.color} />
+                              <span className="text-slate-400 text-sm">{config.label}</span>
+                            </div>
+                            
+                            {assignedContractor ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-white text-sm font-medium">{assignedContractor.contractor_name}</span>
+                                <button
+                                  onClick={() => removeContractor(car.id, stage)}
+                                  className="text-slate-500 hover:text-red-400"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => openContractorDialog(car.id, stage)}
+                                className={`text-xs px-2 py-1 rounded-sm ${config.bgColor} ${config.color} hover:opacity-80`}
+                              >
+                                Выбрать
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                      
+                      {/* Leasing Section - Special */}
+                      {car.calculated_price_usd && (
+                        <div 
+                          className={`flex items-center justify-between p-2 rounded-sm border ${
+                            car.contractors?.leasing ? 'border-purple-500/30 bg-purple-500/10' : 'border-[#27272A] bg-[#0B0F14]'
+                          }`}
+                        >
                           <div className="flex items-center gap-2">
-                            <span className="text-white text-sm font-medium">{assignedContractor.contractor_name}</span>
+                            <Banknote size={14} className="text-purple-400" />
+                            <span className="text-slate-400 text-sm">Лизинг</span>
+                          </div>
+                          
+                          {car.contractors?.leasing ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-white text-sm font-medium">{car.contractors.leasing.contractor_name}</span>
+                              <button
+                                onClick={() => removeContractor(car.id, 'leasing')}
+                                className="text-slate-500 hover:text-red-400"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          ) : (
                             <button
-                              onClick={() => removeContractor(car.id, stage)}
-                              className="text-slate-500 hover:text-red-400"
+                              data-testid={`open-leasing-calc-${car.id}`}
+                              onClick={() => openLeasingDialog(car)}
+                              className="text-xs px-2 py-1 rounded-sm bg-purple-500/10 text-purple-400 hover:opacity-80 flex items-center gap-1"
                             >
-                              <X size={14} />
+                              <Calculator size={12} />
+                              Калькулятор
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        {car.status === 'saved' && (
+                          <Button
+                            data-testid={`start-tender-${car.id}`}
+                            onClick={() => handleStartTender(car.id)}
+                            disabled={!canPerformActions}
+                            className={`flex-1 text-sm ${
+                              canPerformActions 
+                                ? 'bg-[#00E5FF] hover:bg-[#22D3EE] text-black' 
+                                : 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                            }`}
+                          >
+                            {!canPerformActions && <Lock size={12} className="mr-1" />}
+                            <Send size={14} className="mr-1" />
+                            Запустить тендер
+                          </Button>
+                        )}
+                        {car.source_url && (
+                          <a 
+                            href={car.source_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-[#00E5FF] hover:border-[#00E5FF]"
+                          >
+                            <ExternalLink size={16} />
+                          </a>
+                        )}
+                        
+                        {/* Delete Button with Confirmation */}
+                        {deleteConfirmId === car.id ? (
+                          <div className="flex gap-1">
+                            <button
+                              data-testid={`confirm-delete-${car.id}`}
+                              onClick={() => handleDeleteCar(car.id)}
+                              disabled={deleting}
+                              className="p-2 bg-red-500 rounded-sm text-white hover:bg-red-600 disabled:opacity-50"
+                            >
+                              {deleting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                            </button>
+                            <button
+                              data-testid={`cancel-delete-${car.id}`}
+                              onClick={cancelDelete}
+                              className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-white"
+                            >
+                              ✕
                             </button>
                           </div>
                         ) : (
                           <button
-                            onClick={() => openContractorDialog(car.id, stage)}
-                            className={`text-xs px-2 py-1 rounded-sm ${config.bgColor} ${config.color} hover:opacity-80`}
+                            data-testid={`delete-car-${car.id}`}
+                            onClick={() => confirmDelete(car.id)}
+                            className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-red-400 hover:border-red-400"
                           >
-                            Выбрать
+                            <Trash2 size={16} />
                           </button>
                         )}
                       </div>
-                    );
-                  })}
-                  
-                  {/* Leasing Section - Special */}
-                  {car.calculated_price_usd && (
-                    <div 
-                      className={`flex items-center justify-between p-2 rounded-sm border ${
-                        car.contractors?.leasing ? 'border-purple-500/30 bg-purple-500/10' : 'border-[#27272A] bg-[#0B0F14]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Banknote size={14} className="text-purple-400" />
-                        <span className="text-slate-400 text-sm">Лизинг</span>
-                      </div>
                       
-                      {car.contractors?.leasing ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-white text-sm font-medium">{car.contractors.leasing.contractor_name}</span>
-                          <button
-                            onClick={() => removeContractor(car.id, 'leasing')}
-                            className="text-slate-500 hover:text-red-400"
-                          >
-                            <X size={14} />
-                          </button>
+                      {/* Request Report Button */}
+                      {car.status === 'saved' && (
+                        <Button
+                          data-testid={`request-report-${car.id}`}
+                          onClick={() => handleRequestReport(car.id)}
+                          disabled={!canPerformActions}
+                          variant="outline"
+                          className={`w-full text-sm ${
+                            canPerformActions 
+                              ? 'border-[#27272A] text-slate-300 hover:border-[#00E5FF] hover:text-[#00E5FF]' 
+                              : 'border-slate-700 text-slate-500 cursor-not-allowed'
+                          }`}
+                        >
+                          {!canPerformActions && <Lock size={12} className="mr-1" />}
+                          <FileSearch size={14} className="mr-1" />
+                          Запросить отчёт о состоянии
+                        </Button>
+                      )}
+                      
+                      {/* Manager Help Button - $200 paid service */}
+                      {car.status === 'saved' && !car.manager_help_requested && (
+                        <Button
+                          data-testid={`request-manager-help-${car.id}`}
+                          onClick={() => handleRequestManagerHelp(car.id)}
+                          disabled={requestingHelp === car.id || userBalance < 200}
+                          variant="outline"
+                          className={`w-full text-sm ${
+                            userBalance >= 200
+                              ? 'border-purple-500/50 text-purple-400 hover:border-purple-400 hover:bg-purple-500/10'
+                              : 'border-slate-700 text-slate-500 cursor-not-allowed'
+                          }`}
+                        >
+                          {requestingHelp === car.id ? (
+                            <Loader2 size={14} className="mr-1 animate-spin" />
+                          ) : (
+                            <Headphones size={14} className="mr-1" />
+                          )}
+                          Помощь менеджера — $200
+                        </Button>
+                      )}
+                      {car.manager_help_requested && (
+                        <div className="flex items-center gap-2 p-2 bg-purple-500/10 border border-purple-500/30 rounded-sm">
+                          <CheckCircle2 size={14} className="text-purple-400" />
+                          <span className="text-purple-400 text-sm">Менеджер назначен</span>
                         </div>
-                      ) : (
-                        <button
-                          data-testid={`open-leasing-calc-${car.id}`}
-                          onClick={() => openLeasingDialog(car)}
-                          className="text-xs px-2 py-1 rounded-sm bg-purple-500/10 text-purple-400 hover:opacity-80 flex items-center gap-1"
-                        >
-                          <Calculator size={12} />
-                          Калькулятор
-                        </button>
                       )}
                     </div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    {car.status === 'saved' && (
-                      <Button
-                        data-testid={`start-tender-${car.id}`}
-                        onClick={() => handleStartTender(car.id)}
-                        disabled={!canPerformActions}
-                        className={`flex-1 text-sm ${
-                          canPerformActions 
-                            ? 'bg-[#00E5FF] hover:bg-[#22D3EE] text-black' 
-                            : 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                        }`}
-                      >
-                        {!canPerformActions && <Lock size={12} className="mr-1" />}
-                        <Send size={14} className="mr-1" />
-                        Запустить тендер
-                      </Button>
-                    )}
-                    {car.source_url && (
-                      <a 
-                        href={car.source_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-[#00E5FF] hover:border-[#00E5FF]"
-                      >
-                        <ExternalLink size={16} />
-                      </a>
-                    )}
-                    
-                    {/* Delete Button with Confirmation */}
-                    {deleteConfirmId === car.id ? (
-                      <div className="flex gap-1">
-                        <button
-                          data-testid={`confirm-delete-${car.id}`}
-                          onClick={() => handleDeleteCar(car.id)}
-                          disabled={deleting}
-                          className="p-2 bg-red-500 rounded-sm text-white hover:bg-red-600 disabled:opacity-50"
-                        >
-                          {deleting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                        </button>
-                        <button
-                          data-testid={`cancel-delete-${car.id}`}
-                          onClick={cancelDelete}
-                          className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-white"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        data-testid={`delete-car-${car.id}`}
-                        onClick={() => confirmDelete(car.id)}
-                        className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-red-400 hover:border-red-400"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
                   </div>
-                  
-                  {/* Request Report Button */}
-                  {car.status === 'saved' && (
-                    <Button
-                      data-testid={`request-report-${car.id}`}
-                      onClick={() => handleRequestReport(car.id)}
-                      disabled={!canPerformActions}
-                      variant="outline"
-                      className={`w-full text-sm ${
-                        canPerformActions 
-                          ? 'border-[#27272A] text-slate-300 hover:border-[#00E5FF] hover:text-[#00E5FF]' 
-                          : 'border-slate-700 text-slate-500 cursor-not-allowed'
-                      }`}
-                    >
-                      {!canPerformActions && <Lock size={12} className="mr-1" />}
-                      <FileSearch size={14} className="mr-1" />
-                      Запросить отчёт о состоянии
-                    </Button>
-                  )}
-                  
-                  {/* Manager Help Button - $200 paid service */}
-                  {car.status === 'saved' && !car.manager_help_requested && (
-                    <Button
-                      data-testid={`request-manager-help-${car.id}`}
-                      onClick={() => handleRequestManagerHelp(car.id)}
-                      disabled={requestingHelp === car.id || userBalance < 200}
-                      variant="outline"
-                      className={`w-full text-sm ${
-                        userBalance >= 200
-                          ? 'border-purple-500/50 text-purple-400 hover:border-purple-400 hover:bg-purple-500/10'
-                          : 'border-slate-700 text-slate-500 cursor-not-allowed'
-                      }`}
-                    >
-                      {requestingHelp === car.id ? (
-                        <Loader2 size={14} className="mr-1 animate-spin" />
-                      ) : (
-                        <Headphones size={14} className="mr-1" />
-                      )}
-                      Помощь менеджера — $200
-                    </Button>
-                  )}
-                  {car.manager_help_requested && (
-                    <div className="flex items-center gap-2 p-2 bg-purple-500/10 border border-purple-500/30 rounded-sm">
-                      <CheckCircle2 size={14} className="text-purple-400" />
-                      <span className="text-purple-400 text-sm">Менеджер назначен</span>
-                    </div>
-                  )}
-                </div>
+                )}
+
+                {/* Collapsed state - show expand hint */}
+                {!isExpanded && (
+                  <button
+                    onClick={() => toggleCardExpansion(car.id)}
+                    className="w-full mt-2 py-2 text-slate-500 text-sm hover:text-slate-300 flex items-center justify-center gap-1 border border-dashed border-[#27272A] rounded-sm hover:border-slate-500"
+                  >
+                    <ChevronDown size={14} />
+                    Показать подрядчиков и действия
+                  </button>
+                )}
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       ) : (
         <div className="text-center py-16 bg-[#15191E] border border-[#27272A] rounded-sm">
