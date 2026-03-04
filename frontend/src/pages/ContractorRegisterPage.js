@@ -56,10 +56,10 @@ const ContractorRegisterPage = () => {
   const [formData, setFormData] = useState({
     // Step 1 - Company Info
     company_name: '',
+    country: 'CN', // BY or CN
     contractor_type: '',
     registration_number: '',
-    country: '',
-    city: '',
+    legal_address: '',
     
     // Step 2 - Contact Info
     contact_person: '',
@@ -71,12 +71,10 @@ const ContractorRegisterPage = () => {
     telegram: '',
     website: '',
     
-    // Step 3 - Services
+    // Step 3 - Services (multiple selection)
+    services: [],
     description: '',
-    services: '',
-    price_range: '',
     experience_years: '',
-    deals_completed: '',
     
     // Step 4 - Documents
     license_info: '',
