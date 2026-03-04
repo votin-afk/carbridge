@@ -1299,6 +1299,64 @@ async def delete_car(car_id: str, current_user: dict = Depends(get_current_user)
         raise HTTPException(status_code=404, detail="Car not found")
     return {"message": "Car deleted"}
 
+class CarUpdate(BaseModel):
+    year: Optional[int] = None
+    mileage: Optional[int] = None
+    price_cny: Optional[float] = None
+    engine_type: Optional[Literal["ice", "hybrid", "electric"]] = None
+    engine_volume: Optional[int] = None
+    notes: Optional[str] = None
+
+@api_router.put("/garage/{car_id}", response_model=CarResponse)
+async def update_car(car_id: str, car_update: CarUpdate, current_user: dict = Depends(get_current_user)):
+    """Update car details in garage"""
+    car = await db.garage.find_one({"id": car_id, "user_id": current_user["id"]})
+    if not car:
+        raise HTTPException(status_code=404, detail="Car not found")
+    
+    update_data = {}
+    if car_update.year is not None:
+        update_data["year"] = car_update.year
+    if car_update.mileage is not None:
+        update_data["mileage"] = car_update.mileage
+    if car_update.price_cny is not None:
+        update_data["price_cny"] = car_update.price_cny
+        # Recalculate Belarus price if price changed
+        try:
+            current_year = datetime.now().year
+            car_age = current_year - (car_update.year or car.get("year", current_year))
+            age_category = "under3" if car_age < 3 else ("3to5" if car_age < 5 else "over5")
+            engine_type = car_update.engine_type or car.get("engine_type", "ice")
+            engine_volume = car_update.engine_volume or car.get("engine_volume", 2000)
+            
+            calc_input = CalculatorInput(
+                price_cny=car_update.price_cny,
+                age=age_category,
+                engine_type=engine_type,
+                engine_volume=engine_volume if engine_type != "electric" else 0,
+                user_type="individual",
+                use_decree_140=False,
+                payment_via_platform=True
+            )
+            calc_result = calculate_custom_price(calc_input)
+            update_data["calculated_price_usd"] = calc_result.total_usd
+            update_data["calculated_price_byn"] = calc_result.total_byn
+        except:
+            pass
+    if car_update.engine_type is not None:
+        update_data["engine_type"] = car_update.engine_type
+    if car_update.engine_volume is not None:
+        update_data["engine_volume"] = car_update.engine_volume
+    if car_update.notes is not None:
+        update_data["notes"] = car_update.notes
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.garage.update_one({"id": car_id}, {"$set": update_data})
+    
+    updated_car = await db.garage.find_one({"id": car_id}, {"_id": 0})
+    return CarResponse(**updated_car)
+
 # ==================== TENDER ENDPOINTS ====================
 
 @api_router.post("/tenders", response_model=TenderResponse)
