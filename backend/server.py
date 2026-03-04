@@ -4508,6 +4508,219 @@ async def get_contract(current_user: dict = Depends(get_current_user)):
     
     return contract_data
 
+@api_router.get("/verification/contract/download")
+async def download_contract_pdf(current_user: dict = Depends(get_current_user)):
+    """Generate and download contract as PDF"""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT, TA_RIGHT
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib import colors
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    
+    verification = await db.verifications.find_one(
+        {"user_id": current_user["id"]},
+        {"_id": 0}
+    )
+    
+    if not verification:
+        raise HTTPException(status_code=404, detail="Верификация не найдена")
+    
+    # Create PDF buffer
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=20*mm, rightMargin=20*mm, topMargin=15*mm, bottomMargin=15*mm)
+    
+    # Styles
+    styles = getSampleStyleSheet()
+    
+    # Custom styles
+    title_style = ParagraphStyle(
+        'TitleStyle',
+        parent=styles['Heading1'],
+        fontSize=14,
+        alignment=TA_CENTER,
+        spaceAfter=12,
+        fontName='Helvetica-Bold'
+    )
+    
+    subtitle_style = ParagraphStyle(
+        'SubtitleStyle',
+        parent=styles['Heading2'],
+        fontSize=11,
+        alignment=TA_CENTER,
+        spaceAfter=10,
+        fontName='Helvetica-Bold'
+    )
+    
+    normal_style = ParagraphStyle(
+        'NormalStyle',
+        parent=styles['Normal'],
+        fontSize=10,
+        alignment=TA_JUSTIFY,
+        spaceAfter=6,
+        leading=14
+    )
+    
+    section_style = ParagraphStyle(
+        'SectionStyle',
+        parent=styles['Heading3'],
+        fontSize=11,
+        spaceBefore=12,
+        spaceAfter=6,
+        fontName='Helvetica-Bold'
+    )
+    
+    # Get client data
+    contract_number = verification.get("contract_number", "______")
+    full_name = verification.get("full_name", "_____________")
+    passport = f"{verification.get('passport_series', '__')} {verification.get('passport_number', '______')}"
+    passport_issued = verification.get("passport_issued_by", "________________")
+    passport_date = verification.get("passport_issue_date", "__________")
+    address = verification.get("registration_address", "____________________")
+    phone = verification.get("phone", "______________")
+    email = verification.get("email", "______________")
+    current_date = datetime.now().strftime("%d %B %Y")
+    
+    # Build document content
+    story = []
+    
+    # Title
+    story.append(Paragraph(f"ДОГОВОР № {contract_number}", title_style))
+    story.append(Paragraph("на оказание услуг по организации приобретения и доставки автомобиля", subtitle_style))
+    story.append(Spacer(1, 6))
+    
+    # Header
+    story.append(Paragraph(f'г. Минск «{datetime.now().strftime("%d")}» {datetime.now().strftime("%B")} {datetime.now().strftime("%Y")} г.', normal_style))
+    story.append(Spacer(1, 6))
+    
+    # Parties
+    intro_text = f'''Общество с ограниченной ответственностью «КАРБРИДЖ», именуемое в дальнейшем «Исполнитель», 
+    в лице директора Вотинцева Кирилла Михайловича, действующего на основании Устава, с одной стороны,
+    <br/><br/>и<br/><br/>
+    Гражданин(ка) <b>{full_name}</b>, паспорт: серия № <b>{passport}</b>, 
+    выдан <b>{passport_issued}</b> <b>{passport_date}</b>, 
+    проживающий(ая) по адресу: <b>{address}</b>, 
+    именуемый(ая) в дальнейшем «Заказчик», с другой стороны,
+    <br/><br/>
+    вместе именуемые «Стороны», заключили настоящий Договор о нижеследующем:'''
+    story.append(Paragraph(intro_text, normal_style))
+    story.append(Spacer(1, 10))
+    
+    # Section 1 - Subject
+    story.append(Paragraph("1. ПРЕДМЕТ ДОГОВОРА", section_style))
+    story.append(Paragraph('''1.1. Исполнитель обязуется оказать Заказчику услуги по организации приобретения и доставки 
+    транспортного средства (далее – «Автомобиль») из Китайской Народной Республики через цифровую платформу 
+    CarBridge, а Заказчик обязуется принять и оплатить оказанные услуги в порядке и на условиях, 
+    предусмотренных настоящим Договором.''', normal_style))
+    
+    story.append(Paragraph("1.2. В комплекс услуг Исполнителя входит:", normal_style))
+    services = [
+        "1.2.1. Предоставление доступа к функционалу платформы CarBridge, включая AI-агента для подбора автомобиля;",
+        "1.2.2. Доступ к тендерной системе для получения предложений от китайских поставщиков;",
+        "1.2.3. Координация процесса проверки технического состояния автомобиля;",
+        "1.2.4. Взаимодействие с проверенными подрядчиками (продавцами) в КНР;",
+        "1.2.5. Организация логистики (выбор перевозчика через тендерную систему);",
+        "1.2.6. Предоставление доступа к системе GPS-мониторинга для отслеживания груза;",
+        "1.2.7. Консультационная поддержка по вопросам таможенного оформления."
+    ]
+    for s in services:
+        story.append(Paragraph(s, normal_style))
+    
+    # Section 2 - Procedure
+    story.append(Paragraph("2. ПОРЯДОК ОКАЗАНИЯ УСЛУГ", section_style))
+    story.append(Paragraph("2.1. Оказание услуг осуществляется поэтапно через личный кабинет Заказчика на платформе CarBridge:", normal_style))
+    
+    stages = [
+        "2.1.1. Регистрация Заказчика на платформе и получение доступа к личному кабинету.",
+        "2.1.2. Подбор автомобиля с использованием автоматизированного AI-агента или самостоятельный выбор из каталога.",
+        "2.1.3. Формирование и утверждение Заказчиком типовой формы запроса на автомобиль.",
+        "2.1.4. Внесение Заказчиком предоплаты для активации тендерной системы.",
+        "2.1.5. Автоматическая рассылка запроса Исполнителем зарегистрированным подрядчикам (поставщикам) в Китае.",
+        "2.1.6. Сбор и предоставление Заказчику коммерческих предложений от подрядчиков.",
+        "2.1.7. Выбор Заказчиком конкретного предложения (автомобиля и поставщика).",
+        "2.1.8. Организация детальной проверки автомобиля (видеообзор, фото, отчет о состоянии).",
+        "2.1.9. Заключение договора купли-продажи между Заказчиком и выбранным Продавцом.",
+        "2.1.10. Контроль процесса выкупа и перевода денежных средств Продавцу.",
+        "2.1.11. Организация логистики: проведение тендера среди перевозчиков.",
+        "2.1.12. GPS-мониторинг на всем пути следования автомобиля.",
+        "2.1.13. Организация таможенного оформления: проведение тендера среди таможенных брокеров.",
+        "2.1.14. Передача автомобиля Заказчику."
+    ]
+    for s in stages:
+        story.append(Paragraph(s, normal_style))
+    
+    story.append(Paragraph('''2.2. Важное условие: Исполнитель предоставляет информационно-техническую платформу для организации сделки, 
+    но не выступает Продавцом автомобиля. Договор купли-продажи автомобиля заключается напрямую между 
+    Заказчиком и китайским поставщиком (подрядчиком). Исполнитель не становится собственником автомобиля 
+    на каком-либо этапе сделки.''', normal_style))
+    
+    # Section 4 - Cost
+    story.append(Paragraph("4. СТОИМОСТЬ УСЛУГ И ПОРЯДОК РАСЧЕТОВ", section_style))
+    story.append(Paragraph('''4.1. Для начала работы и активации тендерной системы Заказчик вносит Предоплату в размере 
+    <b>1500 (Тысяча пятьсот) белорусских рублей</b>. Данная сумма является обеспечением серьезности намерений 
+    Заказчика и не подлежит возврату после запуска тендерной процедуры.''', normal_style))
+    story.append(Paragraph('''4.2. Вознаграждение (комиссия) Исполнителя за пользование платформой и организацию сделки составляет 
+    <b>3% (три процента)</b> от стоимости автомобиля (цены выкупа, указанной в инвойсе китайского поставщика).''', normal_style))
+    story.append(Paragraph('''4.5.2. Оплата через платформу: за организацию платежей через платформу взимается комиссия в размере 
+    <b>1,5% (один целый пять десятых процента)</b> от суммы каждого платежа.''', normal_style))
+    
+    # Section 7 - Term
+    story.append(Paragraph("7. СРОК ДЕЙСТВИЯ И ПОРЯДОК РАСТОРЖЕНИЯ", section_style))
+    story.append(Paragraph('''7.1. Настоящий Договор вступает в силу с момента совершения Заказчиком действий по регистрации 
+    на платформе CarBridge и внесения предоплаты, что означает присоединение Заказчика к Договору 
+    и его полное согласие со всеми условиями Договора.''', normal_style))
+    story.append(Paragraph("7.2. Договор действует до полного исполнения Сторонами своих обязательств.", normal_style))
+    
+    # Section 10 - Signatures
+    story.append(Spacer(1, 20))
+    story.append(Paragraph("10. РЕКВИЗИТЫ И ПОДПИСИ СТОРОН", section_style))
+    story.append(Spacer(1, 10))
+    
+    # Two column table for signatures
+    sig_data = [
+        [Paragraph("<b>ИСПОЛНИТЕЛЬ</b>", normal_style), Paragraph("<b>ЗАКАЗЧИК</b>", normal_style)],
+        [Paragraph("ООО «КАРБРИДЖ»", normal_style), Paragraph(f"Ф.И.О.: {full_name}", normal_style)],
+        [Paragraph("220088, г. Минск,<br/>ул. Червякова д.52, пом. 2", normal_style), 
+         Paragraph(f"Паспорт: {passport}", normal_style)],
+        [Paragraph("УНП: 193973008", normal_style), Paragraph(f"Адрес: {address}", normal_style)],
+        [Paragraph("", normal_style), Paragraph(f"Телефон: {phone}", normal_style)],
+        [Paragraph("", normal_style), Paragraph(f"Email: {email}", normal_style)],
+        [Paragraph("Директор _______________ / К.М. Вотинцев /", normal_style), 
+         Paragraph("Заказчик _______________ / _____________ /", normal_style)],
+        [Paragraph("М.П.", normal_style), Paragraph("", normal_style)]
+    ]
+    
+    sig_table = Table(sig_data, colWidths=[85*mm, 85*mm])
+    sig_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    story.append(sig_table)
+    
+    # Build PDF
+    doc.build(story)
+    
+    buffer.seek(0)
+    
+    # Update that contract was downloaded
+    await db.verifications.update_one(
+        {"user_id": current_user["id"]},
+        {"$set": {"contract_downloaded": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    filename = f"Dogovor_CarBridge_{contract_number}.pdf"
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
+
 @api_router.post("/verification/sign-contract")
 async def sign_contract(current_user: dict = Depends(get_current_user)):
     """Client signs the contract"""
