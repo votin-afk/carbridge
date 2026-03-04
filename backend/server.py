@@ -123,8 +123,10 @@ class CarResponse(BaseModel):
     calculated_price_usd: Optional[float] = None
     calculated_price_byn: Optional[float] = None
     contractors: Optional[dict] = None
+    notes: Optional[str] = None
     status: str
     created_at: str
+    updated_at: Optional[str] = None
 
 class TenderCreate(BaseModel):
     car_id: str
