@@ -222,63 +222,63 @@ const ContractorRegisterPage = () => {
                       name="company_name"
                       value={formData.company_name}
                       onChange={handleChange}
-                      placeholder="ООО Компания"
+                      placeholder="ООО Компания / 公司名称"
                       className="mt-1 bg-[#0B0F14] border-[#27272A]"
                     />
                   </div>
 
                   <div>
-                    <Label className="text-slate-300">Тип деятельности *</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
-                      {Object.entries(contractorTypes).map(([key, { label, icon: Icon, description }]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => selectType(key)}
-                          className={`p-4 rounded-sm border text-left transition-all ${
-                            formData.contractor_type === key
-                              ? 'bg-[#00E5FF]/10 border-[#00E5FF] text-white'
-                              : 'bg-[#0B0F14] border-[#27272A] text-slate-400 hover:border-slate-500'
-                          }`}
-                        >
-                          <Icon size={24} className={formData.contractor_type === key ? 'text-[#00E5FF]' : 'text-slate-500'} />
-                          <p className="font-medium mt-2">{label}</p>
-                          <p className="text-xs text-slate-500 mt-1">{description}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-slate-300">Регистрационный номер</Label>
-                      <Input
-                        name="registration_number"
-                        value={formData.registration_number}
-                        onChange={handleChange}
-                        placeholder="УНП / ИНН"
-                        className="mt-1 bg-[#0B0F14] border-[#27272A]"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-slate-300">Страна</Label>
-                      <Input
-                        name="country"
-                        value={formData.country}
-                        onChange={handleChange}
-                        placeholder="Китай / Беларусь"
-                        className="mt-1 bg-[#0B0F14] border-[#27272A]"
-                      />
+                    <Label className="text-slate-300">Страна регистрации *</Label>
+                    <div className="grid grid-cols-2 gap-3 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, country: 'BY' }))}
+                        className={`p-4 rounded-sm border text-left transition-all ${
+                          formData.country === 'BY'
+                            ? 'bg-[#00E5FF]/10 border-[#00E5FF] text-white'
+                            : 'bg-[#0B0F14] border-[#27272A] text-slate-400 hover:border-slate-500'
+                        }`}
+                      >
+                        <span className="text-2xl">🇧🇾</span>
+                        <p className="font-medium mt-2">Беларусь</p>
+                        <p className="text-xs text-slate-500 mt-1">УНП регистрация</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, country: 'CN' }))}
+                        className={`p-4 rounded-sm border text-left transition-all ${
+                          formData.country === 'CN'
+                            ? 'bg-[#00E5FF]/10 border-[#00E5FF] text-white'
+                            : 'bg-[#0B0F14] border-[#27272A] text-slate-400 hover:border-slate-500'
+                        }`}
+                      >
+                        <span className="text-2xl">🇨🇳</span>
+                        <p className="font-medium mt-2">Китай</p>
+                        <p className="text-xs text-slate-500 mt-1">USCI регистрация</p>
+                      </button>
                     </div>
                   </div>
 
                   <div>
-                    <Label className="text-slate-300">Город</Label>
+                    <Label className="text-slate-300">
+                      {formData.country === 'BY' ? 'УНП' : 'Регистрационный номер (USCI)'}
+                    </Label>
                     <Input
-                      name="city"
-                      value={formData.city}
+                      name="registration_number"
+                      value={formData.registration_number}
                       onChange={handleChange}
-                      placeholder="Шанхай / Минск"
+                      placeholder={formData.country === 'BY' ? '123456789' : '91310000MA1FL5XX0L'}
+                      className="mt-1 bg-[#0B0F14] border-[#27272A]"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-slate-300">Юридический адрес</Label>
+                    <Input
+                      name="legal_address"
+                      value={formData.legal_address}
+                      onChange={handleChange}
+                      placeholder={formData.country === 'BY' ? 'г. Минск, ул. Примерная, д. 1' : '上海市浦东新区XX路XX号'}
                       className="mt-1 bg-[#0B0F14] border-[#27272A]"
                     />
                   </div>
