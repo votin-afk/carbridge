@@ -89,6 +89,14 @@
   - POST /api/affiliate/withdraw - вывод средств
   - 20% от комиссии CarBridge (3%) с завершённых сделок
   - Статус "Партнёр" после 3 завершённых сделок рефералов
+- ✅ **МОДЕРАТОРСКАЯ ПАНЕЛЬ УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯМИ (Mar 2026)**
+  - GET /api/moderator/users/{user_id}/full-profile - полный профиль пользователя
+  - POST /api/moderator/users/{user_id}/verify - верификация аккаунта
+  - POST /api/moderator/users/{user_id}/sign-contract - подписание договора
+  - POST /api/moderator/documents/{doc_id}/verify - верификация документов
+  - POST /api/moderator/deals/{deal_id}/approve-stage - одобрение этапов сделки
+  - GET /api/admin/users/{user_id}/account - данные аккаунта пользователя
+  - POST /api/admin/users/{user_id}/balance - управление балансом
 
 ### Frontend (100% работает)
 - ✅ Landing page со всеми секциями
