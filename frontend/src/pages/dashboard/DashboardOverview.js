@@ -10,9 +10,16 @@ import {
   Clock, 
   CheckCircle2,
   ArrowRight,
-  Plus
+  Plus,
+  Users,
+  Wallet,
+  BadgeCheck,
+  Gift,
+  Copy,
+  DollarSign
 } from 'lucide-react';
 import axios from 'axios';
+import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -26,6 +33,8 @@ const DashboardOverview = () => {
   });
   const [recentCars, setRecentCars] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [affiliateData, setAffiliateData] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,6 +55,14 @@ const DashboardOverview = () => {
         });
 
         setRecentCars(garageRes.data.slice(0, 3));
+        
+        // Fetch affiliate data
+        try {
+          const affRes = await axios.get(`${API}/affiliate/status`, { headers });
+          setAffiliateData(affRes.data);
+        } catch (e) {
+          // Not registered in affiliate program
+        }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
@@ -55,6 +72,15 @@ const DashboardOverview = () => {
 
     fetchData();
   }, [token]);
+
+  const copyReferralLink = () => {
+    if (affiliateData?.referral_link) {
+      navigator.clipboard.writeText(affiliateData.referral_link);
+      setCopied(true);
+      toast.success('Ссылка скопирована!');
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const statCards = [
     { 
