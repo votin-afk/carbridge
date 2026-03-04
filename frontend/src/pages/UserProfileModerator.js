@@ -68,7 +68,6 @@ const UserProfileModerator = () => {
   const [activeTab, setActiveTab] = useState('overview');
   
   // Dialog states
-  const [verifyDialog, setVerifyDialog] = useState(false);
   const [documentDialog, setDocumentDialog] = useState(null);
   const [dealDialog, setDealDialog] = useState(null);
   const [actionComment, setActionComment] = useState('');
