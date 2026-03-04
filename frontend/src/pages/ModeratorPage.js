@@ -146,6 +146,57 @@ const ModeratorPage = () => {
     }
   };
 
+  const openBalanceDialog = async (user) => {
+    setBalanceDialogUser(user);
+    setBalanceAmount('');
+    setBalanceReason('');
+    
+    // Fetch user account data
+    try {
+      const response = await axios.get(`${API}/admin/users/${user.id}/account`, { headers });
+      setUserAccounts(prev => ({
+        ...prev,
+        [user.id]: response.data.account
+      }));
+    } catch (error) {
+      console.error('Error fetching user account:', error);
+    }
+  };
+
+  const handleUpdateBalance = async (isAdd = true) => {
+    if (!balanceAmount || parseFloat(balanceAmount) <= 0) {
+      toast.error('Введите сумму');
+      return;
+    }
+
+    setUpdatingBalance(true);
+    try {
+      const amount = isAdd ? parseFloat(balanceAmount) : -parseFloat(balanceAmount);
+      const response = await axios.post(`${API}/admin/users/${balanceDialogUser.id}/balance`, {
+        amount,
+        reason: balanceReason || null
+      }, { headers });
+      
+      toast.success(`Баланс ${isAdd ? 'начислен' : 'списан'}: $${balanceAmount}`);
+      
+      // Update local cache
+      setUserAccounts(prev => ({
+        ...prev,
+        [balanceDialogUser.id]: {
+          ...prev[balanceDialogUser.id],
+          balance: response.data.new_balance
+        }
+      }));
+      
+      setBalanceDialogUser(null);
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Ошибка при изменении баланса';
+      toast.error(message);
+    } finally {
+      setUpdatingBalance(false);
+    }
+  };
+
   const handleApproveApplication = async (appId) => {
     try {
       await axios.post(`${API}/moderator/applications/${appId}/approve`, {}, { headers });
