@@ -497,6 +497,54 @@ const MyGarage = () => {
     }
   };
 
+  // Edit car functions
+  const openEditDialog = (car) => {
+    setEditDialogOpen(car);
+    setEditFormData({
+      year: car.year || '',
+      mileage: car.mileage || '',
+      price_cny: car.price_cny || '',
+      engine_type: car.engine_type || 'ice',
+      engine_volume: car.engine_volume || '',
+      notes: car.notes || ''
+    });
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editDialogOpen) return;
+    
+    setSavingEdit(true);
+    try {
+      await axios.put(`${API}/garage/${editDialogOpen.id}`, {
+        year: parseInt(editFormData.year) || editDialogOpen.year,
+        mileage: editFormData.mileage ? parseInt(editFormData.mileage) : null,
+        price_cny: parseFloat(editFormData.price_cny) || editDialogOpen.price_cny,
+        engine_type: editFormData.engine_type,
+        engine_volume: editFormData.engine_volume ? parseInt(editFormData.engine_volume) : null,
+        notes: editFormData.notes || null
+      }, { headers });
+      
+      toast.success('Автомобиль обновлён');
+      setEditDialogOpen(null);
+      fetchCars();
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Ошибка при сохранении';
+      toast.error(message);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  // Toggle card expansion
+  const toggleCardExpansion = (carId) => {
+    setExpandedCardId(expandedCardId === carId ? null : carId);
+  };
+
   const canPerformActions = contractSigned && userBalance > 0;
 
   const getStatusBadge = (status) => {
