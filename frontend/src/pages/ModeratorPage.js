@@ -591,6 +591,95 @@ const ModeratorPage = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Balance Management Dialog */}
+        <Dialog open={!!balanceDialogUser} onOpenChange={() => setBalanceDialogUser(null)}>
+          <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Wallet size={20} className="text-[#00E5FF]" />
+                Управление балансом
+              </DialogTitle>
+            </DialogHeader>
+            
+            {balanceDialogUser && (
+              <div className="space-y-4 mt-4">
+                {/* User Info */}
+                <div className="p-3 bg-[#0B0F14] rounded-sm border border-[#27272A]">
+                  <p className="text-slate-400 text-xs">Пользователь</p>
+                  <p className="text-white font-medium">{balanceDialogUser.name}</p>
+                  <p className="text-slate-500 text-sm">{balanceDialogUser.email}</p>
+                </div>
+
+                {/* Current Balance */}
+                <div className="p-4 bg-[#00E5FF]/10 border border-[#00E5FF]/20 rounded-sm text-center">
+                  <p className="text-slate-400 text-sm mb-1">Текущий баланс</p>
+                  <p className="text-[#00E5FF] text-3xl font-bold">
+                    ${userAccounts[balanceDialogUser.id]?.balance?.toFixed(2) || '0.00'}
+                  </p>
+                </div>
+
+                {/* Amount Input */}
+                <div>
+                  <Label className="text-slate-300">Сумма ($)</Label>
+                  <Input
+                    type="number"
+                    value={balanceAmount}
+                    onChange={(e) => setBalanceAmount(e.target.value)}
+                    placeholder="100.00"
+                    min="0"
+                    step="0.01"
+                    className="mt-1 bg-[#0B0F14] border-[#27272A] text-lg"
+                  />
+                </div>
+
+                {/* Reason */}
+                <div>
+                  <Label className="text-slate-300">Причина (опционально)</Label>
+                  <Input
+                    value={balanceReason}
+                    onChange={(e) => setBalanceReason(e.target.value)}
+                    placeholder="Бонус за регистрацию, возврат..."
+                    className="mt-1 bg-[#0B0F14] border-[#27272A]"
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    onClick={() => handleUpdateBalance(true)}
+                    disabled={updatingBalance || !balanceAmount}
+                    className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                  >
+                    {updatingBalance ? (
+                      <Loader2 size={16} className="mr-2 animate-spin" />
+                    ) : (
+                      <PlusCircle size={16} className="mr-2" />
+                    )}
+                    Начислить
+                  </Button>
+                  <Button
+                    onClick={() => handleUpdateBalance(false)}
+                    disabled={updatingBalance || !balanceAmount}
+                    variant="outline"
+                    className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                  >
+                    {updatingBalance ? (
+                      <Loader2 size={16} className="mr-2 animate-spin" />
+                    ) : (
+                      <MinusCircle size={16} className="mr-2" />
+                    )}
+                    Списать
+                  </Button>
+                </div>
+
+                <p className="text-slate-500 text-xs text-center">
+                  Все операции записываются в историю транзакций
+                </p>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
