@@ -34,6 +34,7 @@ function App() {
           <Route path="/catalog" element={<CatalogPage />} />
           <Route path="/contractors" element={<ContractorsPage />} />
           <Route path="/contractor-register" element={<ContractorRegisterPage />} />
+          <Route path="/contractor-dashboard" element={<ContractorDashboard />} />
           <Route path="/moderator" element={<ModeratorPage />} />
           <Route path="/moderator/user/:userId" element={<UserProfileModerator />} />
           <Route path="/hot-deals" element={<HotDealsPage />} />
