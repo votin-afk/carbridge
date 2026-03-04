@@ -13,6 +13,7 @@ import CatalogPage from "./pages/CatalogPage";
 import ContractorsPage from "./pages/ContractorsPage";
 import ContractorRegisterPage from "./pages/ContractorRegisterPage";
 import ModeratorPage from "./pages/ModeratorPage";
+import UserProfileModerator from "./pages/UserProfileModerator";
 import HotDealsPage from "./pages/HotDealsPage";
 import AffiliatePage from "./pages/AffiliatePage";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -31,6 +32,7 @@ function App() {
           <Route path="/contractors" element={<ContractorsPage />} />
           <Route path="/contractor-register" element={<ContractorRegisterPage />} />
           <Route path="/moderator" element={<ModeratorPage />} />
+          <Route path="/moderator/user/:userId" element={<UserProfileModerator />} />
           <Route path="/hot-deals" element={<HotDealsPage />} />
           <Route path="/partners" element={<AffiliatePage />} />
           
