@@ -91,16 +91,16 @@ const ContractorRegisterPage = () => {
   };
 
   const nextStep = () => {
-    if (step === 1 && (!formData.company_name || !formData.contractor_type)) {
-      toast.error('Заполните название компании и выберите тип');
+    if (step === 1 && (!formData.company_name || !formData.country)) {
+      toast.error('Заполните название компании и выберите страну');
       return;
     }
     if (step === 2 && (!formData.contact_person || !formData.phone || !formData.email)) {
       toast.error('Заполните контактные данные');
       return;
     }
-    if (step === 3 && (!formData.description || !formData.services)) {
-      toast.error('Опишите компанию и услуги');
+    if (step === 3 && (formData.services.length === 0 || !formData.description)) {
+      toast.error('Выберите услуги и добавьте описание');
       return;
     }
     setStep(step + 1);
