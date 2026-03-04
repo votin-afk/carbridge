@@ -403,6 +403,45 @@ const ContractorRegisterPage = () => {
               
               <div className="space-y-4">
                 <div>
+                  <Label className="text-slate-300">Предоставляемые услуги * (выберите все применимые)</Label>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    {serviceOptions.map(({ value, label, description }) => {
+                      const isSelected = formData.services.includes(value);
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              services: isSelected
+                                ? prev.services.filter(s => s !== value)
+                                : [...prev.services, value]
+                            }));
+                          }}
+                          className={`p-4 rounded-sm border text-left transition-all ${
+                            isSelected
+                              ? 'bg-[#00E5FF]/10 border-[#00E5FF] text-white'
+                              : 'bg-[#0B0F14] border-[#27272A] text-slate-400 hover:border-slate-500'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <p className="font-medium">{label}</p>
+                            {isSelected && <CheckCircle2 size={18} className="text-[#00E5FF]" />}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1">{description}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {formData.services.length > 0 && (
+                    <p className="mt-2 text-sm text-[#00E5FF]">
+                      Выбрано: {formData.services.length} услуг(и)
+                    </p>
+                  )}
+                </div>
+
+                <div>
                   <Label className="text-slate-300">Описание компании *</Label>
                   <textarea
                     name="description"
@@ -414,52 +453,16 @@ const ContractorRegisterPage = () => {
                 </div>
 
                 <div>
-                  <Label className="text-slate-300">Перечень услуг *</Label>
-                  <textarea
-                    name="services"
-                    value={formData.services}
-                    onChange={handleChange}
-                    placeholder="Опишите услуги, которые вы предоставляете..."
-                    className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500 min-h-[80px]"
-                  />
-                </div>
-
-                <div>
-                  <Label className="text-slate-300">Ценовой диапазон</Label>
+                  <Label className="text-slate-300">Лет на рынке</Label>
                   <Input
-                    name="price_range"
-                    value={formData.price_range}
+                    name="experience_years"
+                    type="number"
+                    min="0"
+                    value={formData.experience_years}
                     onChange={handleChange}
-                    placeholder="$100 - $500"
+                    placeholder="5"
                     className="mt-1 bg-[#0B0F14] border-[#27272A]"
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-slate-300">Лет на рынке</Label>
-                    <Input
-                      name="experience_years"
-                      type="number"
-                      min="0"
-                      value={formData.experience_years}
-                      onChange={handleChange}
-                      placeholder="5"
-                      className="mt-1 bg-[#0B0F14] border-[#27272A]"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-slate-300">Завершенных сделок</Label>
-                    <Input
-                      name="deals_completed"
-                      type="number"
-                      min="0"
-                      value={formData.deals_completed}
-                      onChange={handleChange}
-                      placeholder="100"
-                      className="mt-1 bg-[#0B0F14] border-[#27272A]"
-                    />
-                  </div>
                 </div>
               </div>
             </div>
