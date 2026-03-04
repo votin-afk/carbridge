@@ -194,3 +194,7 @@
 - `/app/frontend/src/pages/LandingPage.js` - Главная страница с AI-чатом
 - `/app/frontend/src/pages/Calculator.js` - Калькулятор растаможки
 - `/app/frontend/src/pages/dashboard/MyGarage.js` - Гараж с AI-парсингом
+- `/app/frontend/src/pages/ModeratorPage.js` - Панель модератора
+- `/app/frontend/src/pages/UserProfileModerator.js` - Профиль пользователя для модератора
+- `/app/frontend/src/pages/HotDealsPage.js` - Горящие предложения
+- `/app/frontend/src/pages/AffiliatePage.js` - Партнёрская программа
