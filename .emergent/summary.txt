@@ -1,35 +1,43 @@
 <analysis>**original_problem_statement:**
-The user is building a comprehensive website for importing cars from China. The platform requires a main page, an AI assistant, a detailed cost calculator, and a user-centric dashboard featuring My Garage, Tenders, and Documents. The system should support JWT-based authentication, a dynamic car catalog synchronized with Chinese marketplaces, a robust URL parser to add cars, and a full contractor/moderator/role management system.
+The user is building a comprehensive website for importing cars from China. The platform requires a main page, an AI assistant, a detailed cost calculator, and a user-centric dashboard featuring My Garage, Tenders, and Documents. The system should support JWT-based authentication, a dynamic car catalog, a robust URL parser to add cars, and a full contractor/moderator/role management system.
 
-The latest request is to introduce a leasing feature, including a new Leasing category for contractors, a leasing calculator within the user's garage, and a paid service to Request manager assistance.
+Recent feature requests have expanded the scope to include:
+- A leasing feature with a calculator and manager assistance.
+- A Hot Deals section for time-sensitive car offers.
+- An affiliate program for users to earn commissions.
+- Advanced administrative controls for moderators, including managing user balances and impersonating users to verify accounts and deals.
 
 PRODUCT REQUIREMENTS:
 -   **MVP:** Main Page, AI Agent, Cost Calculator, FAQ, Contacts.
--   **User Dashboard:** JWT-based auth, My Garage, Tenders, Documents.
+-   **User Dashboard:** JWT-based auth, My Garage, Tenders, Documents, Affiliate Stats.
 -   **Calculator:** Must account for customs discounts, platform commissions, and payment fees.
--   **Homepage:** Integrate the AI agent and links to Chinese marketplaces.
+-   **Homepage:** Integrate the AI agent, links to Chinese marketplaces, and a Hot Deals section.
 -   **Automation:** Reliably parse car data from a pasted URL into My Garage.
--   **Car Catalog:** A live catalog with search and filtering, synchronized with Chinese platforms.
--   **Contractor Ecosystem:** Pages for different contractor types (inspection, export, logistics, leasing), a public registration form for contractors, and a moderator panel to approve/manage them.
--   **Role-Based Access Control (RBAC):** A system with user, moderator, and admin roles to control access to features like the moderator panel.
--   **(New)** **Leasing Feature:** Ability to select leasing companies, calculate leasing plans, and request paid assistance from a manager.
+-   **Car Catalog:** A live catalog with search and filtering.
+-   **Contractor Ecosystem:** Pages for different contractor types, a public registration form, and a moderator panel to approve/manage them.
+-   **Role-Based Access Control (RBAC):** user, moderator, and admin roles.
+-   **Leasing Feature:** Ability to select leasing companies, calculate leasing plans, and request paid assistance.
+-   **Hot Deals Feature:** A section on the main page and a dedicated page for special offers with countdown timers, managed by moderators/verified sellers.
+-   **Affiliate Program:** A dedicated page explaining the program, a registration process, and a dashboard for partners to track referrals, deals, and earnings (20% of platform commission).
+-   **Moderator Controls:** Ability for moderators to add/deduct user balance, impersonate users, verify user accounts, and approve documents/deal stages.
 
 **User's preferred language**: Русский (Russian)
 
 **what currently exists?**
 A full-stack application with a FastAPI backend and a React frontend. The application includes:
--   A landing page with an animated Popular Choice section and an AI chat assistant.
--   A complete JWT-based user authentication system with a role-based access control (RBAC) model for user, moderator, and admin roles.
--   A multi-faceted user dashboard (My Garage) showing account balance, verification status, and car listings with calculated prices for Belarus.
--   A feature in the garage to select contractors for various stages of the car purchase (Inspection, Export, Logistics).
--   A dynamic car catalog that scrapes live data and supports server-side filtering.
--   A public-facing page for contractors, a registration form for new contractors, and a comprehensive moderator panel for managing applications, deals, and users (admin-only).
+- A landing page with an animated Popular Choice section, a new Hot Deals section, and an AI chat assistant.
+- A complete JWT-based user authentication system with RBAC (user, moderator, admin).
+- A My Garage dashboard showing account balance and status. Car cards are now collapsible, showing contractor/action panels on click, and feature an Edit button (for car details and notes).
+- A complete leasing feature integrated into My Garage, with a leasing calculator modal.
+- A Hot Deals feature with a dedicated page () and a section on the landing page, showing discounted cars with countdown timers.
+- A full affiliate program with a static info page (), a registration process, and integrated statistics within the user's main dashboard.
+- A robust moderator panel with tabs for managing applications, deals, and users. The user management tab now includes functions to adjust user balances and a button to navigate to a user's profile for detailed moderation.
 
 **Last working item**:
--   Last item agent was working: Implementing the user's request for a leasing feature. The agent added Leasing as a contractor type, populated demo data, and created backend endpoints in  for calculating leasing plans () and requesting paid manager assistance (). It also began updating the frontend by adding a Leasing tab to the . The next step is to build the UI for these features within the My Garage page.
+-   Last item agent was working: Implementing the moderator's ability to log in as a user to verify their account, documents, and approve deal stages. The agent successfully created the backend endpoints (,  user,  document) and added a Profile button on the  to link to a new, dedicated user profile view for moderators ().
 -   Status: IN PROGRESS
 -   Agent Testing Done: N
--   Which testing method agent to use? After implementation is complete, use the **frontend testing agent** to validate the new leasing calculator UI and manager assistance button in the My Garage page. Use **curl** to independently verify the new backend endpoints (, ).
+-   Which testing method agent to use? **frontend testing agent** to build and validate the UI and functionality on the new  page. **curl** to test the new backend endpoints: , , and .
 -   User Testing Done: N
 
 **All Pending/In progress Issue list**:
@@ -38,137 +46,153 @@ A full-stack application with a FastAPI backend and a React frontend. The applic
 
 Issues Detail:
 -   Issue 1:
-    -   **Description**: The AI chat on the landing page, a core feature, sometimes fails to display responses or has long delays. This issue was noted in previous test reports and remains unresolved.
+    -   **Description**: The AI chat on the landing page, a core feature, sometimes fails to display responses or has long delays. This is a long-standing issue.
     -   **Next debug checklist**:
-        1.  Investigate frontend console logs in  for WebSocket or HTTP errors during chat interactions.
+        1.  Investigate frontend console logs in  for WebSocket or HTTP errors.
         2.  Check the  endpoint in  for potential timeouts or unhandled exceptions.
-        3.  Verify the state update logic for  in React to ensure it consistently triggers a re-render.
-    -   **Why fix this issue and what will be achieved with the fix?**: A reliable AI assistant is crucial for user engagement and lead generation on the landing page.
+        3.  Verify the state update logic for  in React.
+    -   **Why fix this issue and what will be achieved with the fix?**: A reliable AI assistant is crucial for user engagement and lead generation.
     -   **Status**: NOT STARTED
     -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?**: both
     -   **Blocked on other issue**: None
 
 -   Issue 2:
-    -   **Description**: The feature allowing users to add a car by pasting a URL is built on a simple  request, which is often blocked by anti-scraping measures on target websites, making it unreliable.
+    -   **Description**: The feature allowing users to add a car by pasting a URL often fails due to anti-scraping measures on target websites.
     -   **Next debug checklist**:
-        1.  Research and choose a more robust scraping solution. Options include a headless browser library (e.g., Playwright) or a third-party scraping API (e.g., ScraperAPI, BrightData).
-        2.  Replace the  call in the  endpoint in  with the chosen solution.
+        1.  Research and choose a more robust scraping solution (e.g., Playwright or a third-party scraping API).
+        2.  Replace the  call in the  endpoint in .
         3.  Implement proper error handling for scraping failures.
-    -   **Why fix this issue and what will be achieved with the fix?**: This will make a key automation feature functional and reliable, improving the user experience for adding cars to their garage.
+    -   **Why fix this issue and what will be achieved with the fix?**: This will make a key automation feature reliable, significantly improving the user experience.
     -   **Status**: NOT STARTED
     -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?**: backend
     -   **Blocked on other issue**: None
 
 **In progress Task List**:
--   Task 1: Implement Leasing Functionality (Priority: P0)
+-   Task 1: Complete Moderator User Management View (Priority: P0)
 
  Task Detail:
   - Task 1:
-     - **Where to resume**: The backend endpoints and demo data are ready. The agent needs to modify  to integrate the leasing features. This includes:
-        1. Adding Leasing as a selectable stage in the contractor section for each car.
-        2. Creating a new UI component (e.g., a modal or an inline form) for the leasing calculator. This form should take a down payment percentage/amount and display the resulting monthly payments.
-        3. Adding a Request Manager Assistance button that, when clicked, calls the backend endpoint and potentially updates the user's balance or creates a service request.
-        4. Implementing the frontend logic to call the  and  endpoints and display the results to the user.
-     - **What will be achieved with this?**: Users will gain a new financing option directly within the platform, allowing them to calculate leasing plans for cars in their garage and request paid assistance, creating a new revenue stream and adding significant value.
+     - **Where to resume**: The  file is currently an empty placeholder. The next agent needs to build the UI to:
+        1.  Fetch and display all of a specific user's data (profile info, cars in garage, uploaded documents).
+        2.  Implement a button to Impersonate User which would redirect the moderator to the user's dashboard view.
+        3.  Implement a button to Verify User Account.
+        4.  Display a list of user's documents with a button next to each to Verify Document (e.g., placing a green checkmark).
+        5.  Display the user's cars and allow the moderator to approve deal stages.
+     - **What will be achieved with this?**: This will complete a critical business process, allowing moderators to perform quality control, verify users and documents, and unblock users in the deal flow.
      - **Status**: IN PROGRESS
      - **Should Test frontend/backend/both after fix?**: both
      - **Blocked on something**: None
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-    -   **(P1) Implement User Verification & Contract Flow:** Build the backend logic and UI for user identity verification and digital contract generation/signing.
-    -   **(P1) Implement Balance Top-Up:** Integrate a payment gateway to allow users to add funds to their My Balance.
-    -   **(P1) Implement Tender Creation:** Develop the functionality for users to start a tender process for a car in their garage, likely involving the selected contractors.
+    -   **(P1) Implement User Verification & Contract Flow:** Build the final pieces for digital contract generation/signing, which is now unblocked by the moderator verification feature.
+    -   **(P1) Implement Balance Top-Up:** Integrate a payment gateway (e.g., Stripe) to allow users to add funds to their balance.
+    -   **(P1) Implement Tender Creation:** Develop the functionality for users to start a tender process for a car in their garage.
 - **Future Tasks:**
     -   Implement a full payment/escrow system.
     -   Implement GPS tracking for car delivery.
-    -   Implement Telegram notifications for status updates.
+    -   Implement Telegram/Email notifications for status updates and affiliate program events.
 
 **Completed work in this session**
--   **Animated Popular Choice Section:** Replaced a static image on the landing page with an animated carousel of popular cars and their calculated prices for Belarus.
--   **Contact Info & Social Links:** Updated the contact section and footer with the user's provided information and added messenger/social media icons.
--   **My Garage Overhaul:**
-    -   Fixed a critical bug preventing car deletion by implementing a custom confirmation dialog.
-    -   Added UI elements for My Balance, verification status, and contract status.
-    -   Implemented conditional logic to disable Start Tender and Request Report buttons based on user status.
-    -   Fixed a bug where the calculated price wasn't saved when a car was added to the garage.
--   **Contractor & Moderator System:**
-    -   Created a Contractors page to list service providers, a public registration form, and a full-featured Moderator Panel to manage applications and users.
--   **Role-Based Access Control (RBAC):**
-    -   Successfully implemented a user role system (, , ). Access to the Moderator Panel is now role-restricted, and an admin user () was configured for testing.
--   **Initial Page Load Bug Fix:** Resolved an issue causing the landing page to automatically scroll down to the AI chat section upon loading.
+-   **Leasing Feature Fix & Completion**: Finished the leasing calculator UI in My Garage and fixed a bug preventing leasing companies from appearing on the .
+-   **Hot Deals Feature**: Implemented a full-featured Hot Deals section with a dedicated page, countdown timers, and integration into the landing page.
+-   **My Garage UX Overhaul**:
+    -   Added a car editing feature (year, mileage, price, etc.) with a modal.
+    -   Added a private Notes field to each car.
+    -   Redesigned car cards to be collapsible, hiding complex actions until clicked to simplify the UI.
+-   **Affiliate Program**: Launched a complete affiliate program, including a public info page, user registration, and a statistics section in the main user dashboard.
+-   **Admin Balance Management**: Empowered admins/moderators to add or deduct funds from any user's balance through a new modal in the .
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1**: AI chat on landing page has intermittent reliability issues (displaying responses, timeouts). This is a recurring issue from the initial project phase.
--   **Issue 2**: The URL parser for adding cars to the garage is not robust and fails on sites with anti-scraping measures.
+-   **Issue 1**: AI chat on landing page has intermittent reliability issues.
+-   **Issue 2**: The URL parser for adding cars to the garage is not robust.
 
 **Known issue recurrence from previous fork**
--   The car deletion bug was reported again by the user after an initial fix, which prompted the agent to implement a more robust custom confirmation dialog instead of relying on the browser's .
+-   The previous car deletion bug did not recur in this session. The custom confirmation dialog appears to have resolved it.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Backend:** FastAPI, Python, MongoDB, Pydantic.
--   **Frontend:** React, Tailwind CSS, Shadcn UI components,  for icons.
--   **Authentication:** JWT-based, with the token payload now containing the user's .
--   **System Design:** Role-Based Access Control (RBAC), Client-Side State Management, Server-Side Rendering of catalog data.
+-   **Backend:** FastAPI, Python, MongoDB.
+-   **Frontend:** React, Tailwind CSS, Shadcn UI components.
+-   **Authentication:** JWT-based with RBAC.
+-   **System Design:** Monolithic Backend, Client-Side State Management (useState, useEffect), Component-based UI.
 
 **key DB schema**
--   **users:** collection now has a  field (String: user, moderator, admin).
--   **cars (in garage):** documents were updated to store , , and an embedded  object mapping stages to contractor IDs (e.g., ).
--   **contractor_applications:** new collection to store submissions from the contractor registration form, awaiting moderator approval.
+-   **users:** Added  (Boolean),  (String),  (String).
+-   **cars (in garage):** Added  (String).
+-   **hot_deals (New Collection):** .
+-   **affiliate_registrations (New Collection):** .
 
 **changes in tech stack**
--   No new dependencies were added, but the application's internal logic and complexity have increased substantially.
+-   None.
 
 **All files of reference**
--   : Massively expanded to over 2800 lines. Now contains logic for RBAC, moderator actions, contractor applications, and the new leasing endpoints.
--   : Significantly refactored and expanded to over 1000 lines. Includes logic for balance/status display, contractor selection, and the custom delete dialog. This is where the new leasing UI will be built.
--   : A new, complex page with tabbed navigation for managing applications, deals, and users.
--   : A new multi-step form for contractor registration.
--   : Modified to manage the user's role in the frontend's global state.
--   : Updated to include new routes for the contractor, registration, and moderator pages.
+-   : Grew from ~2800 to over 3700 lines. Contains all new backend logic.
+-   : Significantly refactored to ~1600 lines with collapsible cards, an edit modal, and note display.
+-   : Updated to ~900 lines with balance management modals and links to the new user profile page.
+-   : Updated with Hot Deals section and new navigation links.
+-   , : New feature pages.
+-   : New placeholder file for the current task.
+-   : Updated to display affiliate program statistics.
+-   : Updated with new routes for the feature pages.
 
 **Areas that need refactoring**:
--   **CRITICAL**:  is dangerously monolithic. It must be broken down into a proper project structure with separate modules for routes (e.g., , ), models (), and services/business logic.
--   **HIGH**:  has become too large. Key UI sections like the car card, the contractor selection modal, and the upcoming leasing calculator should be extracted into their own reusable components to improve readability and maintainability.
+-   **CRITICAL**:  is dangerously large and unmaintainable. It must be broken down into separate modules for routes, models, and services.
+-   **CRITICAL**:  has become a God component. The car card, edit modal, and leasing calculator must be extracted into their own components.
+-   **HIGH**:  is also growing complex and should be broken down into smaller components.
 
 **key api endpoints**
--   : (New) Calculates leasing plans based on car price and down payment.
--   : (New) Endpoint to handle the 00 manager assistance request.
--   : (New) Submits a new contractor application for moderator review.
--   , : (New) Admin endpoints to manage user roles.
--   : (New) Assigns a contractor to a specific stage for a car in the garage.
--   All moderator endpoints under  for approving/rejecting applications.
+-   **Car Edit:** 
+-   **Hot Deals:** , 
+-   **Affiliate Program:** , 
+-   **Admin Balance:** 
+-   **Moderator Controls:**
+    -    (New)
+    -    (New)
+    -    (New)
+    -    (New)
 
 **Critical Info for New Agent**
--   The user's primary language is **Russian**. ALL communication must be in Russian.
--   The immediate task is to **complete the leasing feature**, focusing on building the frontend UI in . The backend foundation is already in place.
--   The application now has a fully functional RBAC system. Use the  (password: ) account, which has  privileges, for all testing that requires elevated access.
--   Be aware of the significant technical debt in  and . While not an immediate task, any opportunity to modularize code during new feature implementation should be considered.
+-   The user's primary language is **Russian**. All communication MUST be in Russian.
+-   The immediate task is to **build the frontend for the Moderator User Management view** in . The backend endpoints are already created.
+-   The  (password: ) user has  privileges and should be used for testing all moderator/admin functionality.
+-   The technical debt in  and  is severe. While the primary task is new feature development, any opportunity to modularize while working is highly encouraged.
 
 **documents and test reports created in this job**
--    (implicitly updated with completed tasks)
+-    (updated multiple times)
+-   
+-   
 
 **Last 10 User Messages and any pending HUMAN messages**
-- A sequential summary of the last 10 user messages is available in the thought block, detailing the implementation of leasing, fixing the page load scroll, creating the RBAC and moderator system, fixing garage bugs, and updating contact information. The most recent and pending request is the implementation of the leasing feature.
+1.  **Request:** Implement moderator user management (impersonation, verification of user/docs, deal stage approval). (Status: IN PROGRESS)
+2.  : Agent finished implementing the Admin Balance Management feature.
+3.  **Request:** Add the ability for an administrator to add/deduct balance from a user's account. (Status: COMPLETED)
+4.  : Agent finished implementing the Affiliate Program feature.
+5.  **Request:** Create an Affiliate Program where users earn 20% commission, with stats visible in their dashboard. (Status: COMPLETED)
+6.  : Agent finished implementing car editing and UI improvements in My Garage.
+7.  **Request:** Add an Edit button to cars in the garage, a notes field, and make the contractor panel collapsible. (Status: COMPLETED)
+8.  : Agent finished implementing the Hot Deals feature.
+9.  **Clarification:** User provided detailed requirements for the Hot Deals feature. (Status: COMPLETED)
+10. **Request:** Add a Hot Deals section to the website. (Status: COMPLETED)
 
 **Project Health Check:**
 -   **Broken**:
-    -   AI Chat on the landing page is unreliable.
-    -   The add car via URL parser is not robust against anti-scraping measures.
+    -   AI Chat on the landing page remains unreliable.
+    -   The add car via URL parser is fragile and often fails.
 -   **Mocked**:
-    -   Contractor data is currently hardcoded in . A proper admin interface to manage this data is needed.
-    -   The core business flows (user verification, contract signing, balance top-up, and tender process) have UI placeholders but lack complete backend implementation.
+    -   Contractor data is still hardcoded demo data.
+    -   The full end-to-end business flow for contracts is incomplete.
+    -   User balance top-up (payment gateway integration) is not implemented.
 
 **3rd Party Integrations**
 -   **Emergent LLM Key**: Used for the AI chat feature.
 
 **Testing status**
--   **Testing agent used after significant changes**: NO. The agent relied on extensive manual testing using the  tool after each feature implementation.
+-   **Testing agent used after significant changes**: YES (for leasing and hot deals features).
 -   **Troubleshoot agent used after agent stuck in loop**: NO
 -   **Test files created**: None.
 -   **Known regressions**: None.
@@ -180,5 +204,5 @@ Issues Detail:
 -   **Regular User**: Register a new user via the UI.
 
 **What agent forgot to execute**
--   The agent has not addressed the two long-standing, high-impact issues identified in the original handoff summary: the unreliable AI chat and the fragile URL parser.
--   The critical need to refactor the monolithic  file has been ignored, and the file has only grown in complexity, increasing the risk of future bugs.</analysis>
+-   The agent has not addressed the two long-standing, high-priority issues: the unreliable AI chat and the fragile URL parser. These have been carried over from a previous session and ignored again.
+-   The critical need to refactor the monolithic  and  files has been ignored. These files have grown significantly larger, increasing technical debt and future maintenance risk.</analysis>
