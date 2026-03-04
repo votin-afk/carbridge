@@ -505,8 +505,12 @@ const ContractorRegisterPage = () => {
                       <span className="text-white">{formData.company_name || '—'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Тип:</span>
-                      <span className="text-white">{contractorTypes[formData.contractor_type]?.label || '—'}</span>
+                      <span className="text-slate-500">Страна:</span>
+                      <span className="text-white">{formData.country === 'BY' ? '🇧🇾 Беларусь' : '🇨🇳 Китай'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Услуги:</span>
+                      <span className="text-white">{formData.services.length} выбрано</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Контакт:</span>
