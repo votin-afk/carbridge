@@ -41,7 +41,11 @@ import {
   MessageSquare,
   UserCog,
   Crown,
-  User
+  User,
+  Wallet,
+  DollarSign,
+  PlusCircle,
+  MinusCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
