@@ -4130,6 +4130,623 @@ async def add_catalog_car_to_garage(
     
     return {"message": "Car added to garage", "garage_id": garage_id, "calculated_price_usd": calculated_price_usd}
 
+# ==================== CLIENT VERIFICATION SYSTEM ====================
+
+class ClientVerificationCreate(BaseModel):
+    full_name: str
+    passport_series: str
+    passport_number: str
+    passport_issued_by: str
+    passport_issue_date: str
+    registration_address: str
+    phone: str
+    email: EmailStr
+    client_type: Literal["individual", "legal"] = "individual"
+    # For legal entities
+    company_name: Optional[str] = None
+    company_unp: Optional[str] = None
+    company_address: Optional[str] = None
+
+@api_router.post("/verification/submit")
+async def submit_verification(data: ClientVerificationCreate, current_user: dict = Depends(get_current_user)):
+    """Submit client verification data"""
+    verification_id = str(uuid.uuid4())
+    
+    # Generate contract number
+    contract_number = f"CB-{datetime.now().strftime('%Y%m%d')}-{verification_id[:8].upper()}"
+    
+    verification_doc = {
+        "id": verification_id,
+        "user_id": current_user["id"],
+        "contract_number": contract_number,
+        "full_name": data.full_name,
+        "passport_series": data.passport_series,
+        "passport_number": data.passport_number,
+        "passport_issued_by": data.passport_issued_by,
+        "passport_issue_date": data.passport_issue_date,
+        "registration_address": data.registration_address,
+        "phone": data.phone,
+        "email": data.email,
+        "client_type": data.client_type,
+        "company_name": data.company_name,
+        "company_unp": data.company_unp,
+        "company_address": data.company_address,
+        "documents": [],
+        "status": "pending",  # pending, documents_uploaded, under_review, approved, rejected
+        "contract_generated": False,
+        "contract_signed": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.verifications.insert_one(verification_doc)
+    
+    # Update user account with verification status
+    await db.accounts.update_one(
+        {"user_id": current_user["id"]},
+        {
+            "$set": {
+                "verification_id": verification_id,
+                "verification_status": "pending",
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        },
+        upsert=True
+    )
+    
+    return {
+        "message": "Данные верификации отправлены",
+        "verification_id": verification_id,
+        "contract_number": contract_number
+    }
+
+@api_router.get("/verification/status")
+async def get_verification_status(current_user: dict = Depends(get_current_user)):
+    """Get current user's verification status"""
+    verification = await db.verifications.find_one(
+        {"user_id": current_user["id"]},
+        {"_id": 0}
+    )
+    
+    if not verification:
+        return {"status": "not_started", "verification": None}
+    
+    return {"status": verification.get("status"), "verification": verification}
+
+@api_router.post("/verification/upload-document")
+async def upload_verification_document(data: dict, current_user: dict = Depends(get_current_user)):
+    """Upload document for verification"""
+    doc_type = data.get("doc_type")  # passport_scan, passport_back, other
+    file_url = data.get("file_url")
+    file_name = data.get("file_name", "document")
+    
+    if not doc_type or not file_url:
+        raise HTTPException(status_code=400, detail="Укажите тип документа и URL файла")
+    
+    verification = await db.verifications.find_one({"user_id": current_user["id"]})
+    if not verification:
+        raise HTTPException(status_code=404, detail="Сначала заполните данные верификации")
+    
+    doc_id = str(uuid.uuid4())
+    document = {
+        "id": doc_id,
+        "type": doc_type,
+        "name": file_name,
+        "url": file_url,
+        "uploaded_at": datetime.now(timezone.utc).isoformat(),
+        "verified": False
+    }
+    
+    await db.verifications.update_one(
+        {"user_id": current_user["id"]},
+        {
+            "$push": {"documents": document},
+            "$set": {
+                "status": "documents_uploaded",
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": "Документ загружен", "document_id": doc_id}
+
+@api_router.get("/verification/contract")
+async def get_contract(current_user: dict = Depends(get_current_user)):
+    """Generate and return contract data for display/download"""
+    verification = await db.verifications.find_one(
+        {"user_id": current_user["id"]},
+        {"_id": 0}
+    )
+    
+    if not verification:
+        raise HTTPException(status_code=404, detail="Верификация не найдена")
+    
+    # Contract template data
+    contract_data = {
+        "contract_number": verification.get("contract_number"),
+        "date": datetime.now().strftime("%d.%m.%Y"),
+        "city": "Минск",
+        # Executor (CARBRIDGE)
+        "executor": {
+            "name": "ООО «КАРБРИДЖ»",
+            "director": "Вотинцев Кирилл Михайлович",
+            "address": "220088, г. Минск, ул. Червякова д.52, пом. 2",
+            "unp": "193973008"
+        },
+        # Client data
+        "client": {
+            "full_name": verification.get("full_name"),
+            "passport_series": verification.get("passport_series"),
+            "passport_number": verification.get("passport_number"),
+            "passport_issued_by": verification.get("passport_issued_by"),
+            "passport_issue_date": verification.get("passport_issue_date"),
+            "registration_address": verification.get("registration_address"),
+            "phone": verification.get("phone"),
+            "email": verification.get("email"),
+            "client_type": verification.get("client_type"),
+            "company_name": verification.get("company_name"),
+            "company_unp": verification.get("company_unp")
+        },
+        # Contract terms
+        "terms": {
+            "prepayment_byn": "1500",
+            "platform_commission": "3%",
+            "payment_commission": "1.5%"
+        },
+        "status": verification.get("status"),
+        "signed": verification.get("contract_signed", False)
+    }
+    
+    # Mark contract as generated
+    if not verification.get("contract_generated"):
+        await db.verifications.update_one(
+            {"user_id": current_user["id"]},
+            {"$set": {"contract_generated": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    
+    return contract_data
+
+@api_router.post("/verification/sign-contract")
+async def sign_contract(current_user: dict = Depends(get_current_user)):
+    """Client signs the contract"""
+    verification = await db.verifications.find_one({"user_id": current_user["id"]})
+    
+    if not verification:
+        raise HTTPException(status_code=404, detail="Верификация не найдена")
+    
+    if verification.get("status") not in ["documents_uploaded", "under_review", "approved"]:
+        raise HTTPException(status_code=400, detail="Сначала загрузите документы")
+    
+    await db.verifications.update_one(
+        {"user_id": current_user["id"]},
+        {
+            "$set": {
+                "contract_signed": True,
+                "contract_signed_at": datetime.now(timezone.utc).isoformat(),
+                "status": "under_review",
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    # Update account
+    await db.accounts.update_one(
+        {"user_id": current_user["id"]},
+        {
+            "$set": {
+                "contract_signed": True,
+                "verification_status": "under_review"
+            }
+        }
+    )
+    
+    return {"message": "Договор подписан. Ожидайте проверки модератором."}
+
+# ==================== CAR APPLICATION SYSTEM ====================
+
+class CarApplicationCreate(BaseModel):
+    # Personal data
+    client_type: Literal["individual", "legal"] = "individual"
+    full_name: str
+    phone: str
+    email: EmailStr
+    preferred_contact: Literal["phone", "whatsapp", "telegram", "viber", "email"] = "phone"
+    
+    # Car preferences
+    brand: Optional[str] = None
+    model: Optional[str] = None
+    body_type: Optional[str] = None  # sedan, suv, hatchback, crossover, minivan, coupe
+    engine_type: Literal["ice", "hybrid", "electric", "any"] = "any"
+    year_from: Optional[int] = None
+    year_to: Optional[int] = None
+    mileage_max: Optional[int] = None
+    
+    # Budget
+    budget_min: Optional[float] = None
+    budget_max: Optional[float] = None
+    budget_currency: Literal["BYN", "USD", "EUR", "CNY"] = "BYN"
+    
+    # Additional preferences
+    color_preferences: Optional[str] = None
+    transmission: Optional[str] = None  # auto, manual, any
+    drive_type: Optional[str] = None  # fwd, rwd, awd, any
+    
+    # Special conditions
+    has_decree_140: bool = False  # Указ 140 (льготы)
+    decree_140_category: Optional[str] = None  # many_children, disabled_1_2
+    
+    # Financing
+    payment_method: Literal["full", "leasing", "credit"] = "full"
+    needs_manager_help: bool = False
+    
+    # Additional notes
+    additional_requirements: Optional[str] = None
+    urgent: bool = False
+
+@api_router.post("/applications/create")
+async def create_car_application(data: CarApplicationCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new car application"""
+    application_id = str(uuid.uuid4())
+    application_number = f"APP-{datetime.now().strftime('%Y%m%d')}-{application_id[:6].upper()}"
+    
+    application_doc = {
+        "id": application_id,
+        "application_number": application_number,
+        "user_id": current_user["id"],
+        "client_type": data.client_type,
+        "full_name": data.full_name,
+        "phone": data.phone,
+        "email": data.email,
+        "preferred_contact": data.preferred_contact,
+        # Car preferences
+        "brand": data.brand,
+        "model": data.model,
+        "body_type": data.body_type,
+        "engine_type": data.engine_type,
+        "year_from": data.year_from,
+        "year_to": data.year_to,
+        "mileage_max": data.mileage_max,
+        # Budget
+        "budget_min": data.budget_min,
+        "budget_max": data.budget_max,
+        "budget_currency": data.budget_currency,
+        # Additional
+        "color_preferences": data.color_preferences,
+        "transmission": data.transmission,
+        "drive_type": data.drive_type,
+        # Special
+        "has_decree_140": data.has_decree_140,
+        "decree_140_category": data.decree_140_category,
+        "payment_method": data.payment_method,
+        "needs_manager_help": data.needs_manager_help,
+        "additional_requirements": data.additional_requirements,
+        "urgent": data.urgent,
+        # Status
+        "status": "new",  # new, in_progress, offers_received, completed, cancelled
+        "offers_count": 0,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.applications.insert_one(application_doc)
+    
+    return {
+        "message": "Заявка успешно создана",
+        "application_id": application_id,
+        "application_number": application_number
+    }
+
+@api_router.get("/applications/my")
+async def get_my_applications(current_user: dict = Depends(get_current_user)):
+    """Get all applications for current user"""
+    applications = await db.applications.find(
+        {"user_id": current_user["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return applications
+
+@api_router.get("/applications/{application_id}")
+async def get_application(application_id: str, current_user: dict = Depends(get_current_user)):
+    """Get specific application"""
+    application = await db.applications.find_one(
+        {"id": application_id, "user_id": current_user["id"]},
+        {"_id": 0}
+    )
+    
+    if not application:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+    
+    return application
+
+@api_router.delete("/applications/{application_id}")
+async def cancel_application(application_id: str, current_user: dict = Depends(get_current_user)):
+    """Cancel application"""
+    result = await db.applications.update_one(
+        {"id": application_id, "user_id": current_user["id"], "status": "new"},
+        {"$set": {"status": "cancelled", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=400, detail="Невозможно отменить заявку")
+    
+    return {"message": "Заявка отменена"}
+
+# ==================== CONTRACTOR SYSTEM ====================
+
+class ContractorRegister(BaseModel):
+    # Company info
+    company_name: str
+    country: Literal["BY", "CN"] = "CN"  # Belarus or China
+    registration_number: Optional[str] = None  # UNP for BY, USCI for CN
+    legal_address: str
+    
+    # Contact person
+    contact_person: str
+    position: str
+    phone: str
+    email: EmailStr
+    whatsapp: Optional[str] = None
+    wechat: Optional[str] = None
+    telegram: Optional[str] = None
+    
+    # Services offered
+    services: List[str]  # inspection, purchase, export, logistics, leasing, customs
+    
+    # Additional info
+    description: str
+    experience_years: Optional[int] = None
+    website: Optional[str] = None
+
+@api_router.post("/contractors/register")
+async def register_contractor(data: ContractorRegister):
+    """Register a new contractor"""
+    # Check if email already registered
+    existing = await db.contractor_applications.find_one({"email": data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
+    
+    contractor_id = str(uuid.uuid4())
+    
+    contractor_doc = {
+        "id": contractor_id,
+        "company_name": data.company_name,
+        "country": data.country,
+        "registration_number": data.registration_number,
+        "legal_address": data.legal_address,
+        "contact_person": data.contact_person,
+        "position": data.position,
+        "phone": data.phone,
+        "email": data.email,
+        "whatsapp": data.whatsapp,
+        "wechat": data.wechat,
+        "telegram": data.telegram,
+        "services": data.services,
+        "description": data.description,
+        "experience_years": data.experience_years,
+        "website": data.website,
+        "documents": [],
+        "status": "pending",  # pending, under_review, approved, rejected
+        "verified": False,
+        "rating": 5.0,
+        "deals_count": 0,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.contractor_applications.insert_one(contractor_doc)
+    
+    return {
+        "message": "Заявка на регистрацию подрядчика отправлена",
+        "contractor_id": contractor_id
+    }
+
+@api_router.post("/contractors/login")
+async def contractor_login(credentials: UserLogin):
+    """Login for contractors"""
+    contractor = await db.contractors.find_one({"email": credentials.email})
+    
+    if not contractor:
+        raise HTTPException(status_code=401, detail="Неверный email или пароль")
+    
+    if not verify_password(credentials.password, contractor.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Неверный email или пароль")
+    
+    if contractor.get("status") != "approved":
+        raise HTTPException(status_code=403, detail="Аккаунт не активирован")
+    
+    # Generate token
+    token_data = {
+        "sub": contractor["id"],
+        "email": contractor["email"],
+        "type": "contractor",
+        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
+    }
+    token = jwt.encode(token_data, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "contractor": {
+            "id": contractor["id"],
+            "company_name": contractor["company_name"],
+            "email": contractor["email"],
+            "services": contractor.get("services", []),
+            "verified": contractor.get("verified", False),
+            "rating": contractor.get("rating", 5.0)
+        }
+    }
+
+async def get_current_contractor(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get current contractor from JWT token"""
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "contractor":
+            raise HTTPException(status_code=403, detail="Доступ только для подрядчиков")
+        
+        contractor = await db.contractors.find_one({"id": payload["sub"]}, {"_id": 0, "password_hash": 0})
+        if not contractor:
+            raise HTTPException(status_code=401, detail="Подрядчик не найден")
+        return contractor
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Токен истёк")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Неверный токен")
+
+@api_router.get("/contractors/dashboard")
+async def get_contractor_dashboard(contractor: dict = Depends(get_current_contractor)):
+    """Get contractor dashboard data"""
+    # Get active tenders
+    tenders = await db.tenders.find(
+        {"status": "active"},
+        {"_id": 0}
+    ).to_list(50)
+    
+    # Get contractor's offers
+    my_offers = await db.tender_offers.find(
+        {"contractor_id": contractor["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    # Get completed deals
+    completed_deals = await db.deals.find(
+        {"contractor_id": contractor["id"], "status": "completed"},
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Get applications looking for contractors
+    applications = await db.applications.find(
+        {"status": {"$in": ["new", "in_progress"]}},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    return {
+        "contractor": {
+            "id": contractor["id"],
+            "company_name": contractor["company_name"],
+            "services": contractor.get("services", []),
+            "verified": contractor.get("verified", False),
+            "rating": contractor.get("rating", 5.0),
+            "deals_count": contractor.get("deals_count", 0)
+        },
+        "active_tenders": len(tenders),
+        "my_offers": len(my_offers),
+        "completed_deals": len(completed_deals),
+        "new_applications": len([a for a in applications if a.get("status") == "new"]),
+        "tenders": tenders[:10],
+        "recent_offers": my_offers[:10],
+        "applications": applications[:10]
+    }
+
+@api_router.post("/contractors/submit-offer")
+async def submit_contractor_offer(data: dict, contractor: dict = Depends(get_current_contractor)):
+    """Submit offer for a tender or application"""
+    tender_id = data.get("tender_id")
+    application_id = data.get("application_id")
+    
+    if not tender_id and not application_id:
+        raise HTTPException(status_code=400, detail="Укажите tender_id или application_id")
+    
+    offer_id = str(uuid.uuid4())
+    
+    offer_doc = {
+        "id": offer_id,
+        "contractor_id": contractor["id"],
+        "contractor_name": contractor["company_name"],
+        "tender_id": tender_id,
+        "application_id": application_id,
+        "price_usd": data.get("price_usd"),
+        "price_cny": data.get("price_cny"),
+        "delivery_days": data.get("delivery_days"),
+        "delivery_cost": data.get("delivery_cost"),
+        "car_details": data.get("car_details"),
+        "notes": data.get("notes"),
+        "valid_until": data.get("valid_until"),
+        "status": "pending",  # pending, accepted, rejected
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.tender_offers.insert_one(offer_doc)
+    
+    # Update tender/application offers count
+    if tender_id:
+        await db.tenders.update_one(
+            {"id": tender_id},
+            {"$inc": {"offers_count": 1}}
+        )
+    if application_id:
+        await db.applications.update_one(
+            {"id": application_id},
+            {"$inc": {"offers_count": 1}, "$set": {"status": "offers_received"}}
+        )
+    
+    return {"message": "Предложение отправлено", "offer_id": offer_id}
+
+# Moderator endpoints for contractor management
+@api_router.get("/moderator/contractor-applications")
+async def get_contractor_applications(current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Get all contractor applications"""
+    applications = await db.contractor_applications.find(
+        {},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return applications
+
+@api_router.post("/moderator/contractors/{contractor_id}/approve")
+async def approve_contractor(contractor_id: str, data: dict, current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Approve contractor application"""
+    application = await db.contractor_applications.find_one({"id": contractor_id})
+    
+    if not application:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+    
+    # Generate password
+    temp_password = str(uuid.uuid4())[:12]
+    password_hash = pwd_context.hash(temp_password)
+    
+    # Create contractor account
+    contractor_doc = {
+        **{k: v for k, v in application.items() if k != "_id"},
+        "password_hash": password_hash,
+        "status": "approved",
+        "verified": data.get("verified", False),
+        "approved_by": current_user["id"],
+        "approved_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.contractors.insert_one(contractor_doc)
+    
+    # Update application status
+    await db.contractor_applications.update_one(
+        {"id": contractor_id},
+        {"$set": {"status": "approved"}}
+    )
+    
+    return {
+        "message": "Подрядчик одобрен",
+        "temp_password": temp_password,
+        "email": application["email"]
+    }
+
+@api_router.post("/moderator/contractors/{contractor_id}/reject")
+async def reject_contractor(contractor_id: str, data: dict, current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Reject contractor application"""
+    reason = data.get("reason", "")
+    
+    await db.contractor_applications.update_one(
+        {"id": contractor_id},
+        {
+            "$set": {
+                "status": "rejected",
+                "rejection_reason": reason,
+                "rejected_by": current_user["id"],
+                "rejected_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": "Заявка отклонена"}
+
 # ==================== STATUS ENDPOINT ====================
 
 @api_router.get("/")
