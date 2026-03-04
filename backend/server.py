@@ -214,6 +214,42 @@ class ContractorAssignment(BaseModel):
     contractor_id: str
     stage: Literal["inspection", "export", "logistics", "leasing"]
 
+# ==================== AFFILIATE PROGRAM MODELS ====================
+
+class AffiliateRegister(BaseModel):
+    phone: Optional[str] = None
+    telegram: Optional[str] = None
+    payment_method: Literal["bank_transfer", "crypto", "platform_balance"] = "platform_balance"
+    bank_details: Optional[str] = None
+
+class AffiliateResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    user_id: str
+    referral_code: str
+    referral_link: str
+    is_partner: bool  # True after 3 completed referral deals
+    total_referrals: int
+    active_referrals: int
+    completed_deals: int
+    total_earnings: float
+    pending_earnings: float
+    withdrawn_earnings: float
+    available_balance: float
+    created_at: str
+
+class ReferralStats(BaseModel):
+    referral_id: str
+    referral_email: str
+    referral_name: str
+    registered_at: str
+    completed_deals: int
+    total_commission: float
+
+class WithdrawRequest(BaseModel):
+    amount: float
+    method: Literal["bank_transfer", "crypto", "platform_balance"]
+    details: Optional[str] = None
+
 class CalculatorInput(BaseModel):
     price_cny: float
     age: Literal["under3", "3to5", "over5"]
