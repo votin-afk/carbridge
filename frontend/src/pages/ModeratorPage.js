@@ -131,6 +131,9 @@ const ModeratorPage = () => {
       } else if (activeTab === 'documents') {
         const response = await axios.get(`${API}/moderator/verifications/pending`, { headers });
         setVerifications(response.data);
+      } else if (activeTab === 'contractors') {
+        const response = await axios.get(`${API}/moderator/contractor-applications`, { headers });
+        setContractorApplications(response.data);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
