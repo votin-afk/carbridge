@@ -108,7 +108,7 @@ const ContractorDashboard = () => {
     
     setSubmitting(true);
     try {
-      await axios.post(`${API}/contractors/submit-offer`, {
+      await axios.post(`${API}/contractor-offers`, {
         tender_id: selectedTender.id,
         ...offerData,
         price_usd: parseFloat(offerData.price_usd) || null,
