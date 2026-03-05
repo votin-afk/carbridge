@@ -5352,6 +5352,7 @@ class ContractorRegister(BaseModel):
     position: str
     phone: str
     email: EmailStr
+    password: str  # Password for contractor login
     whatsapp: Optional[str] = None
     wechat: Optional[str] = None
     telegram: Optional[str] = None
