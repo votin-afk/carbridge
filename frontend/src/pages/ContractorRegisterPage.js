@@ -66,6 +66,8 @@ const ContractorRegisterPage = () => {
     position: '',
     phone: '',
     email: '',
+    password: '',       // Password for contractor login
+    password_confirm: '', // Password confirmation
     whatsapp: '',
     wechat: '',
     telegram: '',
