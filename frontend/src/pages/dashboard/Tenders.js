@@ -21,9 +21,11 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Tenders = () => {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [tenders, setTenders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedTender, setExpandedTender] = useState(null);
+  const [addingToDeal, setAddingToDeal] = useState(null);
 
   const headers = { Authorization: `Bearer ${token}` };
 
