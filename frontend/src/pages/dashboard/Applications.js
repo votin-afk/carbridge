@@ -202,6 +202,43 @@ const Applications = () => {
     }
   };
 
+  const requestManagerHelp = async (appId) => {
+    if ((accountSummary?.balance || 0) < 200) {
+      toast.error('Недостаточно средств. Требуется $200 для помощи менеджера');
+      return;
+    }
+    
+    setRequestingManagerHelp(true);
+    try {
+      await axios.post(`${API}/applications/${appId}/request-manager-help`, {}, { headers });
+      toast.success('Менеджер назначен! С баланса списано $200');
+      fetchApplications();
+      fetchAccountSummary();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка при запросе помощи');
+    } finally {
+      setRequestingManagerHelp(false);
+    }
+  };
+
+  const startTenderFromApplication = async (appId) => {
+    if (!accountSummary?.contract_signed) {
+      toast.error('Для запуска тендера необходимо подписать договор');
+      return;
+    }
+    
+    setStartingTender(true);
+    try {
+      await axios.post(`${API}/applications/${appId}/start-tender`, {}, { headers });
+      toast.success('Тендер запущен! Проверьте раздел "Тендеры"');
+      fetchApplications();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка при запуске тендера');
+    } finally {
+      setStartingTender(false);
+    }
+  };
+
   const totalSteps = 5;
 
   const renderStep = () => {
