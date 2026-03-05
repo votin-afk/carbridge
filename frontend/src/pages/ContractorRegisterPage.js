@@ -97,8 +97,16 @@ const ContractorRegisterPage = () => {
       toast.error('Заполните название компании и выберите страну');
       return;
     }
-    if (step === 2 && (!formData.contact_person || !formData.phone || !formData.email)) {
-      toast.error('Заполните контактные данные');
+    if (step === 2 && (!formData.contact_person || !formData.phone || !formData.email || !formData.password)) {
+      toast.error('Заполните контактные данные и пароль');
+      return;
+    }
+    if (step === 2 && formData.password !== formData.password_confirm) {
+      toast.error('Пароли не совпадают');
+      return;
+    }
+    if (step === 2 && formData.password.length < 6) {
+      toast.error('Пароль должен быть не менее 6 символов');
       return;
     }
     if (step === 3 && (formData.services.length === 0 || !formData.description)) {
