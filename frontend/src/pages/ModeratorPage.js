@@ -399,10 +399,19 @@ const ModeratorPage = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-[#15191E] p-1 mb-6">
+          <TabsList className="bg-[#15191E] p-1 mb-6 flex-wrap">
             <TabsTrigger value="applications" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black">
-              <Users size={16} className="mr-2" />
-              Заявки подрядчиков
+              <Car size={16} className="mr-2" />
+              Заявки на авто
+            </TabsTrigger>
+            <TabsTrigger value="contractors" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black">
+              <Building2 size={16} className="mr-2" />
+              Подрядчики
+              {contractorApplications.filter(c => c.status === 'pending').length > 0 && (
+                <span className="ml-2 px-2 py-0.5 bg-amber-500 text-black text-xs rounded-full">
+                  {contractorApplications.filter(c => c.status === 'pending').length}
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="deals" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black">
               <FileCheck size={16} className="mr-2" />
