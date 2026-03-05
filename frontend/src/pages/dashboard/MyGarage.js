@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -23,67 +24,24 @@ import {
   CheckCircle2,
   AlertCircle,
   Wallet,
-  FileSearch,
-  Lock,
   FileText,
   CreditCard,
-  ClipboardCheck,
-  Package,
-  Truck,
-  Star,
-  Users,
-  ChevronDown,
-  ChevronUp,
   X,
-  Calculator,
-  Banknote,
-  Headphones,
-  Percent,
-  Calendar,
   Edit3,
   StickyNote,
-  Gauge,
-  Save
+  Save,
+  ShoppingCart,
+  DollarSign,
+  Shield
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-// Contractor stage config
-const stageConfig = {
-  inspection: {
-    label: 'Проверка',
-    icon: ClipboardCheck,
-    color: 'text-blue-400',
-    bgColor: 'bg-blue-500/10',
-    borderColor: 'border-blue-500/30'
-  },
-  export: {
-    label: 'Экспорт',
-    icon: Package,
-    color: 'text-amber-400',
-    bgColor: 'bg-amber-500/10',
-    borderColor: 'border-amber-500/30'
-  },
-  logistics: {
-    label: 'Логистика',
-    icon: Truck,
-    color: 'text-emerald-400',
-    bgColor: 'bg-emerald-500/10',
-    borderColor: 'border-emerald-500/30'
-  },
-  leasing: {
-    label: 'Лизинг',
-    icon: Banknote,
-    color: 'text-purple-400',
-    bgColor: 'bg-purple-500/10',
-    borderColor: 'border-purple-500/30'
-  }
-};
-
 const MyGarage = () => {
   const { token, user } = useAuth();
+  const navigate = useNavigate();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -96,35 +54,10 @@ const MyGarage = () => {
   const [calculatingPrice, setCalculatingPrice] = useState(false);
   
   // User account state
-  const [userBalance, setUserBalance] = useState(0);
-  const [isVerified, setIsVerified] = useState(false);
-  const [contractSigned, setContractSigned] = useState(false);
-  
-  // Contractor selection state
-  const [contractorDialogOpen, setContractorDialogOpen] = useState(null); // { carId, stage }
-  const [contractors, setContractors] = useState([]);
-  const [loadingContractors, setLoadingContractors] = useState(false);
-  
-  // Leasing calculator state
-  const [leasingDialogOpen, setLeasingDialogOpen] = useState(null); // car object
-  const [leasingCompanies, setLeasingCompanies] = useState([]);
-  const [selectedLeasingCompany, setSelectedLeasingCompany] = useState(null);
-  const [leasingParams, setLeasingParams] = useState({
-    down_payment_percent: 20,
-    term_months: 36
-  });
-  const [leasingResult, setLeasingResult] = useState(null);
-  const [calculatingLeasing, setCalculatingLeasing] = useState(false);
-  const [loadingLeasingCompanies, setLoadingLeasingCompanies] = useState(false);
-  
-  // Manager help state
-  const [requestingHelp, setRequestingHelp] = useState(null); // car id
-  
-  // Card expansion state
-  const [expandedCardId, setExpandedCardId] = useState(null);
+  const [accountSummary, setAccountSummary] = useState(null);
   
   // Edit car state
-  const [editDialogOpen, setEditDialogOpen] = useState(null); // car object
+  const [editDialogOpen, setEditDialogOpen] = useState(null);
   const [editFormData, setEditFormData] = useState({
     year: '',
     mileage: '',
@@ -134,6 +67,9 @@ const MyGarage = () => {
     notes: ''
   });
   const [savingEdit, setSavingEdit] = useState(false);
+  
+  // Add to deal state
+  const [addingToDeal, setAddingToDeal] = useState(null);
   
   const [formData, setFormData] = useState({
     brand: '',
@@ -161,21 +97,18 @@ const MyGarage = () => {
     }
   };
 
-  const fetchUserAccount = async () => {
+  const fetchAccountSummary = async () => {
     try {
-      const response = await axios.get(`${API}/user/account`, { headers });
-      setUserBalance(response.data.balance || 0);
-      setIsVerified(response.data.is_verified || false);
-      setContractSigned(response.data.contract_signed || false);
+      const response = await axios.get(`${API}/account/summary`, { headers });
+      setAccountSummary(response.data);
     } catch (error) {
-      // If endpoint doesn't exist yet, use defaults
-      console.log('Account endpoint not available, using defaults');
+      console.log('Account endpoint not available');
     }
   };
 
   useEffect(() => {
     fetchCars();
-    fetchUserAccount();
+    fetchAccountSummary();
   }, []);
 
   // Calculate price when form data changes
@@ -311,7 +244,7 @@ const MyGarage = () => {
     setAddMode('url');
   };
 
-  // Delete confirmation state
+  // Delete functions
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -330,174 +263,45 @@ const MyGarage = () => {
     }
   };
 
-  const confirmDelete = (carId) => {
-    setDeleteConfirmId(carId);
-  };
-
-  const cancelDelete = () => {
-    setDeleteConfirmId(null);
-  };
-
-  // Contractor functions
-  const openContractorDialog = async (carId, stage) => {
-    setContractorDialogOpen({ carId, stage });
-    setLoadingContractors(true);
-    try {
-      const response = await axios.get(`${API}/contractors`, {
-        params: { contractor_type: stage }
-      });
-      setContractors(response.data);
-    } catch (error) {
-      toast.error('Ошибка загрузки подрядчиков');
-    } finally {
-      setLoadingContractors(false);
+  // Add to deal function
+  const handleAddToDeal = async (carId) => {
+    // Check verification first
+    if (!accountSummary?.is_verified || accountSummary?.verification_status !== 'approved') {
+      toast.error('Для создания сделки необходима верификация');
+      navigate('/dashboard/verification');
+      return;
     }
-  };
-
-  const assignContractor = async (contractorId) => {
-    if (!contractorDialogOpen) return;
     
+    if (!accountSummary?.contract_signed) {
+      toast.error('Необходимо подписать договор');
+      navigate('/dashboard/verification');
+      return;
+    }
+    
+    if ((accountSummary?.balance || 0) < 300) {
+      toast.error('Недостаточно средств. Необходимо $300 для добавления авто в сделку');
+      return;
+    }
+    
+    setAddingToDeal(carId);
     try {
-      await axios.post(`${API}/garage/${contractorDialogOpen.carId}/assign-contractor`, {
-        car_id: contractorDialogOpen.carId,
-        contractor_id: contractorId,
-        stage: contractorDialogOpen.stage
+      const response = await axios.post(`${API}/deals/add-car`, {
+        car_id: carId,
+        from_tender: false
       }, { headers });
       
-      toast.success('Подрядчик выбран');
-      setContractorDialogOpen(null);
+      toast.success(`Авто добавлено в сделку! Списано $${response.data.fee_charged}`);
       fetchCars();
+      fetchAccountSummary();
+      navigate('/dashboard/deals');
     } catch (error) {
-      toast.error('Ошибка при выборе подрядчика');
-    }
-  };
-
-  const removeContractor = async (carId, stage) => {
-    try {
-      await axios.delete(`${API}/garage/${carId}/contractor/${stage}`, { headers });
-      toast.success('Подрядчик удален');
-      fetchCars();
-    } catch (error) {
-      toast.error('Ошибка при удалении подрядчика');
-    }
-  };
-
-  const handleStartTender = async (carId) => {
-    if (!contractSigned) {
-      toast.error('Для запуска тендера необходимо подписать договор');
-      return;
-    }
-    if (userBalance <= 0) {
-      toast.error('Для запуска тендера необходимо пополнить баланс');
-      return;
-    }
-
-    try {
-      await axios.post(`${API}/tenders`, { car_id: carId }, { headers });
-      toast.success('Тендер запущен! Проверьте раздел "Тендеры"');
-      fetchCars();
-    } catch (error) {
-      toast.error('Ошибка при запуске тендера');
-    }
-  };
-
-  const handleRequestReport = async (carId) => {
-    if (!contractSigned) {
-      toast.error('Для запроса отчёта необходимо подписать договор');
-      return;
-    }
-    if (userBalance <= 0) {
-      toast.error('Для запроса отчёта необходимо пополнить баланс');
-      return;
-    }
-
-    toast.success('Запрос на отчёт о состоянии отправлен');
-  };
-
-  // Leasing functions
-  const openLeasingDialog = async (car) => {
-    setLeasingDialogOpen(car);
-    setLeasingResult(null);
-    setSelectedLeasingCompany(null);
-    setLeasingParams({ down_payment_percent: 20, term_months: 36 });
-    setLoadingLeasingCompanies(true);
-    
-    try {
-      const response = await axios.get(`${API}/contractors`, {
-        params: { contractor_type: 'leasing' }
-      });
-      setLeasingCompanies(response.data);
-      if (response.data.length > 0) {
-        setSelectedLeasingCompany(response.data[0]);
-      }
-    } catch (error) {
-      toast.error('Ошибка загрузки лизинговых компаний');
+      toast.error(error.response?.data?.detail || 'Ошибка при создании сделки');
     } finally {
-      setLoadingLeasingCompanies(false);
+      setAddingToDeal(null);
     }
   };
 
-  const calculateLeasing = async () => {
-    if (!leasingDialogOpen?.calculated_price_usd) {
-      toast.error('Цена авто не рассчитана');
-      return;
-    }
-
-    setCalculatingLeasing(true);
-    try {
-      const response = await axios.post(`${API}/leasing/calculate`, {
-        car_price_usd: leasingDialogOpen.calculated_price_usd,
-        down_payment_percent: leasingParams.down_payment_percent,
-        term_months: leasingParams.term_months,
-        leasing_company_id: selectedLeasingCompany?.id || null
-      });
-      setLeasingResult(response.data);
-    } catch (error) {
-      toast.error('Ошибка расчёта лизинга');
-    } finally {
-      setCalculatingLeasing(false);
-    }
-  };
-
-  const handleRequestManagerHelp = async (carId) => {
-    if (userBalance < 200) {
-      toast.error('Недостаточно средств. Требуется $200 для запроса помощи менеджера');
-      return;
-    }
-
-    setRequestingHelp(carId);
-    try {
-      await axios.post(`${API}/garage/${carId}/request-manager-help`, {}, { headers });
-      toast.success('Запрос на помощь менеджера отправлен! С вашего баланса списано $200');
-      fetchUserAccount(); // Refresh balance
-      fetchCars(); // Refresh car status
-    } catch (error) {
-      const message = error.response?.data?.detail || 'Ошибка при запросе помощи';
-      toast.error(message);
-    } finally {
-      setRequestingHelp(null);
-    }
-  };
-
-  const assignLeasingCompany = async (companyId) => {
-    if (!leasingDialogOpen) return;
-    
-    try {
-      await axios.post(`${API}/garage/${leasingDialogOpen.id}/assign-contractor`, {
-        car_id: leasingDialogOpen.id,
-        contractor_id: companyId,
-        stage: 'leasing'
-      }, { headers });
-      
-      toast.success('Лизинговая компания выбрана');
-      setLeasingDialogOpen(null);
-      fetchCars();
-    } catch (error) {
-      toast.error('Ошибка при выборе лизинговой компании');
-    }
-  };
-
-  // Edit car functions
+  // Edit functions
   const openEditDialog = (car) => {
     setEditDialogOpen(car);
     setEditFormData({
@@ -533,30 +337,46 @@ const MyGarage = () => {
       setEditDialogOpen(null);
       fetchCars();
     } catch (error) {
-      const message = error.response?.data?.detail || 'Ошибка при сохранении';
-      toast.error(message);
+      toast.error(error.response?.data?.detail || 'Ошибка при сохранении');
     } finally {
       setSavingEdit(false);
     }
   };
 
-  // Toggle card expansion
-  const toggleCardExpansion = (carId) => {
-    setExpandedCardId(expandedCardId === carId ? null : carId);
+  const handleStartTender = async (carId) => {
+    if (!accountSummary?.contract_signed) {
+      toast.error('Для запуска тендера необходимо подписать договор');
+      navigate('/dashboard/verification');
+      return;
+    }
+    if ((accountSummary?.balance || 0) <= 0) {
+      toast.error('Для запуска тендера необходимо пополнить баланс');
+      return;
+    }
+
+    try {
+      await axios.post(`${API}/tenders`, { car_id: carId }, { headers });
+      toast.success('Тендер запущен! Проверьте раздел "Тендеры"');
+      fetchCars();
+    } catch (error) {
+      toast.error('Ошибка при запуске тендера');
+    }
   };
 
-  const canPerformActions = contractSigned && userBalance > 0;
+  const canPerformActions = accountSummary?.contract_signed && (accountSummary?.balance || 0) > 0;
 
   const getStatusBadge = (status) => {
     const styles = {
       saved: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
       tender_active: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-      in_progress: 'bg-[#00E5FF]/10 text-[#00E5FF] border-[#00E5FF]/20'
+      in_progress: 'bg-[#00E5FF]/10 text-[#00E5FF] border-[#00E5FF]/20',
+      in_deal: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
     };
     const labels = {
       saved: 'Сохранен',
       tender_active: 'Тендер активен',
-      in_progress: 'В работе'
+      in_progress: 'В работе',
+      in_deal: 'В сделке'
     };
     return (
       <span className={`px-2 py-1 rounded-full text-xs border ${styles[status] || styles.saved}`}>
@@ -596,34 +416,34 @@ const MyGarage = () => {
             </div>
             <div>
               <p className="text-slate-400 text-sm">Мой баланс</p>
-              <p className="text-2xl font-bold text-white">${formatNumber(userBalance)}</p>
+              <p className="text-2xl font-bold text-white">${formatNumber(accountSummary?.balance || 0)}</p>
             </div>
           </div>
           
           <div className="flex flex-col sm:flex-row gap-3">
             {/* Verification Status */}
             <div className={`flex items-center gap-2 px-4 py-2 rounded-sm border ${
-              isVerified 
+              accountSummary?.is_verified 
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
                 : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
             }`}>
-              {isVerified ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-              <span className="text-sm">{isVerified ? 'Верифицирован' : 'Не верифицирован'}</span>
+              {accountSummary?.is_verified ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+              <span className="text-sm">{accountSummary?.is_verified ? 'Верифицирован' : 'Не верифицирован'}</span>
             </div>
             
             {/* Contract Status */}
             <div className={`flex items-center gap-2 px-4 py-2 rounded-sm border ${
-              contractSigned 
+              accountSummary?.contract_signed 
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
                 : 'bg-slate-500/10 border-slate-500/30 text-slate-400'
             }`}>
               <FileText size={16} />
-              <span className="text-sm">{contractSigned ? 'Договор подписан' : 'Договор не подписан'}</span>
+              <span className="text-sm">{accountSummary?.contract_signed ? 'Договор подписан' : 'Договор не подписан'}</span>
             </div>
 
             <Button 
               className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
-              onClick={() => toast.info('Функция пополнения баланса будет доступна после верификации')}
+              onClick={() => toast.info('Функция пополнения баланса скоро будет доступна')}
             >
               <CreditCard size={16} className="mr-2" />
               Пополнить
@@ -634,8 +454,10 @@ const MyGarage = () => {
         {!canPerformActions && (
           <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-sm">
             <p className="text-amber-400 text-sm flex items-center gap-2">
-              <Lock size={14} />
-              Для запуска тендера и запроса отчётов необходимо пройти верификацию, подписать договор и пополнить баланс
+              <Shield size={14} />
+              {!accountSummary?.contract_signed 
+                ? 'Для запуска сделок и тендеров необходимо пройти верификацию и подписать договор'
+                : 'Пополните баланс для запуска сделок и тендеров'}
             </p>
           </div>
         )}
@@ -646,7 +468,7 @@ const MyGarage = () => {
         <div>
           <h1 className="text-2xl font-bold text-white">Мой гараж</h1>
           <p className="text-slate-400 mt-1">
-            Сохраненные автомобили для тендера
+            Сохраненные автомобили для тендера или сделки
           </p>
         </div>
 
@@ -794,9 +616,6 @@ const MyGarage = () => {
                             <p className="text-white font-semibold text-lg">{formatNumber(calculatedPrice.total_byn)} BYN</p>
                           </div>
                         </div>
-                        <p className="text-slate-500 text-xs mt-2">
-                          Включает: растаможку, доставку, комиссию платформы 3%, комиссию за оплату 1.5%
-                        </p>
                       </div>
                     )}
                     {calculatingPrice && (
@@ -996,22 +815,29 @@ const MyGarage = () => {
         </Dialog>
       </div>
 
+      {/* Info Banner */}
+      <div className="bg-[#00E5FF]/5 border border-[#00E5FF]/20 rounded-sm p-4">
+        <div className="flex items-start gap-3">
+          <ShoppingCart size={20} className="text-[#00E5FF] flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-white font-medium">Как это работает?</p>
+            <p className="text-slate-400 text-sm mt-1">
+              1. Добавьте авто в гараж → 2. Нажмите "Добавить в сделку" ($300) или "Запустить тендер" → 3. Выбирайте подрядчиков и оплачивайте этапы в разделе "Авто для сделки"
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Cars Grid */}
       {cars.length > 0 ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {cars.map((car) => {
-            const isExpanded = expandedCardId === car.id;
-            
-            return (
+          {cars.map((car) => (
             <div 
               key={car.id}
               className="bg-[#15191E] border border-[#27272A] rounded-sm overflow-hidden card-hover"
             >
-              {/* Image - Clickable to expand */}
-              <div 
-                className="h-40 bg-[#1C2128] relative cursor-pointer"
-                onClick={() => toggleCardExpansion(car.id)}
-              >
+              {/* Image */}
+              <div className="h-40 bg-[#1C2128] relative">
                 {car.image_url ? (
                   <img 
                     src={car.image_url} 
@@ -1026,33 +852,21 @@ const MyGarage = () => {
                 <div className="absolute top-3 right-3">
                   {getStatusBadge(car.status)}
                 </div>
-                {/* Expand indicator */}
-                <div className="absolute bottom-2 right-2 bg-black/50 rounded-full p-1">
-                  {isExpanded ? (
-                    <ChevronUp size={16} className="text-white" />
-                  ) : (
-                    <ChevronDown size={16} className="text-white" />
-                  )}
-                </div>
               </div>
 
               {/* Content */}
               <div className="p-4">
-                {/* Header with title and actions */}
+                {/* Header */}
                 <div className="flex items-start justify-between mb-2">
-                  <div 
-                    className="flex-1 cursor-pointer"
-                    onClick={() => toggleCardExpansion(car.id)}
-                  >
+                  <div>
                     <h3 className="text-white font-semibold text-lg">
                       {car.brand} {car.model}
                     </h3>
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* Edit Button */}
                     <button
                       data-testid={`edit-car-${car.id}`}
-                      onClick={(e) => { e.stopPropagation(); openEditDialog(car); }}
+                      onClick={() => openEditDialog(car)}
                       className="p-1.5 border border-[#27272A] rounded-sm text-slate-400 hover:text-[#00E5FF] hover:border-[#00E5FF]"
                       title="Редактировать"
                     >
@@ -1091,7 +905,7 @@ const MyGarage = () => {
                   )}
                 </div>
 
-                {/* Notes preview */}
+                {/* Notes */}
                 {car.notes && (
                   <div className="mb-3 p-2 bg-amber-500/10 border border-amber-500/20 rounded-sm">
                     <div className="flex items-start gap-2">
@@ -1101,218 +915,101 @@ const MyGarage = () => {
                   </div>
                 )}
 
-                {/* Expandable Section */}
-                {isExpanded && (
-                  <div className="border-t border-[#27272A] pt-4 mt-3 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                    {/* Contractor Selection Stages */}
-                    <div className="space-y-2">
-                      <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Выбор подрядчиков</p>
-                      {['inspection', 'export', 'logistics'].map(stage => {
-                        const config = stageConfig[stage];
-                        const StageIcon = config.icon;
-                        const assignedContractor = car.contractors?.[stage];
-                        
-                        return (
-                          <div 
-                            key={stage}
-                            className={`flex items-center justify-between p-2 rounded-sm border ${
-                              assignedContractor ? config.borderColor : 'border-[#27272A]'
-                            } ${assignedContractor ? config.bgColor : 'bg-[#0B0F14]'}`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <StageIcon size={14} className={config.color} />
-                              <span className="text-slate-400 text-sm">{config.label}</span>
-                            </div>
-                            
-                            {assignedContractor ? (
-                              <div className="flex items-center gap-2">
-                                <span className="text-white text-sm font-medium">{assignedContractor.contractor_name}</span>
-                                <button
-                                  onClick={() => removeContractor(car.id, stage)}
-                                  className="text-slate-500 hover:text-red-400"
-                                >
-                                  <X size={14} />
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => openContractorDialog(car.id, stage)}
-                                className={`text-xs px-2 py-1 rounded-sm ${config.bgColor} ${config.color} hover:opacity-80`}
-                              >
-                                Выбрать
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
-                      
-                      {/* Leasing Section - Special */}
-                      {car.calculated_price_usd && (
-                        <div 
-                          className={`flex items-center justify-between p-2 rounded-sm border ${
-                            car.contractors?.leasing ? 'border-purple-500/30 bg-purple-500/10' : 'border-[#27272A] bg-[#0B0F14]'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Banknote size={14} className="text-purple-400" />
-                            <span className="text-slate-400 text-sm">Лизинг</span>
-                          </div>
-                          
-                          {car.contractors?.leasing ? (
-                            <div className="flex items-center gap-2">
-                              <span className="text-white text-sm font-medium">{car.contractors.leasing.contractor_name}</span>
-                              <button
-                                onClick={() => removeContractor(car.id, 'leasing')}
-                                className="text-slate-500 hover:text-red-400"
-                              >
-                                <X size={14} />
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              data-testid={`open-leasing-calc-${car.id}`}
-                              onClick={() => openLeasingDialog(car)}
-                              className="text-xs px-2 py-1 rounded-sm bg-purple-500/10 text-purple-400 hover:opacity-80 flex items-center gap-1"
-                            >
-                              <Calculator size={12} />
-                              Калькулятор
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        {car.status === 'saved' && (
-                          <Button
-                            data-testid={`start-tender-${car.id}`}
-                            onClick={() => handleStartTender(car.id)}
-                            disabled={!canPerformActions}
-                            className={`flex-1 text-sm ${
-                              canPerformActions 
-                                ? 'bg-[#00E5FF] hover:bg-[#22D3EE] text-black' 
-                                : 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                            }`}
-                          >
-                            {!canPerformActions && <Lock size={12} className="mr-1" />}
-                            <Send size={14} className="mr-1" />
-                            Запустить тендер
-                          </Button>
-                        )}
-                        {car.source_url && (
-                          <a 
-                            href={car.source_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-[#00E5FF] hover:border-[#00E5FF]"
-                          >
-                            <ExternalLink size={16} />
-                          </a>
-                        )}
-                        
-                        {/* Delete Button with Confirmation */}
-                        {deleteConfirmId === car.id ? (
-                          <div className="flex gap-1">
-                            <button
-                              data-testid={`confirm-delete-${car.id}`}
-                              onClick={() => handleDeleteCar(car.id)}
-                              disabled={deleting}
-                              className="p-2 bg-red-500 rounded-sm text-white hover:bg-red-600 disabled:opacity-50"
-                            >
-                              {deleting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                            </button>
-                            <button
-                              data-testid={`cancel-delete-${car.id}`}
-                              onClick={cancelDelete}
-                              className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-white"
-                            >
-                              ✕
-                            </button>
-                          </div>
+                {/* Actions */}
+                <div className="space-y-2">
+                  {car.status === 'saved' && (
+                    <>
+                      {/* Primary Action: Add to Deal */}
+                      <Button
+                        data-testid={`add-to-deal-${car.id}`}
+                        onClick={() => handleAddToDeal(car.id)}
+                        disabled={addingToDeal === car.id}
+                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
+                      >
+                        {addingToDeal === car.id ? (
+                          <Loader2 size={16} className="mr-2 animate-spin" />
                         ) : (
-                          <button
-                            data-testid={`delete-car-${car.id}`}
-                            onClick={() => confirmDelete(car.id)}
-                            className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-red-400 hover:border-red-400"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          <ShoppingCart size={16} className="mr-2" />
                         )}
-                      </div>
+                        Добавить в сделку — $300
+                      </Button>
                       
-                      {/* Request Report Button */}
-                      {car.status === 'saved' && (
-                        <Button
-                          data-testid={`request-report-${car.id}`}
-                          onClick={() => handleRequestReport(car.id)}
-                          disabled={!canPerformActions}
-                          variant="outline"
-                          className={`w-full text-sm ${
-                            canPerformActions 
-                              ? 'border-[#27272A] text-slate-300 hover:border-[#00E5FF] hover:text-[#00E5FF]' 
-                              : 'border-slate-700 text-slate-500 cursor-not-allowed'
-                          }`}
-                        >
-                          {!canPerformActions && <Lock size={12} className="mr-1" />}
-                          <FileSearch size={14} className="mr-1" />
-                          Запросить отчёт о состоянии
-                        </Button>
-                      )}
-                      
-                      {/* Manager Help Button - $200 paid service */}
-                      {car.status === 'saved' && !car.manager_help_requested && (
-                        <Button
-                          data-testid={`request-manager-help-${car.id}`}
-                          onClick={() => handleRequestManagerHelp(car.id)}
-                          disabled={requestingHelp === car.id || userBalance < 200}
-                          variant="outline"
-                          className={`w-full text-sm ${
-                            userBalance >= 200
-                              ? 'border-purple-500/50 text-purple-400 hover:border-purple-400 hover:bg-purple-500/10'
-                              : 'border-slate-700 text-slate-500 cursor-not-allowed'
-                          }`}
-                        >
-                          {requestingHelp === car.id ? (
-                            <Loader2 size={14} className="mr-1 animate-spin" />
-                          ) : (
-                            <Headphones size={14} className="mr-1" />
-                          )}
-                          Помощь менеджера — $200
-                        </Button>
-                      )}
-                      {car.manager_help_requested && (
-                        <div className="flex items-center gap-2 p-2 bg-purple-500/10 border border-purple-500/30 rounded-sm">
-                          <CheckCircle2 size={14} className="text-purple-400" />
-                          <span className="text-purple-400 text-sm">Менеджер назначен</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                      {/* Secondary Action: Start Tender */}
+                      <Button
+                        data-testid={`start-tender-${car.id}`}
+                        onClick={() => handleStartTender(car.id)}
+                        variant="outline"
+                        className="w-full border-[#27272A] text-slate-300 hover:border-[#00E5FF] hover:text-[#00E5FF]"
+                      >
+                        <Send size={14} className="mr-2" />
+                        Запустить тендер
+                      </Button>
+                    </>
+                  )}
+                  
+                  {car.status === 'in_deal' && (
+                    <Button
+                      onClick={() => navigate('/dashboard/deals')}
+                      className="w-full bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
+                    >
+                      <ShoppingCart size={14} className="mr-2" />
+                      Перейти к сделке
+                    </Button>
+                  )}
 
-                {/* Collapsed state - show expand hint */}
-                {!isExpanded && (
-                  <button
-                    onClick={() => toggleCardExpansion(car.id)}
-                    className="w-full mt-2 py-2 text-slate-500 text-sm hover:text-slate-300 flex items-center justify-center gap-1 border border-dashed border-[#27272A] rounded-sm hover:border-slate-500"
-                  >
-                    <ChevronDown size={14} />
-                    Показать подрядчиков и действия
-                  </button>
-                )}
+                  <div className="flex gap-2">
+                    {car.source_url && (
+                      <a 
+                        href={car.source_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex-1 p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-[#00E5FF] hover:border-[#00E5FF] flex items-center justify-center gap-2"
+                      >
+                        <ExternalLink size={14} />
+                        <span className="text-sm">Объявление</span>
+                      </a>
+                    )}
+                    
+                    {/* Delete Button */}
+                    {deleteConfirmId === car.id ? (
+                      <div className="flex gap-1">
+                        <button
+                          data-testid={`confirm-delete-${car.id}`}
+                          onClick={() => handleDeleteCar(car.id)}
+                          disabled={deleting}
+                          className="p-2 bg-red-500 rounded-sm text-white hover:bg-red-600 disabled:opacity-50"
+                        >
+                          {deleting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                        </button>
+                        <button
+                          data-testid={`cancel-delete-${car.id}`}
+                          onClick={() => setDeleteConfirmId(null)}
+                          className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-white"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        data-testid={`delete-car-${car.id}`}
+                        onClick={() => setDeleteConfirmId(car.id)}
+                        className="p-2 border border-[#27272A] rounded-sm text-slate-400 hover:text-red-400 hover:border-red-400"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
-          );
-          })}
+          ))}
         </div>
       ) : (
         <div className="text-center py-16 bg-[#15191E] border border-[#27272A] rounded-sm">
           <Car size={64} className="mx-auto mb-4 text-slate-600" />
           <h3 className="text-xl font-semibold text-white mb-2">Гараж пуст</h3>
           <p className="text-slate-400 mb-6 max-w-md mx-auto">
-            Добавьте автомобили по ссылке с китайских площадок или вручную, и запустите тендер для получения предложений
+            Добавьте автомобили по ссылке с китайских площадок или вручную, и запустите тендер или сделку
           </p>
           <Button
             onClick={() => setIsAddDialogOpen(true)}
@@ -1324,324 +1021,40 @@ const MyGarage = () => {
         </div>
       )}
 
-      {/* Contractor Selection Dialog */}
-      <Dialog open={!!contractorDialogOpen} onOpenChange={() => setContractorDialogOpen(null)}>
-        <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-lg max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {contractorDialogOpen && stageConfig[contractorDialogOpen.stage] && (
-                <>
-                  {(() => {
-                    const StageIcon = stageConfig[contractorDialogOpen.stage].icon;
-                    return <StageIcon size={20} className={stageConfig[contractorDialogOpen.stage].color} />;
-                  })()}
-                  Выбрать подрядчика: {stageConfig[contractorDialogOpen.stage]?.label}
-                </>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-
-          {loadingContractors ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 size={32} className="text-[#00E5FF] animate-spin" />
-            </div>
-          ) : contractors.length > 0 ? (
-            <div className="space-y-3 mt-4">
-              {contractors.map(contractor => (
-                <div 
-                  key={contractor.id}
-                  className="p-4 bg-[#0B0F14] border border-[#27272A] rounded-sm hover:border-[#00E5FF]/50 cursor-pointer transition-colors"
-                  onClick={() => assignContractor(contractor.id)}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-white font-medium">{contractor.name}</h4>
-                      {contractor.is_verified && (
-                        <CheckCircle2 size={14} className="text-[#00E5FF]" />
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Star size={12} className="text-amber-400 fill-amber-400" />
-                      <span className="text-white text-sm">{contractor.rating.toFixed(1)}</span>
-                    </div>
-                  </div>
-                  <p className="text-slate-400 text-sm mb-2 line-clamp-2">{contractor.description}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500 text-xs">
-                      <Users size={12} className="inline mr-1" />
-                      {contractor.deals_count} сделок
-                    </span>
-                    {contractor.price_range && (
-                      <span className="text-[#00E5FF] text-sm font-medium">{contractor.price_range}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-slate-400">
-              <Users size={48} className="mx-auto mb-3 opacity-30" />
-              <p>Подрядчики не найдены</p>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Leasing Calculator Dialog */}
-      <Dialog open={!!leasingDialogOpen} onOpenChange={() => setLeasingDialogOpen(null)}>
-        <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Calculator size={20} className="text-purple-400" />
-              Калькулятор лизинга
-            </DialogTitle>
-          </DialogHeader>
-
-          {leasingDialogOpen && (
-            <div className="space-y-6 mt-4">
-              {/* Car Info */}
-              <div className="p-4 bg-[#0B0F14] rounded-sm border border-[#27272A]">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-white font-medium">
-                      {leasingDialogOpen.brand} {leasingDialogOpen.model} ({leasingDialogOpen.year})
-                    </h4>
-                    <p className="text-slate-400 text-sm">Стоимость под ключ в Беларуси</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[#00E5FF] text-xl font-bold">
-                      ${formatNumber(leasingDialogOpen.calculated_price_usd)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Leasing Company Selection */}
-              <div>
-                <Label className="text-slate-300 mb-2 block">Лизинговая компания</Label>
-                {loadingLeasingCompanies ? (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 size={24} className="text-purple-400 animate-spin" />
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {leasingCompanies.map(company => (
-                      <div
-                        key={company.id}
-                        onClick={() => setSelectedLeasingCompany(company)}
-                        className={`p-3 rounded-sm border cursor-pointer transition-colors ${
-                          selectedLeasingCompany?.id === company.id
-                            ? 'border-purple-500 bg-purple-500/10'
-                            : 'border-[#27272A] bg-[#0B0F14] hover:border-purple-500/50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <h5 className="text-white font-medium">{company.name}</h5>
-                            {company.is_verified && (
-                              <CheckCircle2 size={14} className="text-purple-400" />
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Star size={12} className="text-amber-400 fill-amber-400" />
-                            <span className="text-white text-sm">{company.rating?.toFixed(1)}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="text-slate-500 text-xs">{company.deals_count} сделок</span>
-                          <span className="text-purple-400 text-sm font-medium">{company.price_range}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Leasing Parameters */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-slate-300 mb-2 block flex items-center gap-1">
-                    <Percent size={14} />
-                    Первоначальный взнос
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min="10"
-                      max="90"
-                      value={leasingParams.down_payment_percent}
-                      onChange={(e) => setLeasingParams(prev => ({
-                        ...prev,
-                        down_payment_percent: Math.min(90, Math.max(10, parseInt(e.target.value) || 10))
-                      }))}
-                      className="bg-[#0B0F14] border-[#27272A]"
-                    />
-                    <span className="text-slate-400">%</span>
-                  </div>
-                  <p className="text-slate-500 text-xs mt-1">
-                    ${formatNumber(leasingDialogOpen.calculated_price_usd * leasingParams.down_payment_percent / 100)}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-slate-300 mb-2 block flex items-center gap-1">
-                    <Calendar size={14} />
-                    Срок лизинга
-                  </Label>
-                  <select
-                    value={leasingParams.term_months}
-                    onChange={(e) => setLeasingParams(prev => ({
-                      ...prev,
-                      term_months: parseInt(e.target.value)
-                    }))}
-                    className="w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white"
-                  >
-                    <option value={12}>12 месяцев</option>
-                    <option value={24}>24 месяца</option>
-                    <option value={36}>36 месяцев</option>
-                    <option value={48}>48 месяцев</option>
-                    <option value={60}>60 месяцев</option>
-                    <option value={72}>72 месяца</option>
-                    <option value={84}>84 месяца</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Calculate Button */}
-              <Button
-                data-testid="calculate-leasing-btn"
-                onClick={calculateLeasing}
-                disabled={calculatingLeasing || !selectedLeasingCompany}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-              >
-                {calculatingLeasing ? (
-                  <Loader2 size={16} className="mr-2 animate-spin" />
-                ) : (
-                  <Calculator size={16} className="mr-2" />
-                )}
-                Рассчитать
-              </Button>
-
-              {/* Leasing Result */}
-              {leasingResult && (
-                <div className="p-4 bg-gradient-to-br from-purple-500/20 to-purple-600/10 rounded-sm border border-purple-500/30">
-                  <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
-                    <Sparkles size={16} className="text-purple-400" />
-                    Результат расчёта
-                  </h4>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 bg-[#0B0F14]/50 rounded-sm">
-                      <p className="text-slate-400 text-xs mb-1">Первый платёж</p>
-                      <p className="text-white text-lg font-bold">${formatNumber(leasingResult.first_payment)}</p>
-                    </div>
-                    <div className="p-3 bg-[#0B0F14]/50 rounded-sm">
-                      <p className="text-slate-400 text-xs mb-1">Ежемесячный платёж</p>
-                      <p className="text-purple-400 text-lg font-bold">${formatNumber(leasingResult.monthly_payment)}</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Первоначальный взнос:</span>
-                      <span className="text-white">${formatNumber(leasingResult.down_payment)} ({leasingResult.down_payment_percent}%)</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Сумма финансирования:</span>
-                      <span className="text-white">${formatNumber(leasingResult.financed_amount)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Срок:</span>
-                      <span className="text-white">{leasingResult.term_months} мес.</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Годовая ставка:</span>
-                      <span className="text-white">{leasingResult.annual_rate}%</span>
-                    </div>
-                    <div className="border-t border-[#27272A] my-2 pt-2">
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Общая стоимость:</span>
-                        <span className="text-white font-medium">${formatNumber(leasingResult.total_cost)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Переплата:</span>
-                        <span className="text-amber-400">${formatNumber(leasingResult.overpayment)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Assign Company Button */}
-                  <Button
-                    data-testid="assign-leasing-company-btn"
-                    onClick={() => assignLeasingCompany(selectedLeasingCompany.id)}
-                    className="w-full mt-4 bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
-                  >
-                    <CheckCircle2 size={16} className="mr-2" />
-                    Выбрать {selectedLeasingCompany?.name}
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Car Dialog */}
+      {/* Edit Dialog */}
       <Dialog open={!!editDialogOpen} onOpenChange={() => setEditDialogOpen(null)}>
         <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Edit3 size={20} className="text-[#00E5FF]" />
-              Редактировать автомобиль
-            </DialogTitle>
+            <DialogTitle>Редактировать автомобиль</DialogTitle>
           </DialogHeader>
 
           {editDialogOpen && (
             <div className="space-y-4 mt-4">
-              {/* Car name (read-only) */}
-              <div className="p-3 bg-[#0B0F14] rounded-sm border border-[#27272A]">
-                <p className="text-slate-400 text-xs">Автомобиль</p>
-                <p className="text-white font-medium">{editDialogOpen.brand} {editDialogOpen.model}</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-slate-300">Год</Label>
+                  <Input
+                    type="number"
+                    name="year"
+                    value={editFormData.year}
+                    onChange={handleEditChange}
+                    className="mt-1 bg-[#0B0F14] border-[#27272A]"
+                  />
+                </div>
+                <div>
+                  <Label className="text-slate-300">Пробег (км)</Label>
+                  <Input
+                    type="number"
+                    name="mileage"
+                    value={editFormData.mileage}
+                    onChange={handleEditChange}
+                    className="mt-1 bg-[#0B0F14] border-[#27272A]"
+                  />
+                </div>
               </div>
 
-              {/* Year */}
               <div>
-                <Label className="text-slate-300 flex items-center gap-1">
-                  <Calendar size={14} />
-                  Год выпуска
-                </Label>
-                <Input
-                  type="number"
-                  name="year"
-                  value={editFormData.year}
-                  onChange={handleEditChange}
-                  min="2000"
-                  max={new Date().getFullYear() + 1}
-                  className="mt-1 bg-[#0B0F14] border-[#27272A]"
-                />
-              </div>
-
-              {/* Mileage */}
-              <div>
-                <Label className="text-slate-300 flex items-center gap-1">
-                  <Gauge size={14} />
-                  Пробег (км)
-                </Label>
-                <Input
-                  type="number"
-                  name="mileage"
-                  value={editFormData.mileage}
-                  onChange={handleEditChange}
-                  placeholder="0"
-                  className="mt-1 bg-[#0B0F14] border-[#27272A]"
-                />
-              </div>
-
-              {/* Price */}
-              <div>
-                <Label className="text-slate-300 flex items-center gap-1">
-                  <CreditCard size={14} />
-                  Цена (¥)
-                </Label>
+                <Label className="text-slate-300">Цена (CNY)</Label>
                 <Input
                   type="number"
                   name="price_cny"
@@ -1649,35 +1062,28 @@ const MyGarage = () => {
                   onChange={handleEditChange}
                   className="mt-1 bg-[#0B0F14] border-[#27272A]"
                 />
-                <p className="text-slate-500 text-xs mt-1">Стоимость автоматически пересчитается</p>
               </div>
 
-              {/* Engine Type */}
               <div>
                 <Label className="text-slate-300">Тип двигателя</Label>
                 <div className="grid grid-cols-3 gap-2 mt-2">
-                  {[
-                    { value: 'ice', label: 'ДВС' },
-                    { value: 'hybrid', label: 'Гибрид' },
-                    { value: 'electric', label: 'Электро' }
-                  ].map(option => (
+                  {['ice', 'hybrid', 'electric'].map(type => (
                     <button
-                      key={option.value}
+                      key={type}
                       type="button"
-                      onClick={() => setEditFormData(prev => ({ ...prev, engine_type: option.value }))}
-                      className={`py-2 px-3 rounded-sm border text-sm transition-colors ${
-                        editFormData.engine_type === option.value
+                      onClick={() => setEditFormData(prev => ({ ...prev, engine_type: type }))}
+                      className={`py-2 px-3 rounded-sm border text-sm ${
+                        editFormData.engine_type === type
                           ? 'bg-[#00E5FF] text-black border-[#00E5FF]'
-                          : 'bg-[#0B0F14] text-slate-400 border-[#27272A] hover:border-slate-500'
+                          : 'bg-[#0B0F14] text-slate-400 border-[#27272A]'
                       }`}
                     >
-                      {option.label}
+                      {getEngineTypeLabel(type)}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Engine Volume */}
               {editFormData.engine_type !== 'electric' && (
                 <div>
                   <Label className="text-slate-300">Объем двигателя (см³)</Label>
@@ -1686,41 +1092,29 @@ const MyGarage = () => {
                     name="engine_volume"
                     value={editFormData.engine_volume}
                     onChange={handleEditChange}
-                    placeholder="2000"
                     className="mt-1 bg-[#0B0F14] border-[#27272A]"
                   />
                 </div>
               )}
 
-              {/* Notes */}
               <div>
-                <Label className="text-slate-300 flex items-center gap-1">
-                  <StickyNote size={14} />
-                  Заметки
-                </Label>
+                <Label className="text-slate-300">Заметки</Label>
                 <textarea
                   name="notes"
                   value={editFormData.notes}
                   onChange={handleEditChange}
-                  placeholder="Ваши заметки по этому автомобилю..."
-                  className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500 focus:border-[#00E5FF] min-h-[100px]"
+                  placeholder="Ваши заметки об авто..."
+                  className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500 focus:border-[#00E5FF] min-h-[80px]"
                 />
-                <p className="text-slate-500 text-xs mt-1">Заметки видны только вам</p>
               </div>
 
-              {/* Save Button */}
               <Button
-                data-testid="save-car-edit-btn"
                 onClick={handleSaveEdit}
                 disabled={savingEdit}
                 className="w-full bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
               >
-                {savingEdit ? (
-                  <Loader2 size={16} className="mr-2 animate-spin" />
-                ) : (
-                  <Save size={16} className="mr-2" />
-                )}
-                Сохранить изменения
+                {savingEdit ? <Loader2 className="animate-spin mr-2" size={16} /> : <Save size={16} className="mr-2" />}
+                Сохранить
               </Button>
             </div>
           )}
