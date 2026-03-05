@@ -15,7 +15,8 @@ import {
   Bell,
   ChevronRight,
   Shield,
-  ClipboardList
+  ClipboardList,
+  ShoppingCart
 } from 'lucide-react';
 
 const DashboardLayout = () => {
@@ -33,8 +34,10 @@ const DashboardLayout = () => {
     { to: '/dashboard/garage', icon: Car, label: 'Мой гараж' },
     { to: '/dashboard/applications', icon: ClipboardList, label: 'Заявки' },
     { to: '/dashboard/tenders', icon: FileStack, label: 'Тендеры' },
+    { to: '/dashboard/deals', icon: ShoppingCart, label: 'Авто для сделки' },
     { to: '/dashboard/verification', icon: Shield, label: 'Верификация' },
     { to: '/dashboard/documents', icon: FileText, label: 'Документы' },
+    { to: '/calculator', icon: Calculator, label: 'Калькулятор' },
   ];
 
   return (
