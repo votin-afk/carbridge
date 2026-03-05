@@ -132,6 +132,7 @@ const ContractorRegisterPage = () => {
         position: formData.position,
         phone: formData.phone,
         email: formData.email,
+        password: formData.password,
         whatsapp: formData.whatsapp,
         wechat: formData.wechat,
         telegram: formData.telegram,
