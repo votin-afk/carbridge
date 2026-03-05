@@ -147,11 +147,12 @@ class TenderResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
     user_id: str
-    car_id: str
+    car_id: Optional[str] = None
     car_info: Optional[dict] = None
     status: str
     offers: List[dict] = []
     selected_offer_id: Optional[str] = None
+    deal_created: Optional[bool] = False
     created_at: str
 
 class DocumentCreate(BaseModel):
