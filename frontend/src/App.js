@@ -49,6 +49,7 @@ function App() {
             <Route index element={<DashboardOverview />} />
             <Route path="garage" element={<MyGarage />} />
             <Route path="applications" element={<Applications />} />
+            <Route path="deals" element={<DealCars />} />
             <Route path="tenders" element={<Tenders />} />
             <Route path="verification" element={<Verification />} />
             <Route path="documents" element={<Documents />} />
