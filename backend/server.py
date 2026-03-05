@@ -1694,6 +1694,327 @@ async def get_deal(deal_id: str, current_user: dict = Depends(get_current_user))
     
     return deal
 
+# ==================== DEAL MANAGEMENT ENDPOINTS ====================
+
+DEAL_ADD_FEE = 300  # $300 to add car to deal (free if from tender)
+CONSULTANT_FEE = 200  # $200 for consultant help
+
+@api_router.post("/deals/add-car")
+async def add_car_to_deal(data: dict, current_user: dict = Depends(get_current_user)):
+    """Add car to deal from garage (charges $300) or from tender (free)"""
+    car_id = data.get("car_id")
+    from_tender = data.get("from_tender", False)
+    tender_offer_id = data.get("tender_offer_id")
+    
+    # Check verification
+    verification = await db.verifications.find_one({"user_id": current_user["id"]})
+    if not verification or verification.get("status") != "approved":
+        raise HTTPException(status_code=403, detail="Для создания сделки необходима верификация")
+    
+    # Check contract signed
+    if not verification.get("contract_signed"):
+        raise HTTPException(status_code=403, detail="Необходимо подписать договор")
+    
+    # Get account for balance
+    account = await db.accounts.find_one({"user_id": current_user["id"]})
+    balance = account.get("balance", 0) if account else 0
+    
+    # Charge $300 if not from tender
+    if not from_tender:
+        if balance < DEAL_ADD_FEE:
+            raise HTTPException(status_code=400, detail=f"Недостаточно средств. Необходимо ${DEAL_ADD_FEE}, баланс: ${balance}")
+        
+        # Deduct fee
+        await db.accounts.update_one(
+            {"user_id": current_user["id"]},
+            {"$inc": {"balance": -DEAL_ADD_FEE}}
+        )
+        
+        # Log transaction
+        await db.transactions.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": current_user["id"],
+            "type": "deal_fee",
+            "amount": -DEAL_ADD_FEE,
+            "description": "Добавление авто в сделку",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    
+    # Get car info
+    car = await db.garage.find_one({"id": car_id, "user_id": current_user["id"]})
+    if not car:
+        raise HTTPException(status_code=404, detail="Автомобиль не найден")
+    
+    # Create deal
+    deal_id = str(uuid.uuid4())
+    
+    deal_doc = {
+        "id": deal_id,
+        "user_id": current_user["id"],
+        "car_id": car_id,
+        "tender_offer_id": tender_offer_id,
+        "from_tender": from_tender,
+        "car_info": {
+            "brand": car.get("brand"),
+            "model": car.get("model"),
+            "year": car.get("year"),
+            "price_cny": car.get("price_cny"),
+            "price_usd": car.get("calculated_price_usd") or car.get("price_usd"),
+            "image_url": car.get("image_url")
+        },
+        "status": "active",
+        "current_stage": "leasing_request",
+        "stages": {
+            "leasing_request": {"status": "pending", "completed": False, "skipped": False},
+            "inspection": {"status": "pending", "completed": False, "contractor_id": None, "price": None},
+            "export": {"status": "pending", "completed": False, "contractor_id": None, "price": None},
+            "logistics": {"status": "pending", "completed": False, "contractor_id": None, "price": None},
+            "payment": {"status": "pending", "completed": False},
+            "delivery": {"status": "pending", "completed": False}
+        },
+        "contractors": {},
+        "payments": [],
+        "total_paid": 0,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.deals.insert_one(deal_doc)
+    
+    # Update car status
+    await db.garage.update_one(
+        {"id": car_id},
+        {"$set": {"status": "in_deal", "deal_id": deal_id}}
+    )
+    
+    return {
+        "message": "Автомобиль добавлен в сделку",
+        "deal_id": deal_id,
+        "fee_charged": 0 if from_tender else DEAL_ADD_FEE
+    }
+
+@api_router.post("/deals/{deal_id}/select-contractor")
+async def select_contractor_for_stage(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Select contractor for a deal stage"""
+    stage = data.get("stage")  # inspection, export, logistics
+    contractor_id = data.get("contractor_id")
+    price = data.get("price", 0)
+    
+    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    if stage not in ["inspection", "export", "logistics"]:
+        raise HTTPException(status_code=400, detail="Неверный этап")
+    
+    # Update deal with contractor selection
+    await db.deals.update_one(
+        {"id": deal_id},
+        {
+            "$set": {
+                f"stages.{stage}.contractor_id": contractor_id,
+                f"stages.{stage}.price": price,
+                f"stages.{stage}.status": "contractor_selected",
+                f"contractors.{stage}": contractor_id,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": f"Подрядчик выбран для этапа {stage}"}
+
+@api_router.post("/deals/{deal_id}/pay-stage")
+async def pay_deal_stage(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Pay for a deal stage from user balance"""
+    stage = data.get("stage")
+    amount = data.get("amount", 0)
+    
+    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # Get account balance
+    account = await db.accounts.find_one({"user_id": current_user["id"]})
+    balance = account.get("balance", 0) if account else 0
+    
+    if balance < amount:
+        raise HTTPException(status_code=400, detail=f"Недостаточно средств. Необходимо ${amount}, баланс: ${balance}")
+    
+    # Deduct from balance
+    await db.accounts.update_one(
+        {"user_id": current_user["id"]},
+        {"$inc": {"balance": -amount}}
+    )
+    
+    # Update deal
+    await db.deals.update_one(
+        {"id": deal_id},
+        {
+            "$set": {
+                f"stages.{stage}.paid": True,
+                f"stages.{stage}.paid_amount": amount,
+                f"stages.{stage}.paid_at": datetime.now(timezone.utc).isoformat()
+            },
+            "$inc": {"total_paid": amount},
+            "$push": {
+                "payments": {
+                    "id": str(uuid.uuid4()),
+                    "stage": stage,
+                    "amount": amount,
+                    "paid_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        }
+    )
+    
+    # Log transaction
+    await db.transactions.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": current_user["id"],
+        "deal_id": deal_id,
+        "type": "stage_payment",
+        "stage": stage,
+        "amount": -amount,
+        "description": f"Оплата этапа: {stage}",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {"message": "Оплата прошла успешно", "new_balance": balance - amount}
+
+@api_router.post("/deals/{deal_id}/skip-leasing")
+async def skip_leasing_stage(deal_id: str, current_user: dict = Depends(get_current_user)):
+    """Skip leasing request stage"""
+    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    await db.deals.update_one(
+        {"id": deal_id},
+        {
+            "$set": {
+                "stages.leasing_request.skipped": True,
+                "stages.leasing_request.completed": True,
+                "current_stage": "inspection",
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": "Этап лизинга пропущен"}
+
+@api_router.post("/deals/{deal_id}/request-leasing")
+async def request_leasing(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Request leasing quote"""
+    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    await db.deals.update_one(
+        {"id": deal_id},
+        {
+            "$set": {
+                "stages.leasing_request.requested": True,
+                "stages.leasing_request.leasing_company_id": data.get("leasing_company_id"),
+                "stages.leasing_request.requested_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": "Запрос на лизинг отправлен"}
+
+@api_router.post("/deals/{deal_id}/complete-stage")
+async def complete_deal_stage(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Mark stage as completed (awaits moderator confirmation)"""
+    stage = data.get("stage")
+    
+    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    await db.deals.update_one(
+        {"id": deal_id},
+        {
+            "$set": {
+                f"stages.{stage}.user_completed": True,
+                f"stages.{stage}.awaiting_moderator": True,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": "Этап отмечен как выполненный, ожидает подтверждения модератора"}
+
+@api_router.post("/consultant/request")
+async def request_consultant_help(data: dict, current_user: dict = Depends(get_current_user)):
+    """Request consultant help ($200)"""
+    context = data.get("context", "general")  # general, car, deal
+    car_id = data.get("car_id")
+    deal_id = data.get("deal_id")
+    message = data.get("message", "")
+    
+    # Get account balance
+    account = await db.accounts.find_one({"user_id": current_user["id"]})
+    balance = account.get("balance", 0) if account else 0
+    
+    if balance < CONSULTANT_FEE:
+        raise HTTPException(status_code=400, detail=f"Недостаточно средств. Необходимо ${CONSULTANT_FEE}, баланс: ${balance}")
+    
+    # Deduct fee
+    await db.accounts.update_one(
+        {"user_id": current_user["id"]},
+        {"$inc": {"balance": -CONSULTANT_FEE}}
+    )
+    
+    # Create consultant request
+    request_id = str(uuid.uuid4())
+    await db.consultant_requests.insert_one({
+        "id": request_id,
+        "user_id": current_user["id"],
+        "context": context,
+        "car_id": car_id,
+        "deal_id": deal_id,
+        "message": message,
+        "status": "pending",
+        "fee": CONSULTANT_FEE,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    # Log transaction
+    await db.transactions.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": current_user["id"],
+        "type": "consultant_fee",
+        "amount": -CONSULTANT_FEE,
+        "description": "Помощь консультанта",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {
+        "message": "Запрос отправлен. Консультант свяжется с вами в ближайшее время.",
+        "request_id": request_id,
+        "fee_charged": CONSULTANT_FEE
+    }
+
+@api_router.get("/account/summary")
+async def get_account_summary(current_user: dict = Depends(get_current_user)):
+    """Get account summary for dashboard"""
+    account = await db.accounts.find_one({"user_id": current_user["id"]}, {"_id": 0})
+    verification = await db.verifications.find_one({"user_id": current_user["id"]}, {"_id": 0})
+    
+    # Get active deal
+    active_deal = await db.deals.find_one(
+        {"user_id": current_user["id"], "status": "active"},
+        {"_id": 0}
+    )
+    
+    return {
+        "balance": account.get("balance", 0) if account else 0,
+        "is_verified": account.get("is_verified", False) if account else False,
+        "verification_status": verification.get("status") if verification else "not_started",
+        "contract_signed": verification.get("contract_signed", False) if verification else False,
+        "contract_number": verification.get("contract_number") if verification else None,
+        "active_deal": active_deal
+    }
+
 @api_router.get("/moderator/pending-approvals")
 async def get_pending_approvals(current_user: dict = Depends(require_role(["moderator", "admin"]))):
     """Get all items pending moderator approval"""
