@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/button';
 import { 
@@ -9,7 +10,9 @@ import {
   Truck,
   CheckCircle2,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ShoppingCart,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
