@@ -5461,7 +5461,7 @@ async def get_current_contractor(credentials: HTTPAuthorizationCredentials = Dep
         print(f"DEBUG: JWT decode error: {e}")
         raise HTTPException(status_code=401, detail="Неверный токен")
 
-@api_router.get("/contractors/dashboard")
+@api_router.get("/contractor-dashboard")
 async def get_contractor_dashboard(contractor: dict = Depends(get_current_contractor)):
     """Get contractor dashboard data"""
     # Get active tenders
