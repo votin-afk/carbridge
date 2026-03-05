@@ -54,6 +54,29 @@ const Tenders = () => {
     }
   };
 
+  const handleAddToDeal = async (tender) => {
+    if (!tender.car_id) {
+      toast.error('Автомобиль не найден');
+      return;
+    }
+    
+    setAddingToDeal(tender.id);
+    try {
+      await axios.post(`${API}/deals/add-car`, {
+        car_id: tender.car_id,
+        from_tender: true,
+        tender_offer_id: tender.selected_offer_id
+      }, { headers });
+      
+      toast.success('Авто добавлено в сделку! (Бесплатно из тендера)');
+      navigate('/dashboard/deals');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка при создании сделки');
+    } finally {
+      setAddingToDeal(null);
+    }
+  };
+
   const getStatusBadge = (status) => {
     const styles = {
       active: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
