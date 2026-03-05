@@ -170,7 +170,7 @@ class TestDashboardRedesignAPIs:
         create_response = self.session.post(f"{BASE_URL}/api/applications/create", json=app_data)
         
         if create_response.status_code == 200:
-            app_id = create_response.json().get("id")
+            app_id = create_response.json().get("application_id")
             
             # Try to request manager help
             response = self.session.post(f"{BASE_URL}/api/applications/{app_id}/request-manager-help")
@@ -200,7 +200,7 @@ class TestDashboardRedesignAPIs:
         create_response = self.session.post(f"{BASE_URL}/api/applications/create", json=app_data)
         
         if create_response.status_code == 200:
-            app_id = create_response.json().get("id")
+            app_id = create_response.json().get("application_id")
             
             # Try to start tender
             response = self.session.post(f"{BASE_URL}/api/applications/{app_id}/start-tender")
@@ -482,7 +482,7 @@ class TestDashboardRedesignIntegration:
         
         create_response = self.session.post(f"{BASE_URL}/api/applications/create", json=app_data)
         assert create_response.status_code == 200
-        app_id = create_response.json().get("id")
+        app_id = create_response.json().get("application_id")
         print(f"Step 1: Created application {app_id}")
         
         # Step 2: Verify application in list
