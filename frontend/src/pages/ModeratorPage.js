@@ -1053,6 +1053,132 @@ const ModeratorPage = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Contractor Details Dialog */}
+        <Dialog open={!!selectedContractor} onOpenChange={() => setSelectedContractor(null)}>
+          <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Building2 size={20} className="text-[#00E5FF]" />
+                Заявка подрядчика
+              </DialogTitle>
+            </DialogHeader>
+            
+            {selectedContractor && (
+              <div className="space-y-6 mt-4">
+                {/* Company Info */}
+                <div className="p-4 bg-[#0B0F14] rounded-sm border border-[#27272A]">
+                  <h4 className="text-[#00E5FF] font-medium mb-3">Информация о компании</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-slate-500">Название</p>
+                      <p className="text-white">{selectedContractor.company_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Страна</p>
+                      <p className="text-white">{selectedContractor.country === 'CN' ? '🇨🇳 Китай' : '🇧🇾 Беларусь'}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Рег. номер</p>
+                      <p className="text-white font-mono">{selectedContractor.registration_number}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Опыт работы</p>
+                      <p className="text-white">{selectedContractor.experience_years || 0} лет</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-slate-500">Юридический адрес</p>
+                      <p className="text-white">{selectedContractor.legal_address}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact Info */}
+                <div className="p-4 bg-[#0B0F14] rounded-sm border border-[#27272A]">
+                  <h4 className="text-[#00E5FF] font-medium mb-3">Контактные данные</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-slate-500">Контактное лицо</p>
+                      <p className="text-white">{selectedContractor.contact_person}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Должность</p>
+                      <p className="text-white">{selectedContractor.position}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Телефон</p>
+                      <p className="text-white">{selectedContractor.phone}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Email</p>
+                      <p className="text-white">{selectedContractor.email}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Services */}
+                <div className="p-4 bg-[#0B0F14] rounded-sm border border-[#27272A]">
+                  <h4 className="text-[#00E5FF] font-medium mb-3">Услуги</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {(selectedContractor.services || []).map(service => (
+                      <span
+                        key={service}
+                        className="px-3 py-1.5 bg-[#00E5FF]/10 text-[#00E5FF] text-sm rounded-sm"
+                      >
+                        {service === 'inspection' ? '🔍 Инспекция' : 
+                         service === 'export' ? '📦 Экспорт' : 
+                         service === 'logistics' ? '🚚 Логистика' : service}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Description */}
+                {selectedContractor.description && (
+                  <div className="p-4 bg-[#0B0F14] rounded-sm border border-[#27272A]">
+                    <h4 className="text-[#00E5FF] font-medium mb-3">Описание</h4>
+                    <p className="text-slate-300 text-sm">{selectedContractor.description}</p>
+                  </div>
+                )}
+
+                {/* Actions */}
+                {selectedContractor.status === 'pending' && (
+                  <div className="flex gap-3">
+                    <Button
+                      className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white"
+                      onClick={() => handleApproveContractor(selectedContractor.id)}
+                    >
+                      <CheckCircle2 size={16} className="mr-2" />
+                      Одобрить подрядчика
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/10"
+                      onClick={() => handleRejectContractor(selectedContractor.id)}
+                    >
+                      <XCircle size={16} className="mr-2" />
+                      Отклонить
+                    </Button>
+                  </div>
+                )}
+
+                {selectedContractor.status === 'approved' && (
+                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-sm flex items-center gap-3">
+                    <CheckCircle2 size={20} className="text-emerald-400" />
+                    <span className="text-emerald-400">Подрядчик одобрен и может работать на платформе</span>
+                  </div>
+                )}
+
+                {selectedContractor.status === 'rejected' && (
+                  <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-sm flex items-center gap-3">
+                    <XCircle size={20} className="text-red-400" />
+                    <span className="text-red-400">Заявка отклонена</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
