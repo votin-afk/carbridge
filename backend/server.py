@@ -5208,6 +5208,130 @@ async def cancel_application(application_id: str, current_user: dict = Depends(g
     
     return {"message": "Заявка отменена"}
 
+@api_router.post("/applications/{application_id}/request-manager-help")
+async def request_manager_help_for_application(application_id: str, current_user: dict = Depends(get_current_user)):
+    """Request manager help for application ($200 fee)"""
+    # Check balance
+    account = await db.accounts.find_one({"user_id": current_user["id"]})
+    balance = account.get("balance", 0) if account else 0
+    
+    if balance < CONSULTANT_FEE:
+        raise HTTPException(status_code=400, detail=f"Недостаточно средств. Требуется ${CONSULTANT_FEE}")
+    
+    # Check application exists
+    app = await db.applications.find_one({"id": application_id, "user_id": current_user["id"]})
+    if not app:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+    
+    if app.get("manager_assigned"):
+        raise HTTPException(status_code=400, detail="Менеджер уже назначен")
+    
+    # Deduct fee
+    await db.accounts.update_one(
+        {"user_id": current_user["id"]},
+        {"$inc": {"balance": -CONSULTANT_FEE}}
+    )
+    
+    # Log transaction
+    await db.transactions.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": current_user["id"],
+        "type": "manager_help",
+        "amount": -CONSULTANT_FEE,
+        "description": f"Помощь менеджера для заявки {app.get('application_number', application_id)}",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    # Update application
+    await db.applications.update_one(
+        {"id": application_id},
+        {"$set": {"manager_assigned": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Менеджер назначен", "fee_charged": CONSULTANT_FEE}
+
+@api_router.post("/applications/{application_id}/start-tender")
+async def start_tender_from_application(application_id: str, current_user: dict = Depends(get_current_user)):
+    """Start tender from application"""
+    # Check verification/contract
+    verification = await db.verifications.find_one({"user_id": current_user["id"]})
+    if not verification or not verification.get("contract_signed"):
+        raise HTTPException(status_code=403, detail="Необходимо подписать договор")
+    
+    # Check application
+    app = await db.applications.find_one({"id": application_id, "user_id": current_user["id"]})
+    if not app:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+    
+    if app.get("tender_started"):
+        raise HTTPException(status_code=400, detail="Тендер уже запущен")
+    
+    # Create tender
+    tender_id = str(uuid.uuid4())
+    tender = {
+        "id": tender_id,
+        "user_id": current_user["id"],
+        "application_id": application_id,
+        "type": "application",
+        "status": "active",
+        "car_request": {
+            "brand": app.get("brand"),
+            "model": app.get("model"),
+            "body_type": app.get("body_type"),
+            "engine_type": app.get("engine_type"),
+            "year_from": app.get("year_from"),
+            "year_to": app.get("year_to"),
+            "budget_min": app.get("budget_min"),
+            "budget_max": app.get("budget_max"),
+            "budget_currency": app.get("budget_currency")
+        },
+        "offers": [],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.tenders.insert_one(tender)
+    
+    # Update application
+    await db.applications.update_one(
+        {"id": application_id},
+        {"$set": {
+            "tender_started": True, 
+            "tender_id": tender_id,
+            "status": "in_progress",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"message": "Тендер запущен", "tender_id": tender_id}
+
+@api_router.post("/deals/request-assistance")
+async def request_deal_assistance(current_user: dict = Depends(get_current_user)):
+    """Request consultant assistance ($200 fee)"""
+    # Check balance
+    account = await db.accounts.find_one({"user_id": current_user["id"]})
+    balance = account.get("balance", 0) if account else 0
+    
+    if balance < CONSULTANT_FEE:
+        raise HTTPException(status_code=400, detail=f"Недостаточно средств. Требуется ${CONSULTANT_FEE}")
+    
+    # Deduct fee
+    await db.accounts.update_one(
+        {"user_id": current_user["id"]},
+        {"$inc": {"balance": -CONSULTANT_FEE}}
+    )
+    
+    # Log transaction
+    await db.transactions.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": current_user["id"],
+        "type": "consultant_help",
+        "amount": -CONSULTANT_FEE,
+        "description": "Помощь консультанта",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {"message": "Запрос на помощь консультанта отправлен", "fee_charged": CONSULTANT_FEE}
+
 # ==================== CONTRACTOR SYSTEM ====================
 
 class ContractorRegister(BaseModel):
