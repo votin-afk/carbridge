@@ -236,7 +236,11 @@ const ModeratorPage = () => {
   const handleApproveContractor = async (contractorId) => {
     try {
       const response = await axios.post(`${API}/moderator/contractors/${contractorId}/approve`, { verified: true }, { headers });
-      toast.success(`Подрядчик одобрен! Временный пароль: ${response.data.temp_password}`);
+      if (response.data.temp_password) {
+        toast.success(`Подрядчик одобрен! Временный пароль: ${response.data.temp_password}`);
+      } else {
+        toast.success('Подрядчик одобрен! Он может войти с паролем, указанным при регистрации');
+      }
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Ошибка при одобрении подрядчика');
