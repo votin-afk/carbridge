@@ -217,9 +217,30 @@ const Tenders = () => {
                               Выбрать
                             </Button>
                           ) : tender.selected_offer_id === tender.offers[0].id ? (
-                            <span className="text-emerald-400 text-sm flex items-center gap-1">
-                              <CheckCircle2 size={16} /> Выбрано
-                            </span>
+                            <div className="space-y-2">
+                              <span className="text-emerald-400 text-sm flex items-center gap-1">
+                                <CheckCircle2 size={16} /> Выбрано
+                              </span>
+                              {!tender.deal_created && (
+                                <Button
+                                  data-testid={`add-to-deal-${tender.id}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddToDeal(tender);
+                                  }}
+                                  disabled={addingToDeal === tender.id}
+                                  size="sm"
+                                  className="bg-emerald-500 hover:bg-emerald-600 text-white w-full"
+                                >
+                                  {addingToDeal === tender.id ? (
+                                    <Loader2 size={14} className="mr-1 animate-spin" />
+                                  ) : (
+                                    <ShoppingCart size={14} className="mr-1" />
+                                  )}
+                                  В сделку
+                                </Button>
+                              )}
+                            </div>
                           ) : null}
                         </div>
                       </div>
