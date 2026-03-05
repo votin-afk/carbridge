@@ -3031,24 +3031,46 @@ DEMO_CONTRACTORS = [
 @api_router.get("/contractors", response_model=List[ContractorResponse])
 async def get_contractors(contractor_type: Optional[str] = None):
     """Get all contractors, optionally filtered by type"""
-    # Get from database
-    query = {}
-    if contractor_type:
-        query["contractor_type"] = contractor_type
+    # Get verified contractors from database
+    query = {"status": "approved", "verified": True}
     
-    db_contractors = await db.contractors.find(query, {"_id": 0}).to_list(100)
+    db_contractors = await db.contractors.find(query, {"_id": 0, "password_hash": 0}).to_list(100)
+    
+    # Filter by service type if specified
+    if contractor_type:
+        filtered_db = []
+        for c in db_contractors:
+            services = c.get("services", [])
+            # services can be string or list
+            if isinstance(services, str):
+                services = [s.strip() for s in services.split(",")]
+            if contractor_type in services or c.get("contractor_type") == contractor_type:
+                # Map to expected format
+                c["contractor_type"] = contractor_type
+                c["name"] = c.get("name") or c.get("company_name")
+                c["services"] = ", ".join(services) if isinstance(services, list) else services
+                filtered_db.append(c)
+        db_contractors = filtered_db
+    else:
+        # Add name field from company_name if missing
+        for c in db_contractors:
+            c["name"] = c.get("name") or c.get("company_name")
+            services = c.get("services", [])
+            if isinstance(services, list):
+                c["services"] = ", ".join(services)
     
     # Combine with demo data (if not already in DB)
     demo_ids = {c["id"] for c in db_contractors}
-    demo_filtered = [c for c in DEMO_CONTRACTORS if c["id"] not in demo_ids]
+    demo_emails = {c.get("email") for c in db_contractors if c.get("email")}
+    demo_filtered = [c for c in DEMO_CONTRACTORS if c["id"] not in demo_ids and c.get("email") not in demo_emails]
     
     if contractor_type:
         demo_filtered = [c for c in demo_filtered if c["contractor_type"] == contractor_type]
     
     all_contractors = db_contractors + demo_filtered
     
-    # Sort by rating and deals count
-    all_contractors.sort(key=lambda x: (-x.get("is_verified", False), -x.get("rating", 0), -x.get("deals_count", 0)))
+    # Sort by verified status, rating and deals count
+    all_contractors.sort(key=lambda x: (-x.get("verified", False), -x.get("is_verified", False), -x.get("rating", 0), -x.get("deals_count", 0)))
     
     return all_contractors
 
