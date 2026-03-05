@@ -459,6 +459,95 @@ const ModeratorPage = () => {
             )}
           </TabsContent>
 
+          {/* Contractors Tab */}
+          <TabsContent value="contractors">
+            {loading ? (
+              <LoadingState />
+            ) : contractorApplications.length > 0 ? (
+              <div className="space-y-4">
+                {contractorApplications.map(contractor => (
+                  <div
+                    key={contractor.id}
+                    className="bg-[#15191E] border border-[#27272A] rounded-sm p-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-[#00E5FF]/10 rounded-full flex items-center justify-center">
+                          <Building2 size={24} className="text-[#00E5FF]" />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-medium">{contractor.company_name}</h3>
+                          <div className="flex items-center gap-2 text-slate-400 text-sm">
+                            <span>{contractor.country === 'CN' ? '🇨🇳 Китай' : '🇧🇾 Беларусь'}</span>
+                            <span>•</span>
+                            <span>{contractor.contact_person}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`px-3 py-1 rounded-full text-sm ${
+                          contractor.status === 'pending' 
+                            ? 'bg-amber-500/10 text-amber-400' 
+                            : contractor.status === 'approved'
+                            ? 'bg-emerald-500/10 text-emerald-400'
+                            : 'bg-red-500/10 text-red-400'
+                        }`}>
+                          {contractor.status === 'pending' ? 'Ожидает' : contractor.status === 'approved' ? 'Одобрен' : 'Отклонён'}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedContractor(contractor)}
+                          className="border-[#27272A] text-slate-300"
+                        >
+                          <Eye size={14} className="mr-1" />
+                          Детали
+                        </Button>
+                        {contractor.status === 'pending' && (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproveContractor(contractor.id)}
+                              className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                            >
+                              <CheckCircle2 size={14} className="mr-1" />
+                              Одобрить
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRejectContractor(contractor.id)}
+                              className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                            >
+                              <XCircle size={14} className="mr-1" />
+                              Отклонить
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Services */}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {(contractor.services || []).map(service => (
+                        <span
+                          key={service}
+                          className="px-2 py-1 bg-[#00E5FF]/10 text-[#00E5FF] text-xs rounded-sm"
+                        >
+                          {service === 'inspection' ? 'Инспекция' : 
+                           service === 'export' ? 'Экспорт' : 
+                           service === 'logistics' ? 'Логистика' : service}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState text="Нет заявок от подрядчиков" />
+            )}
+          </TabsContent>
+
           {/* Deals Tab */}
           <TabsContent value="deals">
             {loading ? (
