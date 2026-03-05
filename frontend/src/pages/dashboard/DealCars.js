@@ -160,7 +160,7 @@ const DealCars = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="deal-cars">
       {/* Header with Balance */}
       <div className="flex items-center justify-between">
         <div>
