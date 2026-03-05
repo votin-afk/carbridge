@@ -888,6 +888,74 @@ const Applications = () => {
                 <div className="text-white">{selectedApp.offers_count || 0}</div>
               </div>
 
+              {/* Action Buttons for Active Applications */}
+              {(selectedApp.status === 'new' || selectedApp.status === 'in_progress') && (
+                <div className="space-y-2 pt-4 border-t border-[#27272A]">
+                  {/* Manager Help */}
+                  {!selectedApp.manager_assigned && (
+                    <Button
+                      onClick={() => requestManagerHelp(selectedApp.id)}
+                      disabled={requestingManagerHelp || (accountSummary?.balance || 0) < 200}
+                      className={`w-full ${
+                        (accountSummary?.balance || 0) >= 200
+                          ? 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30'
+                          : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                      }`}
+                    >
+                      {requestingManagerHelp ? (
+                        <Loader2 size={16} className="mr-2 animate-spin" />
+                      ) : (
+                        <Headphones size={16} className="mr-2" />
+                      )}
+                      Помощь менеджера — $200
+                    </Button>
+                  )}
+                  {selectedApp.manager_assigned && (
+                    <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-sm flex items-center gap-2">
+                      <CheckCircle2 size={16} className="text-purple-400" />
+                      <span className="text-purple-400 text-sm">Менеджер назначен</span>
+                    </div>
+                  )}
+
+                  {/* Start Tender */}
+                  {!selectedApp.tender_started && (
+                    <Button
+                      onClick={() => startTenderFromApplication(selectedApp.id)}
+                      disabled={startingTender || !accountSummary?.contract_signed}
+                      className="w-full bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
+                    >
+                      {startingTender ? (
+                        <Loader2 size={16} className="mr-2 animate-spin" />
+                      ) : (
+                        <Send size={16} className="mr-2" />
+                      )}
+                      Запустить тендер
+                    </Button>
+                  )}
+                  {selectedApp.tender_started && (
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-sm flex items-center gap-2">
+                      <CheckCircle2 size={16} className="text-emerald-400" />
+                      <span className="text-emerald-400 text-sm">Тендер запущен</span>
+                    </div>
+                  )}
+
+                  {/* View Offers */}
+                  {(selectedApp.offers_count || 0) > 0 && (
+                    <Button
+                      onClick={() => {
+                        setSelectedApp(null);
+                        window.location.href = '/dashboard/tenders';
+                      }}
+                      variant="outline"
+                      className="w-full border-[#27272A] text-slate-300 hover:border-[#00E5FF] hover:text-[#00E5FF]"
+                    >
+                      <Eye size={16} className="mr-2" />
+                      Смотреть предложения ({selectedApp.offers_count})
+                    </Button>
+                  )}
+                </div>
+              )}
+
               {selectedApp.status === 'new' && (
                 <Button
                   variant="outline"
