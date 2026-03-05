@@ -195,10 +195,11 @@ class ContractorCreate(BaseModel):
 class ContractorResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
-    name: str
-    contractor_type: str
-    description: str
-    services: str
+    name: Optional[str] = None
+    company_name: Optional[str] = None
+    contractor_type: Optional[str] = None
+    description: Optional[str] = None
+    services: Any = None  # Can be string or list
     price_range: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
@@ -206,8 +207,12 @@ class ContractorResponse(BaseModel):
     whatsapp: Optional[str] = None
     wechat: Optional[str] = None
     telegram: Optional[str] = None
-    rating: float
-    deals_count: int
+    rating: Optional[float] = 5.0
+    deals_count: Optional[int] = 0
+    is_verified: Optional[bool] = False
+    verified: Optional[bool] = False
+    country: Optional[str] = None
+    contact_person: Optional[str] = None
     is_verified: bool
     logo_url: Optional[str] = None
     created_at: str
