@@ -5569,16 +5569,21 @@ async def approve_contractor(contractor_id: str, data: dict, current_user: dict 
     if not application:
         raise HTTPException(status_code=404, detail="Заявка не найдена")
     
-    # Generate password
-    temp_password = str(uuid.uuid4())[:12]
-    password_hash = pwd_context.hash(temp_password)
+    # Use password from application (set during registration) or generate new one
+    password_hash = application.get("password_hash")
+    temp_password = None
+    
+    if not password_hash:
+        # Legacy: generate temp password for old applications without password
+        temp_password = str(uuid.uuid4())[:12]
+        password_hash = pwd_context.hash(temp_password)
     
     # Create contractor account
     contractor_doc = {
         **{k: v for k, v in application.items() if k != "_id"},
         "password_hash": password_hash,
         "status": "approved",
-        "verified": data.get("verified", False),
+        "verified": data.get("verified", True),
         "approved_by": current_user["id"],
         "approved_at": datetime.now(timezone.utc).isoformat()
     }
@@ -5591,11 +5596,18 @@ async def approve_contractor(contractor_id: str, data: dict, current_user: dict 
         {"$set": {"status": "approved"}}
     )
     
-    return {
+    response = {
         "message": "Подрядчик одобрен",
-        "temp_password": temp_password,
         "email": application["email"]
     }
+    
+    if temp_password:
+        response["temp_password"] = temp_password
+        response["note"] = "Временный пароль (заявка без пароля)"
+    else:
+        response["note"] = "Подрядчик может войти с паролем, указанным при регистрации"
+    
+    return response
 
 @api_router.post("/moderator/contractors/{contractor_id}/reject")
 async def reject_contractor(contractor_id: str, data: dict, current_user: dict = Depends(require_role(["moderator", "admin"]))):
