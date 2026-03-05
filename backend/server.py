@@ -5506,7 +5506,7 @@ async def get_contractor_dashboard(contractor: dict = Depends(get_current_contra
         "applications": applications[:10]
     }
 
-@api_router.post("/contractors/submit-offer")
+@api_router.post("/contractor-offers")
 async def submit_contractor_offer(data: dict, contractor: dict = Depends(get_current_contractor)):
     """Submit offer for a tender or application"""
     tender_id = data.get("tender_id")
