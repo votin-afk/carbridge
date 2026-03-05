@@ -145,7 +145,17 @@ const Applications = () => {
 
   useEffect(() => {
     fetchApplications();
+    fetchAccountSummary();
   }, []);
+
+  const fetchAccountSummary = async () => {
+    try {
+      const response = await axios.get(`${API}/account/summary`, { headers });
+      setAccountSummary(response.data);
+    } catch (error) {
+      console.log('Account endpoint not available');
+    }
+  };
 
   const fetchApplications = async () => {
     try {
