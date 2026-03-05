@@ -81,7 +81,7 @@ const ContractorDashboard = () => {
 
   const fetchDashboard = async () => {
     try {
-      const response = await axios.get(`${API}/contractors/dashboard`, {
+      const response = await axios.get(`${API}/contractor-dashboard`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setDashboardData(response.data);
