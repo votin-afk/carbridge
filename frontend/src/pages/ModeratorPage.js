@@ -529,7 +529,7 @@ const ModeratorPage = () => {
                     
                     {/* Services */}
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {(contractor.services || []).map(service => (
+                      {(Array.isArray(contractor.services) ? contractor.services : (contractor.services || '').split(',').filter(Boolean)).map(service => (
                         <span
                           key={service}
                           className="px-2 py-1 bg-[#00E5FF]/10 text-[#00E5FF] text-xs rounded-sm"
