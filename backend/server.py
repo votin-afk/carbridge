@@ -5374,6 +5374,7 @@ async def register_contractor(data: ContractorRegister):
         raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
     
     contractor_id = str(uuid.uuid4())
+    password_hash = pwd_context.hash(data.password)
     
     contractor_doc = {
         "id": contractor_id,
@@ -5385,6 +5386,7 @@ async def register_contractor(data: ContractorRegister):
         "position": data.position,
         "phone": data.phone,
         "email": data.email,
+        "password_hash": password_hash,  # Store password hash
         "whatsapp": data.whatsapp,
         "wechat": data.wechat,
         "telegram": data.telegram,
@@ -5403,7 +5405,7 @@ async def register_contractor(data: ContractorRegister):
     await db.contractor_applications.insert_one(contractor_doc)
     
     return {
-        "message": "Заявка на регистрацию подрядчика отправлена",
+        "message": "Заявка на регистрацию подрядчика отправлена. После одобрения вы сможете войти с указанным паролем.",
         "contractor_id": contractor_id
     }
 
