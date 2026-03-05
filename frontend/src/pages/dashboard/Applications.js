@@ -103,6 +103,9 @@ const Applications = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [selectedApp, setSelectedApp] = useState(null);
+  const [requestingManagerHelp, setRequestingManagerHelp] = useState(false);
+  const [startingTender, setStartingTender] = useState(false);
+  const [accountSummary, setAccountSummary] = useState(null);
 
   const [formData, setFormData] = useState({
     // Personal
