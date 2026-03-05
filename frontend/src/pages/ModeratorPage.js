@@ -233,6 +233,28 @@ const ModeratorPage = () => {
     setSelectedApplication(null);
   };
 
+  const handleApproveContractor = async (contractorId) => {
+    try {
+      const response = await axios.post(`${API}/moderator/contractors/${contractorId}/approve`, { verified: true }, { headers });
+      toast.success(`Подрядчик одобрен! Временный пароль: ${response.data.temp_password}`);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка при одобрении подрядчика');
+    }
+    setSelectedContractor(null);
+  };
+
+  const handleRejectContractor = async (contractorId) => {
+    try {
+      await axios.post(`${API}/moderator/contractors/${contractorId}/reject`, {}, { headers });
+      toast.success('Подрядчик отклонён');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка при отклонении подрядчика');
+    }
+    setSelectedContractor(null);
+  };
+
   const handleConfirmStage = async (dealId, stage) => {
     try {
       await axios.post(`${API}/moderator/deals/${dealId}/confirm-stage`, { stage }, { headers });
