@@ -5446,19 +5446,16 @@ async def get_current_contractor(credentials: HTTPAuthorizationCredentials = Dep
     """Get current contractor from JWT token"""
     try:
         payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        print(f"DEBUG: Contractor token payload: {payload}")
         if payload.get("type") != "contractor":
             raise HTTPException(status_code=403, detail="Доступ только для подрядчиков")
         
         contractor = await db.contractors.find_one({"id": payload["sub"]}, {"_id": 0, "password_hash": 0})
-        print(f"DEBUG: Found contractor: {contractor is not None}")
         if not contractor:
             raise HTTPException(status_code=401, detail="Contractor not found")
         return contractor
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Токен истёк")
-    except jwt.InvalidTokenError as e:
-        print(f"DEBUG: JWT decode error: {e}")
+    except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Неверный токен")
 
 @api_router.get("/contractor-dashboard")
