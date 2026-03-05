@@ -5,39 +5,41 @@ Recent feature requests have expanded the scope to include:
 - A leasing feature with a calculator and manager assistance.
 - A Hot Deals section for time-sensitive car offers.
 - An affiliate program for users to earn commissions.
-- Advanced administrative controls for moderators, including managing user balances and impersonating users to verify accounts and deals.
+- Advanced administrative controls for moderators, including managing user balances, impersonating users, and verifying accounts/documents.
+- A complete client verification system where users submit personal data (e.g., passport) and upload scans to generate a formal contract for download.
+- A multi-step application form for car search requests.
+- Personal dashboards for contractors (from Belarus and China) with a dedicated registration form.
+- A complete redesign of the user dashboard to create a logical, step-by-step process for managing car deals, from garage to tender to final purchase with contractor selection and stage-based payments.
 
 PRODUCT REQUIREMENTS:
 -   **MVP:** Main Page, AI Agent, Cost Calculator, FAQ, Contacts.
--   **User Dashboard:** JWT-based auth, My Garage, Tenders, Documents, Affiliate Stats.
--   **Calculator:** Must account for customs discounts, platform commissions, and payment fees.
--   **Homepage:** Integrate the AI agent, links to Chinese marketplaces, and a Hot Deals section.
--   **Automation:** Reliably parse car data from a pasted URL into My Garage.
--   **Car Catalog:** A live catalog with search and filtering.
--   **Contractor Ecosystem:** Pages for different contractor types, a public registration form, and a moderator panel to approve/manage them.
+-   **User Dashboard:** A redesigned, logical flow including Overview, My Garage, Tenders, Applications, Deal Cars, Verification, Documents, and Calculator.
+-   **Client Verification:** Users must submit personal data and upload document scans. The system must generate a downloadable PDF contract based on a provided template.
+-   **Moderator Controls:** Moderators must be able to view and approve/reject user verification documents and deal stages. User impersonation is also a requirement.
+-   **Deal Flow:** A new Deal Cars page will be the central hub for managing a specific car purchase, including selecting contractors (inspection, export, logistics), tracking deal stages, and paying for services from the user's balance.
+-   **Contractor Ecosystem:** Public registration form where contractors can select their country and services, with a dedicated dashboard for them (to be built).
 -   **Role-Based Access Control (RBAC):** user, moderator, and admin roles.
--   **Leasing Feature:** Ability to select leasing companies, calculate leasing plans, and request paid assistance.
--   **Hot Deals Feature:** A section on the main page and a dedicated page for special offers with countdown timers, managed by moderators/verified sellers.
--   **Affiliate Program:** A dedicated page explaining the program, a registration process, and a dashboard for partners to track referrals, deals, and earnings (20% of platform commission).
--   **Moderator Controls:** Ability for moderators to add/deduct user balance, impersonate users, verify user accounts, and approve documents/deal stages.
+-   **Paid Services:** Certain actions, like adding a car to a deal (00) or requesting consultant help (00), will deduct from the user's balance.
 
 **User's preferred language**: Русский (Russian)
 
 **what currently exists?**
 A full-stack application with a FastAPI backend and a React frontend. The application includes:
-- A landing page with an animated Popular Choice section, a new Hot Deals section, and an AI chat assistant.
-- A complete JWT-based user authentication system with RBAC (user, moderator, admin).
-- A My Garage dashboard showing account balance and status. Car cards are now collapsible, showing contractor/action panels on click, and feature an Edit button (for car details and notes).
-- A complete leasing feature integrated into My Garage, with a leasing calculator modal.
-- A Hot Deals feature with a dedicated page () and a section on the landing page, showing discounted cars with countdown timers.
-- A full affiliate program with a static info page (), a registration process, and integrated statistics within the user's main dashboard.
-- A robust moderator panel with tabs for managing applications, deals, and users. The user management tab now includes functions to adjust user balances and a button to navigate to a user's profile for detailed moderation.
+- A landing page with a cleaned-up header, Hot Deals section, and AI chat assistant.
+- A complete JWT-based authentication system with RBAC.
+- A redesigned user dashboard layout with new navigation.
+- **Client Verification System**: A new page () where users submit passport data and upload documents. The system generates a downloadable PDF contract based on the user's data and a template.
+- **Car Application System**: A new page () with a multi-step survey-style form for users to submit car search requests.
+- **Contractor Registration**: The registration page has been updated to support country selection (Belarus/China) and a choice of services.
+- **Moderator Panel**: Includes tabs for managing applications, deals, users, and now a dedicated Documents tab.
+    - The Documents tab allows moderators to review pending client verifications, view uploaded documents, and approve/reject them.
+    - The  page allows moderators to view a user's full profile (info, garage, deals) but no longer allows direct user verification from this screen to avoid redundancy.
 
 **Last working item**:
--   Last item agent was working: Implementing the moderator's ability to log in as a user to verify their account, documents, and approve deal stages. The agent successfully created the backend endpoints (,  user,  document) and added a Profile button on the  to link to a new, dedicated user profile view for moderators ().
+-   Last item agent was working: A complete redesign of the user dashboard experience to create a more logical and interconnected deal flow. The agent began by laying the groundwork for the new Deal Cars feature.
 -   Status: IN PROGRESS
 -   Agent Testing Done: N
--   Which testing method agent to use? **frontend testing agent** to build and validate the UI and functionality on the new  page. **curl** to test the new backend endpoints: , , and .
+-   Which testing method agent to use? **frontend testing agent**. The next steps involve significant UI implementation across multiple dashboard pages (, , ). After the UI is built, the testing agent should be used to verify the new end-to-end flow, from adding a car to a deal to selecting contractors and simulating stage payments.
 -   User Testing Done: N
 
 **All Pending/In progress Issue list**:
@@ -60,7 +62,7 @@ Issues Detail:
 -   Issue 2:
     -   **Description**: The feature allowing users to add a car by pasting a URL often fails due to anti-scraping measures on target websites.
     -   **Next debug checklist**:
-        1.  Research and choose a more robust scraping solution (e.g., Playwright or a third-party scraping API).
+        1.  Research and choose a more robust scraping solution (e.g., a third-party scraping API or a browser automation tool like Playwright).
         2.  Replace the  call in the  endpoint in .
         3.  Implement proper error handling for scraping failures.
     -   **Why fix this issue and what will be achieved with the fix?**: This will make a key automation feature reliable, significantly improving the user experience.
@@ -70,97 +72,105 @@ Issues Detail:
     -   **Blocked on other issue**: None
 
 **In progress Task List**:
--   Task 1: Complete Moderator User Management View (Priority: P0)
+-   Task 1: Complete User Dashboard Redesign (Priority: P0)
 
  Task Detail:
   - Task 1:
-     - **Where to resume**: The  file is currently an empty placeholder. The next agent needs to build the UI to:
-        1.  Fetch and display all of a specific user's data (profile info, cars in garage, uploaded documents).
-        2.  Implement a button to Impersonate User which would redirect the moderator to the user's dashboard view.
-        3.  Implement a button to Verify User Account.
-        4.  Display a list of user's documents with a button next to each to Verify Document (e.g., placing a green checkmark).
-        5.  Display the user's cars and allow the moderator to approve deal stages.
-     - **What will be achieved with this?**: This will complete a critical business process, allowing moderators to perform quality control, verify users and documents, and unblock users in the deal flow.
+     - **Where to resume**: The backend endpoints and basic frontend routing are in place. The next steps are to implement the UI and logic:
+        1.  **Build **: Implement the UI for the new Авто для сделки page. This page should display the selected car, the deal progress timeline, sections for selecting contractors (inspection, export, logistics), and buttons to pay for each stage.
+        2.  **Refactor **: Update the overview page to show the user's balance, verification/contract status, and the new Процесс сделки (Deal Process) tracker. Add the Запросить помощь консультанта (Request Consultant Help) button.
+        3.  **Refactor **: Simplify the car cards to remove contractor selection and add the new Добавить в сделку (Add to Deal) primary button.
+        4.  **Refactor **: Add the Помощь менеджера (Manager Help) and Запустить тендер (Start Tender) buttons.
+        5.  **Build **: Implement the UI for the tenders page to display offers from contractors for a user's application.
+     - **What will be achieved with this?**: A complete, logical, and interconnected user journey for finding, selecting, and purchasing a car through the platform.
      - **Status**: IN PROGRESS
      - **Should Test frontend/backend/both after fix?**: both
      - **Blocked on something**: None
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-    -   **(P1) Implement User Verification & Contract Flow:** Build the final pieces for digital contract generation/signing, which is now unblocked by the moderator verification feature.
-    -   **(P1) Implement Balance Top-Up:** Integrate a payment gateway (e.g., Stripe) to allow users to add funds to their balance.
-    -   **(P1) Implement Tender Creation:** Develop the functionality for users to start a tender process for a car in their garage.
+    -   **(P1) Implement Balance Top-Up:** Integrate a payment gateway (e.g., Stripe) to allow users to add funds to their balance. This is now critical for the new deal flow.
+    -   **(P1) Build Contractor Dashboard:** Implement the UI for , which is currently a placeholder file.
+    -   **(P1) Complete Tender Flow:** Build the frontend UI for the  page to display and manage contractor bids.
 - **Future Tasks:**
     -   Implement a full payment/escrow system.
     -   Implement GPS tracking for car delivery.
-    -   Implement Telegram/Email notifications for status updates and affiliate program events.
+    -   Implement Telegram/Email notifications.
+    -   **CRITICAL REFACTORING**: Break down the monolithic  and frontend God components (, ).
 
 **Completed work in this session**
--   **Leasing Feature Fix & Completion**: Finished the leasing calculator UI in My Garage and fixed a bug preventing leasing companies from appearing on the .
--   **Hot Deals Feature**: Implemented a full-featured Hot Deals section with a dedicated page, countdown timers, and integration into the landing page.
--   **My Garage UX Overhaul**:
-    -   Added a car editing feature (year, mileage, price, etc.) with a modal.
-    -   Added a private Notes field to each car.
-    -   Redesigned car cards to be collapsible, hiding complex actions until clicked to simplify the UI.
--   **Affiliate Program**: Launched a complete affiliate program, including a public info page, user registration, and a statistics section in the main user dashboard.
--   **Admin Balance Management**: Empowered admins/moderators to add or deduct funds from any user's balance through a new modal in the .
+-   **Client Verification & Contract Generation**: Implemented a full flow for users to submit personal data, upload document scans, and have the system generate a downloadable PDF contract based on a template.
+-   **Moderator Document Approval**: Added a Documents tab to the moderator panel, allowing moderators to review, approve, or reject user-submitted verification documents.
+-   **Car Application Form**: Created a new multi-step survey style form for users to submit car search requests.
+-   **Contractor Registration Update**: Enhanced the contractor registration page with country (Belarus/China) and service selection options.
+-   **UI/UX Cleanup**:
+    -   Removed redundant navigation links from the main header.
+    -   Simplified the moderator's workflow by removing the direct Verify User button from the user profile page, consolidating verification approvals in the Documents tab.
+-   **Moderator User Profile**: Completed and tested the  page, which was previously a placeholder.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1**: AI chat on landing page has intermittent reliability issues.
 -   **Issue 2**: The URL parser for adding cars to the garage is not robust.
 
 **Known issue recurrence from previous fork**
--   The previous car deletion bug did not recur in this session. The custom confirmation dialog appears to have resolved it.
+-   None observed in this session.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Backend:** FastAPI, Python, MongoDB.
+-   **Backend:** FastAPI, Python, MongoDB, ReportLab (for PDF generation).
 -   **Frontend:** React, Tailwind CSS, Shadcn UI components.
 -   **Authentication:** JWT-based with RBAC.
--   **System Design:** Monolithic Backend, Client-Side State Management (useState, useEffect), Component-based UI.
+-   **System Design:** Monolithic Backend, Client-Side State Management, Component-based UI.
 
 **key DB schema**
--   **users:** Added  (Boolean),  (String),  (String).
--   **cars (in garage):** Added  (String).
--   **hot_deals (New Collection):** .
--   **affiliate_registrations (New Collection):** .
+-   **verifications (New Collection):** 
+-   **applications (New Collection):** 
+-   **contractor_applications (New Collection):** 
+-   **deals (New/Heavily Modified Collection):** 
 
 **changes in tech stack**
--   None.
+-   **Backend**: Added  and  for PDF generation and document parsing.
 
 **All files of reference**
--   : Grew from ~2800 to over 3700 lines. Contains all new backend logic.
--   : Significantly refactored to ~1600 lines with collapsible cards, an edit modal, and note display.
--   : Updated to ~900 lines with balance management modals and links to the new user profile page.
--   : Updated with Hot Deals section and new navigation links.
--   , : New feature pages.
--   : New placeholder file for the current task.
--   : Updated to display affiliate program statistics.
--   : Updated with new routes for the feature pages.
+-   : Grew from ~3700 to over 5200 lines. Contains all backend logic.
+-   : New page for client data/document submission and contract viewing.
+-   : New page for submitting car requests.
+-   : New placeholder for the core deal management UI.
+-   : Significantly updated with the Documents tab and its associated logic and components.
+-   : Updated with country and service selection logic.
+-   : Updated with the new dashboard navigation structure.
+-   : Updated with routes for all new pages.
+-   : Updated to remove redundant verification controls.
 
 **Areas that need refactoring**:
--   **CRITICAL**:  is dangerously large and unmaintainable. It must be broken down into separate modules for routes, models, and services.
--   **CRITICAL**:  has become a God component. The car card, edit modal, and leasing calculator must be extracted into their own components.
--   **HIGH**:  is also growing complex and should be broken down into smaller components.
+-   **CRITICAL**:  is extremely large and difficult to maintain. It MUST be broken down into separate modules (routes, models, services/logic).
+-   **CRITICAL**: Frontend pages like  and  are classic God components. They must be broken down into smaller, reusable components to improve maintainability. The current dashboard refactoring is a good opportunity to start this.
 
 **key api endpoints**
--   **Car Edit:** 
--   **Hot Deals:** , 
--   **Affiliate Program:** , 
--   **Admin Balance:** 
--   **Moderator Controls:**
-    -    (New)
-    -    (New)
-    -    (New)
-    -    (New)
+-   **Verification/Contract**:
+    -   
+    -   
+    -   
+-   **Applications**: 
+-   **Contractors**: 
+-   **Moderator-Documents**:
+    -   
+    -   
+    -   
+-   **Deal Management**:
+    -   
+    -   
+    -   
+    -   
+    -   
 
 **Critical Info for New Agent**
 -   The user's primary language is **Russian**. All communication MUST be in Russian.
--   The immediate task is to **build the frontend for the Moderator User Management view** in . The backend endpoints are already created.
--   The  (password: ) user has  privileges and should be used for testing all moderator/admin functionality.
--   The technical debt in  and  is severe. While the primary task is new feature development, any opportunity to modularize while working is highly encouraged.
+-   The immediate task is the **massive redesign of the user dashboard**. Resume by building the UI for  and then refactoring the other dashboard pages (, , etc.) to fit the new flow.
+-   The technical debt in  is severe and has worsened. The agent must prioritize refactoring opportunities while implementing the new dashboard features. Do not add more logic to the monolithic files if it can be avoided.
+-   The  (password: ) user has  privileges.
 
 **documents and test reports created in this job**
 -    (updated multiple times)
@@ -168,31 +178,31 @@ Issues Detail:
 -   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **Request:** Implement moderator user management (impersonation, verification of user/docs, deal stage approval). (Status: IN PROGRESS)
-2.  : Agent finished implementing the Admin Balance Management feature.
-3.  **Request:** Add the ability for an administrator to add/deduct balance from a user's account. (Status: COMPLETED)
-4.  : Agent finished implementing the Affiliate Program feature.
-5.  **Request:** Create an Affiliate Program where users earn 20% commission, with stats visible in their dashboard. (Status: COMPLETED)
-6.  : Agent finished implementing car editing and UI improvements in My Garage.
-7.  **Request:** Add an Edit button to cars in the garage, a notes field, and make the contractor panel collapsible. (Status: COMPLETED)
-8.  : Agent finished implementing the Hot Deals feature.
-9.  **Clarification:** User provided detailed requirements for the Hot Deals feature. (Status: COMPLETED)
-10. **Request:** Add a Hot Deals section to the website. (Status: COMPLETED)
+1.  **Request (Highest Priority):** A comprehensive redesign of the entire user dashboard to create a logical, step-by-step deal flow. (Status: IN PROGRESS)
+2.  **Clarification:** Provided cost details for paid services: 00 to add a car to a deal, 00 for consultant help, and stage payments are based on contractor prices. (Status: ACKNOWLEDGED)
+3.  **Request:** Simplify verification by removing the redundant Verify User button from the moderator's user profile view. (Status: COMPLETED)
+4.  **Request:** Clean up the main website header by removing internal page anchor links. (Status: COMPLETED)
+5.  **Request:** Ensure the generated user contract exactly matches the provided  template and is downloadable as a PDF. (Status: COMPLETED)
+6.  **Request:** Give moderators the ability to access, view, and confirm/reject user-uploaded documents. (Status: COMPLETED)
+7.  **Clarification:** Confirmed the plan for implementing the verification, application, and contractor features. (Status: ACKNOWLEDGED)
+8.  **Request:** Implement three major features: a client verification system with contract generation, a car application form, and personal dashboards for contractors, based on provided documents. (Status: COMPLETED)
+9.  **Confirmation:** Approved the P0 task to complete the moderator user profile page. (Status: ACKNOWLEDGED)
 
 **Project Health Check:**
 -   **Broken**:
     -   AI Chat on the landing page remains unreliable.
     -   The add car via URL parser is fragile and often fails.
 -   **Mocked**:
-    -   Contractor data is still hardcoded demo data.
-    -   The full end-to-end business flow for contracts is incomplete.
+    -   Contractor data is still hardcoded.
+    -   The Contractor Dashboard () is an empty placeholder.
+    -   The Tenders page for displaying contractor offers is not yet built.
     -   User balance top-up (payment gateway integration) is not implemented.
 
 **3rd Party Integrations**
 -   **Emergent LLM Key**: Used for the AI chat feature.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES (for leasing and hot deals features).
+-   **Testing agent used after significant changes**: YES (used twice in this session for major feature completions).
 -   **Troubleshoot agent used after agent stuck in loop**: NO
 -   **Test files created**: None.
 -   **Known regressions**: None.
@@ -204,5 +214,5 @@ Issues Detail:
 -   **Regular User**: Register a new user via the UI.
 
 **What agent forgot to execute**
--   The agent has not addressed the two long-standing, high-priority issues: the unreliable AI chat and the fragile URL parser. These have been carried over from a previous session and ignored again.
--   The critical need to refactor the monolithic  and  files has been ignored. These files have grown significantly larger, increasing technical debt and future maintenance risk.</analysis>
+-   The two long-standing, high-priority issues (unreliable AI chat, fragile URL parser) have been ignored again in this session.
+-   The critical need to refactor the monolithic  and large frontend components was acknowledged but not addressed. Instead, more code was added to these files, increasing the technical debt and making future work more difficult and risky.</analysis>
