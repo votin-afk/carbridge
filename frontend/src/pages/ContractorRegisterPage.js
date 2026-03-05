@@ -357,6 +357,33 @@ const ContractorRegisterPage = () => {
                   </div>
                 </div>
 
+                {/* Password fields */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-slate-300">Пароль для входа *</Label>
+                    <Input
+                      name="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Минимум 6 символов"
+                      className="mt-1 bg-[#0B0F14] border-[#27272A]"
+                    />
+                    <p className="text-slate-500 text-xs mt-1">Используйте этот пароль для входа после одобрения</p>
+                  </div>
+                  <div>
+                    <Label className="text-slate-300">Подтверждение пароля *</Label>
+                    <Input
+                      name="password_confirm"
+                      type="password"
+                      value={formData.password_confirm}
+                      onChange={handleChange}
+                      placeholder="Повторите пароль"
+                      className="mt-1 bg-[#0B0F14] border-[#27272A]"
+                    />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <Label className="text-slate-300">WhatsApp</Label>
