@@ -5362,6 +5362,12 @@ async def request_deal_assistance(current_user: dict = Depends(get_current_user)
 
 # ==================== CONTRACTOR SYSTEM ====================
 
+class ServicePricing(BaseModel):
+    """Pricing for a single service"""
+    service: str  # inspection, purchase, export, logistics, leasing, customs
+    price_usd: float
+    description: Optional[str] = None
+
 class ContractorRegister(BaseModel):
     # Company info
     company_name: str
@@ -5369,18 +5375,21 @@ class ContractorRegister(BaseModel):
     registration_number: Optional[str] = None  # UNP for BY, USCI for CN
     legal_address: str
     
+    # Login credentials
+    email: EmailStr
+    password: str  # Password for contractor login
+    
     # Contact person
     contact_person: str
     position: str
     phone: str
-    email: EmailStr
-    password: str  # Password for contractor login
     whatsapp: Optional[str] = None
     wechat: Optional[str] = None
     telegram: Optional[str] = None
     
-    # Services offered
+    # Services offered with pricing
     services: List[str]  # inspection, purchase, export, logistics, leasing, customs
+    service_prices: Optional[dict] = None  # {service_name: price_usd}
     
     # Additional info
     description: str
