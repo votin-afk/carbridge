@@ -405,7 +405,7 @@ const ModeratorPage = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  if (!isModerator) {
+  if (!isModerator && !isAdmin) {
     return (
       <div className="min-h-screen bg-[#0B0F14] flex items-center justify-center">
         <div className="text-center">
