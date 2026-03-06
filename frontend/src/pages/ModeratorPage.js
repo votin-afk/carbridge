@@ -593,9 +593,14 @@ const ModeratorPage = () => {
                         Подробнее
                       </Button>
                       <Button
+                        type="button"
                         size="sm"
                         variant="outline"
-                        onClick={() => handleDeleteCarApplication(app.id)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDeleteCarApplication(app.id);
+                        }}
                         className="border-red-500/30 text-red-400 hover:bg-red-500/10"
                       >
                         <Trash2 size={14} className="mr-1" />
