@@ -346,6 +346,12 @@ class CatalogCarModel(BaseModel):
     mileage: Optional[int] = None
     source: Optional[str] = None
     fuel_type: Optional[str] = None
+    source_url: Optional[str] = None
+    transmission: Optional[str] = None
+    color: Optional[str] = None
+    address: Optional[str] = None
+    vin: Optional[str] = None
+    power: Optional[int] = None
 
 class CatalogSearchResult(BaseModel):
     cars: List[CatalogCarModel]
