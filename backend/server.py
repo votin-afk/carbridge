@@ -1770,14 +1770,16 @@ async def add_car_to_deal(data: dict, current_user: dict = Depends(get_current_u
             "image_url": car.get("image_url")
         },
         "status": "active",
-        "current_stage": "leasing_request",
+        "current_stage": "leasing",
         "stages": {
-            "leasing_request": {"status": "pending", "completed": False, "skipped": False},
-            "inspection": {"status": "pending", "completed": False, "contractor_id": None, "price": None},
+            "leasing": {"status": "pending", "completed": False, "skipped": False},
+            "inspection": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "price": None},
             "export": {"status": "pending", "completed": False, "contractor_id": None, "price": None},
-            "logistics": {"status": "pending", "completed": False, "contractor_id": None, "price": None},
-            "payment": {"status": "pending", "completed": False},
-            "delivery": {"status": "pending", "completed": False}
+            "logistics_china": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "price": None},
+            "insurance": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "price": None},
+            "delivery_rb": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "price": None},
+            "customs": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "price": None},
+            "completion": {"status": "pending", "completed": False}
         },
         "contractors": {},
         "payments": [],
