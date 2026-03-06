@@ -4268,6 +4268,114 @@ async def reject_contractor_application(app_id: str, current_user: dict = Depend
         raise HTTPException(status_code=404, detail="Application not found")
     return {"message": "Application rejected"}
 
+# ==================== MODERATOR: CAR APPLICATIONS (User requests) ====================
+
+@api_router.get("/moderator/car-applications")
+async def get_car_applications(current_user: dict = Depends(require_role(["admin", "moderator"]))):
+    """Get all car applications (user requests for car selection)"""
+    applications = await db.applications.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    # Enrich with user data
+    result = []
+    for app in applications:
+        user = await db.users.find_one({"id": app.get("user_id")}, {"_id": 0, "name": 1, "email": 1})
+        app["user_name"] = user.get("name", "Unknown") if user else "Unknown"
+        app["user_email"] = user.get("email", "") if user else ""
+        result.append(app)
+    
+    return result
+
+@api_router.delete("/moderator/car-applications/{app_id}")
+async def delete_car_application(app_id: str, current_user: dict = Depends(require_role(["admin", "moderator"]))):
+    """Delete a car application"""
+    result = await db.applications.delete_one({"id": app_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return {"message": "Car application deleted"}
+
+# ==================== MODERATOR: DELETE ENDPOINTS ====================
+
+@api_router.delete("/moderator/users/{user_id}")
+async def delete_user(user_id: str, current_user: dict = Depends(require_role(["admin"]))):
+    """Delete a user and all related data (admin only)"""
+    # Check user exists
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Prevent deleting admins
+    if user.get("role") == "admin":
+        raise HTTPException(status_code=403, detail="Cannot delete admin users")
+    
+    # Delete related data
+    await db.garage.delete_many({"user_id": user_id})
+    await db.applications.delete_many({"user_id": user_id})
+    await db.verifications.delete_many({"user_id": user_id})
+    await db.chat_history.delete_many({"user_id": user_id})
+    
+    # Delete user
+    await db.users.delete_one({"id": user_id})
+    
+    return {"message": "User and all related data deleted"}
+
+@api_router.delete("/moderator/tenders/{tender_id}")
+async def delete_tender(tender_id: str, current_user: dict = Depends(require_role(["admin", "moderator"]))):
+    """Delete a tender"""
+    # Find garage item with this tender
+    garage_item = await db.garage.find_one({"tender_id": tender_id})
+    if garage_item:
+        # Remove tender from garage item
+        await db.garage.update_one(
+            {"id": garage_item["id"]},
+            {"$set": {"status": "in_garage", "tender_id": None}}
+        )
+    
+    # Delete tender and its offers
+    await db.tenders.delete_one({"id": tender_id})
+    await db.tender_offers.delete_many({"tender_id": tender_id})
+    
+    return {"message": "Tender deleted"}
+
+@api_router.delete("/moderator/garage/{garage_id}")
+async def delete_garage_item(garage_id: str, current_user: dict = Depends(require_role(["admin", "moderator"]))):
+    """Delete a car from user's garage"""
+    result = await db.garage.delete_one({"id": garage_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Garage item not found")
+    return {"message": "Garage item deleted"}
+
+@api_router.delete("/moderator/contractors/{contractor_id}")
+async def delete_contractor(contractor_id: str, current_user: dict = Depends(require_role(["admin", "moderator"]))):
+    """Delete a contractor"""
+    # Delete contractor
+    result = await db.contractors.delete_one({"id": contractor_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Contractor not found")
+    
+    # Delete related contractor application
+    await db.contractor_applications.delete_many({"contractor_id": contractor_id})
+    
+    return {"message": "Contractor deleted"}
+
+@api_router.delete("/moderator/deals/{deal_id}")
+async def delete_deal(deal_id: str, current_user: dict = Depends(require_role(["admin", "moderator"]))):
+    """Delete a deal (resets garage item to normal state)"""
+    # Find and update garage item
+    result = await db.garage.update_one(
+        {"id": deal_id},
+        {"$set": {
+            "status": "in_garage",
+            "current_stage": None,
+            "completed_stages": [],
+            "tender_id": None,
+            "selected_contractor_id": None
+        }}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Deal not found")
+    
+    return {"message": "Deal cancelled and reset to garage"}
+
 @api_router.get("/moderator/deals")
 async def get_all_deals(current_user: dict = Depends(require_role(["admin", "moderator"]))):
     """Get all deals for moderator view"""
