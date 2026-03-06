@@ -632,7 +632,7 @@ const InvoiceDialog = ({ open, onClose, invoiceData, balance, onPay, processing 
           <div className="space-y-2 p-4 bg-[#0B0F14] rounded-sm">
             {carPrice > 0 && (
               <div className="flex justify-between">
-                <span className="text-slate-400">Стоимость авто</span>
+                <span className="text-slate-400">Базовая стоимость авто в Китае</span>
                 <span className="text-white">${carPrice.toLocaleString()}</span>
               </div>
             )}
