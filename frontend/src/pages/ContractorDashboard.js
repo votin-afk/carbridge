@@ -229,11 +229,13 @@ const ContractorDashboard = () => {
               <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-6">
                 <h3 className="text-white font-semibold mb-4">Ваши услуги</h3>
                 <div className="flex flex-wrap gap-2">
-                  {contractor.services?.map(service => (
+                  {contractor.services && contractor.services.length > 0 ? contractor.services.map(service => (
                     <span key={service} className="px-3 py-1 bg-[#00E5FF]/10 text-[#00E5FF] rounded-full text-sm">
                       {serviceLabels[service] || service}
                     </span>
-                  ))}
+                  )) : (
+                    <span className="text-slate-500 text-sm">Услуги не указаны</span>
+                  )}
                 </div>
               </div>
 
