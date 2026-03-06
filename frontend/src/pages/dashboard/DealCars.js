@@ -942,15 +942,57 @@ const CustomsDialog = ({ open, onClose, customsData, contractors, onSelectContra
             </div>
           ) : calcResult && (
             <div className="space-y-4">
-              {/* Total */}
-              <div className="bg-[#00E5FF]/10 border border-[#00E5FF]/30 rounded-sm p-4">
-                <p className="text-slate-400 text-sm mb-1">Итого «под ключ»</p>
-                <p className="text-[#00E5FF] text-3xl font-bold">
-                  {formatNumber(calcResult.total_usd)} $
-                </p>
-                <p className="text-slate-400 text-sm">
-                  {formatNumber(calcResult.total_byn)} BYN
-                </p>
+              {/* Customs Payments Only */}
+              <div className="bg-[#0B0F14] border border-[#27272A] rounded-sm p-4 space-y-3">
+                <h4 className="text-white font-semibold mb-3">Таможенные платежи</h4>
+                
+                <div className="flex justify-between text-sm py-2 border-b border-[#27272A]">
+                  <span className="text-slate-400">Таможенная пошлина</span>
+                  <span className="text-white">{formatNumber(calcResult.customs_duty)} BYN</span>
+                </div>
+                
+                <div className="flex justify-between text-sm py-2 border-b border-[#27272A]">
+                  <span className="text-slate-400">Утилизационный сбор</span>
+                  <span className="text-white">{formatNumber(calcResult.utilization_fee)} BYN</span>
+                </div>
+                
+                {calcResult.vat > 0 && (
+                  <div className="flex justify-between text-sm py-2 border-b border-[#27272A]">
+                    <span className="text-slate-400">НДС (20%)</span>
+                    <span className="text-white">{formatNumber(calcResult.vat)} BYN</span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between text-sm py-2 border-b border-[#27272A]">
+                  <span className="text-slate-400">Таможенный сбор</span>
+                  <span className="text-white">120,00 BYN</span>
+                </div>
+                
+                <div className="flex justify-between text-sm py-2 border-b border-[#27272A]">
+                  <span className="text-slate-400">ЭПТС</span>
+                  <span className="text-white">70,00 BYN</span>
+                </div>
+
+                {calcResult.decree_140_discount > 0 && (
+                  <div className="flex justify-between text-sm py-2 border-b border-[#27272A] text-emerald-400">
+                    <span>Льгота по Указу №140</span>
+                    <span>-{formatNumber(calcResult.decree_140_discount)} BYN</span>
+                  </div>
+                )}
+
+                {/* Subtotal customs payments */}
+                <div className="flex justify-between pt-2">
+                  <span className="text-white font-semibold">Итого таможенные платежи</span>
+                  <span className="text-[#00E5FF] font-bold text-lg">
+                    {formatNumber(
+                      calcResult.customs_duty + 
+                      calcResult.utilization_fee + 
+                      (calcResult.vat || 0) + 
+                      120 + 70 - 
+                      (calcResult.decree_140_discount || 0)
+                    )} BYN
+                  </span>
+                </div>
               </div>
 
               {/* Discount Badge */}
@@ -965,73 +1007,6 @@ const CustomsDialog = ({ open, onClose, customsData, contractors, onSelectContra
                   </div>
                 </div>
               )}
-
-              {/* Breakdown */}
-              <div className="bg-[#0B0F14] border border-[#27272A] rounded-sm p-4 space-y-3">
-                <h4 className="text-white font-semibold mb-3">Детализация</h4>
-                
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Цена авто</span>
-                  <span className="text-white">{formatNumber(calcResult.price_usd)} $</span>
-                </div>
-                
-                <div className="border-t border-[#27272A] pt-3 mt-3">
-                  <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Таможенные платежи</p>
-                </div>
-                
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Таможенная пошлина</span>
-                  <span className="text-white">{formatNumber(calcResult.customs_duty)} BYN</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Утилизационный сбор</span>
-                  <span className="text-white">{formatNumber(calcResult.utilization_fee)} BYN</span>
-                </div>
-                {calcResult.vat > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">НДС</span>
-                    <span className="text-white">{formatNumber(calcResult.vat)} BYN</span>
-                  </div>
-                )}
-                
-                <div className="border-t border-[#27272A] pt-3 mt-3">
-                  <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Фиксированные расходы</p>
-                </div>
-                
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Сборы в РБ (таможня, склад, ЭПТС)</span>
-                  <span className="text-white">{formatNumber(calcResult.fixed_costs_byn)} BYN</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Доставка и оформление</span>
-                  <span className="text-white">{formatNumber(calcResult.fixed_costs_usd)} $</span>
-                </div>
-                
-                <div className="border-t border-[#27272A] pt-3 mt-3">
-                  <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Комиссии платформы</p>
-                </div>
-                
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Комиссия платформы (3%)</span>
-                  <span className="text-white">{formatNumber(calcResult.platform_commission)} BYN</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Комиссия за оплату (1.5%)</span>
-                  <span className="text-white">{formatNumber(calcResult.payment_commission)} BYN</span>
-                </div>
-
-                {calcResult.decree_140_discount > 0 && (
-                  <>
-                    <div className="border-t border-[#27272A] pt-3 mt-3">
-                      <p className="text-emerald-400 text-xs uppercase tracking-wider mb-2">Льготы</p>
-                    </div>
-                    <div className="flex justify-between text-sm text-emerald-400">
-                      <span>Скидка по Указу 140</span>
-                      <span>-{formatNumber(calcResult.decree_140_discount)} BYN</span>
-                    </div>
-                  </>
-                )}
-              </div>
             </div>
           )}
 
@@ -1075,6 +1050,37 @@ const CustomsDialog = ({ open, onClose, customsData, contractors, onSelectContra
             )}
           </div>
 
+          {/* Total to pay with broker selected */}
+          {selectedBroker && calcResult && (
+            <div className="bg-[#00E5FF]/10 border border-[#00E5FF]/30 rounded-sm p-4">
+              <p className="text-slate-400 text-sm mb-2">К оплате (таможенные платежи + услуга брокера)</p>
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-[#00E5FF] text-2xl font-bold">
+                    {formatNumber(
+                      calcResult.customs_duty + 
+                      calcResult.utilization_fee + 
+                      (calcResult.vat || 0) + 
+                      120 + 70 - 
+                      (calcResult.decree_140_discount || 0) +
+                      getBrokerPrice(customsBrokers.find(b => b.id === selectedBroker)) * 3.2 // Convert USD to BYN
+                    )} BYN
+                  </p>
+                  <p className="text-slate-400 text-sm">
+                    ≈ ${formatNumber(
+                      (calcResult.customs_duty + 
+                       calcResult.utilization_fee + 
+                       (calcResult.vat || 0) + 
+                       120 + 70 - 
+                       (calcResult.decree_140_discount || 0)) / 3.2 +
+                      getBrokerPrice(customsBrokers.find(b => b.id === selectedBroker))
+                    )} USD
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex gap-3">
             <Button
@@ -1090,7 +1096,7 @@ const CustomsDialog = ({ open, onClose, customsData, contractors, onSelectContra
               className="flex-1 bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
             >
               {processing ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
-              Выбрать брокера
+              Выбрать брокера и оплатить
             </Button>
           </div>
         </div>
