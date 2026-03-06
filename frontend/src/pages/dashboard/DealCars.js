@@ -1198,6 +1198,18 @@ const DealCard = ({
           <span className="px-3 py-1 bg-[#00E5FF]/10 text-[#00E5FF] rounded-full text-sm">
             Активна
           </span>
+          {/* Cancel Deal Button - only if no payments made */}
+          {(deal.total_paid || 0) === 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onCancelDeal(deal.id)}
+              className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+              title="Отменить сделку"
+            >
+              <Trash2 size={16} />
+            </Button>
+          )}
         </div>
       </div>
 
