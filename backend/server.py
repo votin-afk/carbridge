@@ -5314,42 +5314,88 @@ async def sign_contract(current_user: dict = Depends(get_current_user)):
 # ==================== CAR APPLICATION SYSTEM ====================
 
 class CarApplicationCreate(BaseModel):
-    # Personal data
+    """
+    New comprehensive application form matching the PDF template.
+    Структура соответствует форме заявки CarBridge.
+    """
+    # РАЗДЕЛ 1: Данные клиента
     client_type: Literal["individual", "legal"] = "individual"
     full_name: str
-    phone: str
-    email: EmailStr
-    preferred_contact: Literal["phone", "whatsapp", "telegram", "viber", "email"] = "phone"
+    delivery_city: Optional[str] = None
     
-    # Car preferences
+    # РАЗДЕЛ 2.1: Основные характеристики
     brand: Optional[str] = None
     model: Optional[str] = None
-    body_type: Optional[str] = None  # sedan, suv, hatchback, crossover, minivan, coupe
-    engine_type: Literal["ice", "hybrid", "electric", "any"] = "any"
     year_from: Optional[int] = None
     year_to: Optional[int] = None
-    mileage_max: Optional[int] = None
+    body_type: Optional[str] = None  # sedan, hatchback, coupe, minivan, wagon, pickup, suv, any
     
-    # Budget
-    budget_min: Optional[float] = None
-    budget_max: Optional[float] = None
-    budget_currency: Literal["BYN", "USD", "EUR", "CNY"] = "BYN"
-    
-    # Additional preferences
-    color_preferences: Optional[str] = None
-    transmission: Optional[str] = None  # auto, manual, any
+    # РАЗДЕЛ 2.2: Двигатель и трансмиссия
+    engine_type: Optional[str] = None  # petrol, diesel, electric, hybrid, phev, gas
+    engine_volume: Optional[str] = None  # lt1, 1_15, 15_2, 2_25, 25_3, gt3, any
+    power_from: Optional[int] = None
+    power_to: Optional[int] = None
+    transmission: Optional[str] = None  # mt, at, amt_dsg, cvt, reducer, any
     drive_type: Optional[str] = None  # fwd, rwd, awd, any
     
-    # Special conditions
-    has_decree_140: bool = False  # Указ 140 (льготы)
-    decree_140_category: Optional[str] = None  # many_children, disabled_1_2
+    # РАЗДЕЛ 2.3: Внешний вид
+    body_color: Optional[str] = None  # white, black, grey, silver, blue, red, brown, green, other, any
+    body_color_other: Optional[str] = None  # если выбрано "other"
+    exact_color: Optional[str] = None  # точный цвет
+    color_importance: Optional[str] = None  # required, preferred, not_important
+    interior_color: Optional[str] = None  # black, beige, grey, brown, combi, other, any
+    interior_color_other: Optional[str] = None
+    interior_material: Optional[str] = None  # leather, eco_leather, fabric, alcantara, any
     
-    # Financing
-    payment_method: Literal["full", "leasing", "credit"] = "full"
-    needs_manager_help: bool = False
+    # РАЗДЕЛ 3.1: Пробег
+    mileage_max: Optional[str] = None  # lt10, lt30, lt50, lt80, lt100, gt100, any
+    car_condition: Optional[str] = None  # new, used, any
     
-    # Additional notes
+    # РАЗДЕЛ 3.2: Допустимые повреждения
+    allow_damage: bool = False
+    damage_level: Optional[str] = None  # level1, level12, level123, new_only
+    damage_comment: Optional[str] = None
+    
+    # РАЗДЕЛ 4: Дополнительные опции
+    # Электронные системы
+    options_electronic: Optional[List[str]] = None  # system_360, acc, lka, autopark, parking_sensors, rear_camera, wireless_charge, hud, carplay
+    # Комфорт
+    options_comfort: Optional[List[str]] = None  # panoramic_roof, heated_front, heated_rear, ventilated_seats, massage_seats, seat_memory, climate_control, heated_wheel, electric_trunk, keyless
+    # Внешний вид
+    options_exterior: Optional[List[str]] = None  # sport_package, wheels_r18, led_matrix, factory_tint
+    # Прочее
+    options_other: Optional[List[str]] = None  # towbar, spare_wheel, third_row, premium_audio
+    required_options: Optional[str] = None
+    preferred_options: Optional[str] = None
+    
+    # РАЗДЕЛ 5: Бюджет и условия
+    budget_china_from: Optional[float] = None  # бюджет в Китае (USD) от
+    budget_china_to: Optional[float] = None  # бюджет в Китае (USD) до
+    budget_total: Optional[float] = None  # общий бюджет до (с доставкой и таможней)
+    purchase_timeline: Optional[str] = None  # urgent, 1month, 2_3months, not_rush
+    payment_method: Optional[str] = None  # full_prepay, installment, credit_leasing
+    car_purpose: Optional[str] = None  # personal, business, taxi, resale
+    customs_clearance: Optional[str] = None  # carbridge, self, unknown
+    
+    # РАЗДЕЛ 6: Приоритеты и комментарии
+    priority_price: Optional[int] = None  # 1-5
+    priority_reliability: Optional[int] = None  # 1-5
+    priority_technology: Optional[int] = None  # 1-5
+    priority_prestige: Optional[int] = None  # 1-5
+    priority_fuel: Optional[int] = None  # 1-5
     additional_requirements: Optional[str] = None
+    
+    # Legacy fields for backward compatibility (kept but deprecated)
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    preferred_contact: Optional[str] = None
+    budget_min: Optional[float] = None
+    budget_max: Optional[float] = None
+    budget_currency: Optional[str] = None
+    color_preferences: Optional[str] = None
+    has_decree_140: bool = False
+    decree_140_category: Optional[str] = None
+    needs_manager_help: bool = False
     urgent: bool = False
 
 @api_router.post("/applications/create")
