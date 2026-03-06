@@ -4440,15 +4440,20 @@ async def get_all_tenders_moderator(current_user: dict = Depends(require_role(["
     
     result = []
     for tender in tenders:
-        car = await db.garage.find_one({"id": tender["car_id"]}, {"_id": 0})
+        car_id = tender.get("car_id") or tender.get("garage_id")
+        car = None
+        if car_id:
+            car = await db.garage.find_one({"id": car_id}, {"_id": 0})
+        
         result.append({
             "id": tender["id"],
-            "brand": car["brand"] if car else "Unknown",
-            "model": car["model"] if car else "Unknown",
-            "budget": car.get("calculated_price_usd", 0) if car else 0,
+            "car_id": car_id,
+            "car_brand": car["brand"] if car else tender.get("brand", "Unknown"),
+            "car_model": car["model"] if car else tender.get("model", "Unknown"),
+            "budget": car.get("calculated_price_usd", 0) if car else tender.get("budget", 0),
             "offers_count": len(tender.get("offers", [])),
-            "status": tender["status"],
-            "created_at": tender["created_at"]
+            "status": tender.get("status", "active"),
+            "created_at": tender.get("created_at", "")
         })
     
     return result
