@@ -39,7 +39,9 @@ import {
   FileText,
   Building2,
   CheckCheck,
-  SkipForward
+  SkipForward,
+  Trash2,
+  XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
