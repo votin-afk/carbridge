@@ -675,6 +675,14 @@ const ModeratorPage = () => {
                             </Button>
                           </>
                         )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteContractor(contractor.id)}
+                          className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                        >
+                          <Trash2 size={14} />
+                        </Button>
                       </div>
                     </div>
                     
