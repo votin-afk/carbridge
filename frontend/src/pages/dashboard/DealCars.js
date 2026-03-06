@@ -1145,7 +1145,8 @@ const DealCard = ({
   onOpenInvoice,
   onSkipStage,
   onOpenCustoms,
-  onCompleteDeal
+  onCompleteDeal,
+  onCancelDeal
 }) => {
   const getStageStatus = (stageKey) => {
     const stage = deal.stages?.[stageKey];
