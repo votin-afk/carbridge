@@ -169,12 +169,16 @@ const LandingPage = () => {
     fetchCatalogPreview();
   }, []);
 
-  // Scroll to bottom of chat only after user sends a message
+  // Chat container ref for controlled scrolling
+  const chatContainerRef = useRef(null);
+
+  // Scroll to bottom of chat ONLY within chat container
   useEffect(() => {
-    if (hasUserInteracted && chatMessages.length > 0) {
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current && chatMessages.length > 1) {
+      const container = chatContainerRef.current;
+      container.scrollTop = container.scrollHeight;
     }
-  }, [chatMessages, hasUserInteracted]);
+  }, [chatMessages]);
 
   // Auto-rotate carousel
   useEffect(() => {
