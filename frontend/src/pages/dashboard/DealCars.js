@@ -265,6 +265,7 @@ const DealCars = () => {
               onSkipStage={(dealId, stage) => setSkipDialog({ dealId, stage })}
               onOpenCustoms={(dealId, carInfo) => setCustomsDialog({ dealId, carInfo })}
               onCompleteDeal={completeDeal}
+              onCancelDeal={cancelDeal}
             />
           ))}
         </div>
