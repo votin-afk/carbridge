@@ -246,6 +246,7 @@ const DealCars = () => {
               onOpenContractor={(dealId, stage) => setContractorDialog({ dealId, stage })}
               onOpenInvoice={(dealId, stage, invoice) => setInvoiceDialog({ dealId, stage, invoice })}
               onSkipStage={(dealId, stage) => setSkipDialog({ dealId, stage })}
+              onOpenCustoms={(dealId, carInfo) => setCustomsDialog({ dealId, carInfo })}
               onCompleteDeal={completeDeal}
             />
           ))}
