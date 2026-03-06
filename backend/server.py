@@ -5206,9 +5206,21 @@ async def add_catalog_car_to_garage(
             catalog_car = car
             break
     
-    # If not in static catalog, check cache for live cars
+    # If not in static catalog, check Che168 cache
     if not catalog_car:
-        # Try to find in cached live data
+        for key in list(_cache.keys()):
+            if key.startswith("che168_search_"):
+                cached_data = _cache.get(key, {})
+                cars = cached_data.get("cars", [])
+                for car in cars:
+                    if car["id"] == car_id:
+                        catalog_car = car
+                        break
+                if catalog_car:
+                    break
+    
+    # If still not found, check pro-auctions cache (fallback)
+    if not catalog_car:
         for key in list(_cache.keys()):
             if key.startswith("pro_auctions_cars_"):
                 cached_data = _cache.get(key, {})
@@ -5219,6 +5231,30 @@ async def add_catalog_car_to_garage(
                         break
                 if catalog_car:
                     break
+    
+    # If still not found and it's a Che168 ID, fetch from API
+    if not catalog_car and car_id.startswith("che168-"):
+        inner_id = car_id.replace("che168-", "")
+        try:
+            car_details = await Che168API.get_offer_details(inner_id)
+            if car_details:
+                catalog_car = {
+                    "id": car_id,
+                    "brand": car_details.get("mark", "Unknown"),
+                    "model": car_details.get("model", "Unknown"),
+                    "year_from": car_details.get("year", 2023),
+                    "year_to": car_details.get("year", 2023),
+                    "price_from_cny": car_details.get("price", 0),
+                    "engine_type": Che168API.map_engine_type(car_details.get("engine_type", "")),
+                    "engine_volume": int(float(car_details.get("displacement", 0) or 0) * 1000) or None,
+                    "mileage": car_details.get("km_age"),
+                    "image_url": car_details.get("images", [""])[0] if car_details.get("images") else "",
+                    "source_url": car_details.get("url", ""),
+                    "description": car_details.get("description", ""),
+                    "body_type": Che168API.map_body_type(car_details.get("body_type", ""))
+                }
+        except Exception as e:
+            logger.error(f"Error fetching car details from Che168: {e}")
     
     if not catalog_car:
         raise HTTPException(status_code=404, detail="Car not found in catalog")
