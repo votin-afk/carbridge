@@ -812,6 +812,8 @@ const CustomsDialog = ({ open, onClose, customsData, contractors, onSelectContra
     onClose();
   };
 
+  if (!customsData) return null;
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-2xl max-h-[90vh] overflow-y-auto">
