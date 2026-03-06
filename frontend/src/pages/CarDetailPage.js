@@ -27,6 +27,15 @@ import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Helper to proxy Chinese CDN images
+const getProxiedImageUrl = (url) => {
+  if (!url) return 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800';
+  if (url.includes('autoimg.cn') || url.includes('che168.com') || url.includes('autohome.com')) {
+    return `${API}/proxy/image?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+};
+
 const CarDetailPage = () => {
   const { carId } = useParams();
   const navigate = useNavigate();
@@ -37,12 +46,33 @@ const CarDetailPage = () => {
   const [addingToGarage, setAddingToGarage] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showGallery, setShowGallery] = useState(false);
+  const [translatedDescription, setTranslatedDescription] = useState('');
+  const [translating, setTranslating] = useState(false);
 
   useEffect(() => {
     const fetchCarDetails = async () => {
       try {
-        const response = await axios.get(`${API}/catalog/${carId}`);
+        const response = await axios.get(`${API}/catalog/${carId}?translate=true`);
         setCar(response.data);
+        
+        // Auto-translate description if it's in Chinese
+        if (response.data.description) {
+          const hasChinese = /[\u4e00-\u9fff]/.test(response.data.description);
+          if (hasChinese) {
+            setTranslating(true);
+            try {
+              const transResponse = await axios.post(`${API}/translate`, {
+                text: response.data.description
+              });
+              setTranslatedDescription(transResponse.data.translated || response.data.description);
+            } catch (e) {
+              console.error('Translation error:', e);
+              setTranslatedDescription(response.data.description);
+            } finally {
+              setTranslating(false);
+            }
+          }
+        }
       } catch (error) {
         console.error('Error fetching car details:', error);
         toast.error('Ошибка загрузки данных автомобиля');
