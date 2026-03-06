@@ -240,6 +240,9 @@ CONSULTANT_FEE = 200    # $200 за помощь консультанта/мен
 
 ## Интеграции
 
+- **Che168 API**: Реальные объявления авто из Китая через auto-api.com
+  - API Key: `DQugK90Bo5ci1ZeDP6Wr`
+  - Endpoint: `https://api1.auto-api.com/api/v2/che168`
 - **Emergent LLM Key**: Используется для AI чата
 - **MongoDB**: База данных
 - **ReportLab**: Генерация PDF контрактов
