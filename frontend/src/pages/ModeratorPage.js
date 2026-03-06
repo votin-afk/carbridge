@@ -269,7 +269,7 @@ const ModeratorPage = () => {
     try {
       await axios.delete(`${API}/moderator/users/${userId}`, { headers });
       toast.success('Пользователь удалён');
-      fetchData();
+      setUsers(prev => prev.filter(u => u.id !== userId));
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Ошибка при удалении пользователя');
     }
@@ -280,7 +280,7 @@ const ModeratorPage = () => {
     try {
       await axios.delete(`${API}/moderator/tenders/${tenderId}`, { headers });
       toast.success('Тендер удалён');
-      fetchData();
+      setTenders(prev => prev.filter(t => t.id !== tenderId));
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Ошибка при удалении тендера');
     }
@@ -302,7 +302,7 @@ const ModeratorPage = () => {
     try {
       await axios.delete(`${API}/moderator/contractors/${contractorId}`, { headers });
       toast.success('Подрядчик удалён');
-      fetchData();
+      setContractorApplications(prev => prev.filter(c => c.id !== contractorId));
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Ошибка при удалении подрядчика');
     }
@@ -313,7 +313,7 @@ const ModeratorPage = () => {
     try {
       await axios.delete(`${API}/moderator/deals/${dealId}`, { headers });
       toast.success('Сделка отменена');
-      fetchData();
+      setDeals(prev => prev.filter(d => d.id !== dealId));
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Ошибка при отмене сделки');
     }
