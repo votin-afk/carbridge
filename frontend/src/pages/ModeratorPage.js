@@ -277,78 +277,67 @@ const ModeratorPage = () => {
 
   // ==================== DELETE HANDLERS ====================
   
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm('Удалить пользователя и все его данные? Это действие необратимо.')) return;
-    try {
-      await axios.delete(`${API}/moderator/users/${userId}`, { headers });
-      toast.success('Пользователь удалён');
-      setUsers(prev => prev.filter(u => u.id !== userId));
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Ошибка при удалении пользователя');
-    }
+  // Show delete confirmation dialog
+  const showDeleteDialog = (type, id, title) => {
+    setDeleteDialog({ type, id, title });
   };
 
-  const handleDeleteTender = async (tenderId) => {
-    if (!window.confirm('Удалить тендер?')) return;
+  // Execute delete after confirmation
+  const executeDelete = async () => {
+    if (!deleteDialog) return;
+    
+    const { type, id } = deleteDialog;
+    
     try {
-      await axios.delete(`${API}/moderator/tenders/${tenderId}`, { headers });
-      toast.success('Тендер удалён');
-      setTenders(prev => prev.filter(t => t.id !== tenderId));
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Ошибка при удалении тендера');
-    }
-  };
-
-  const handleDeleteGarageItem = async (garageId) => {
-    if (!window.confirm('Удалить авто из гаража пользователя?')) return;
-    try {
-      await axios.delete(`${API}/moderator/garage/${garageId}`, { headers });
-      toast.success('Авто удалено из гаража');
-      fetchData();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Ошибка при удалении');
-    }
-  };
-
-  const handleDeleteContractor = async (contractorId) => {
-    if (!window.confirm('Удалить подрядчика?')) return;
-    try {
-      await axios.delete(`${API}/moderator/contractors/${contractorId}`, { headers });
-      toast.success('Подрядчик удалён');
-      setContractorApplications(prev => prev.filter(c => c.id !== contractorId));
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Ошибка при удалении подрядчика');
-    }
-  };
-
-  const handleDeleteDeal = async (dealId) => {
-    if (!window.confirm('Отменить сделку? Авто вернётся в гараж пользователя.')) return;
-    try {
-      await axios.delete(`${API}/moderator/deals/${dealId}`, { headers });
-      toast.success('Сделка отменена');
-      setDeals(prev => prev.filter(d => d.id !== dealId));
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Ошибка при отмене сделки');
-    }
-  };
-
-  const handleDeleteCarApplication = async (appId) => {
-    if (!window.confirm('Удалить заявку на подбор авто?')) return;
-    try {
-      console.log('Deleting application:', appId);
-      await axios.delete(`${API}/moderator/car-applications/${appId}`, { headers });
-      toast.success('Заявка удалена');
-      // Immediately remove from state
-      setApplications(currentApps => {
-        const newApps = currentApps.filter(app => app.id !== appId);
-        console.log('Apps after filter:', newApps.length, 'was:', currentApps.length);
-        return newApps;
-      });
+      switch (type) {
+        case 'user':
+          await axios.delete(`${API}/moderator/users/${id}`, { headers });
+          toast.success('Пользователь удалён');
+          setUsers(prev => prev.filter(u => u.id !== id));
+          break;
+        case 'tender':
+          await axios.delete(`${API}/moderator/tenders/${id}`, { headers });
+          toast.success('Тендер удалён');
+          setTenders(prev => prev.filter(t => t.id !== id));
+          break;
+        case 'garage':
+          await axios.delete(`${API}/moderator/garage/${id}`, { headers });
+          toast.success('Авто удалено из гаража');
+          fetchData();
+          break;
+        case 'contractor':
+          await axios.delete(`${API}/moderator/contractors/${id}`, { headers });
+          toast.success('Подрядчик удалён');
+          setContractorApplications(prev => prev.filter(c => c.id !== id));
+          break;
+        case 'deal':
+          await axios.delete(`${API}/moderator/deals/${id}`, { headers });
+          toast.success('Сделка отменена');
+          setDeals(prev => prev.filter(d => d.id !== id));
+          break;
+        case 'application':
+          await axios.delete(`${API}/moderator/car-applications/${id}`, { headers });
+          toast.success('Заявка удалена');
+          setApplications(prev => prev.filter(app => app.id !== id));
+          break;
+        default:
+          console.error('Unknown delete type:', type);
+      }
     } catch (error) {
       console.error('Delete error:', error);
-      toast.error(error.response?.data?.detail || 'Ошибка при удалении заявки');
+      toast.error(error.response?.data?.detail || 'Ошибка при удалении');
+    } finally {
+      setDeleteDialog(null);
     }
   };
+
+  // Wrapper functions for UI
+  const handleDeleteUser = (userId) => showDeleteDialog('user', userId, 'Удалить пользователя и все его данные?');
+  const handleDeleteTender = (tenderId) => showDeleteDialog('tender', tenderId, 'Удалить тендер?');
+  const handleDeleteGarageItem = (garageId) => showDeleteDialog('garage', garageId, 'Удалить авто из гаража?');
+  const handleDeleteContractor = (contractorId) => showDeleteDialog('contractor', contractorId, 'Удалить подрядчика?');
+  const handleDeleteDeal = (dealId) => showDeleteDialog('deal', dealId, 'Отменить сделку?');
+  const handleDeleteCarApplication = (appId) => showDeleteDialog('application', appId, 'Удалить заявку на подбор авто?');
 
   const handleConfirmStage = async (dealId, stage) => {
     try {
