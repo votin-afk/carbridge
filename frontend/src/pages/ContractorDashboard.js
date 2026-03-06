@@ -199,22 +199,26 @@ const ContractorDashboard = () => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-[#15191E] p-1 mb-6">
-            <TabsTrigger value="overview" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black">
-              <LayoutDashboard size={16} className="mr-2" />
-              Обзор
+          <TabsList className="bg-[#15191E] p-1 mb-6 flex-wrap h-auto gap-1">
+            <TabsTrigger value="overview" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black text-xs sm:text-sm">
+              <LayoutDashboard size={16} className="mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Обзор</span>
+              <span className="sm:hidden">Обзор</span>
             </TabsTrigger>
-            <TabsTrigger value="tenders" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black">
-              <Gavel size={16} className="mr-2" />
-              Тендеры
+            <TabsTrigger value="tenders" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black text-xs sm:text-sm">
+              <Gavel size={16} className="mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Тендеры</span>
+              <span className="sm:hidden">Тендеры</span>
             </TabsTrigger>
-            <TabsTrigger value="applications" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black">
-              <FileText size={16} className="mr-2" />
-              Заявки клиентов
+            <TabsTrigger value="applications" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black text-xs sm:text-sm">
+              <FileText size={16} className="mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Заявки клиентов</span>
+              <span className="sm:hidden">Заявки</span>
             </TabsTrigger>
-            <TabsTrigger value="offers" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black">
-              <Package size={16} className="mr-2" />
-              Мои предложения
+            <TabsTrigger value="offers" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black text-xs sm:text-sm">
+              <Package size={16} className="mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Мои предложения</span>
+              <span className="sm:hidden">Мои</span>
             </TabsTrigger>
           </TabsList>
 
