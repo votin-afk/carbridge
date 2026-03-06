@@ -433,10 +433,28 @@ const CarDetailPage = () => {
         </div>
 
         {/* Description */}
-        {car.description && (
+        {(car.description || translatedDescription) && (
           <div className="mt-8 bg-[#15191E] border border-[#27272A] rounded-lg p-6">
-            <h3 className="text-white font-semibold mb-4">Описание</h3>
-            <p className="text-slate-400 whitespace-pre-wrap">{car.description}</p>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-semibold">Описание</h3>
+              {translating && (
+                <span className="text-sm text-slate-400 flex items-center gap-2">
+                  <Loader2 size={14} className="animate-spin" />
+                  Перевод...
+                </span>
+              )}
+            </div>
+            <p className="text-slate-400 whitespace-pre-wrap">
+              {translatedDescription || car.description}
+            </p>
+            {translatedDescription && car.description !== translatedDescription && (
+              <details className="mt-4">
+                <summary className="text-slate-500 text-sm cursor-pointer hover:text-slate-400">
+                  Показать оригинал (китайский)
+                </summary>
+                <p className="mt-2 text-slate-500 text-sm whitespace-pre-wrap">{car.description}</p>
+              </details>
+            )}
           </div>
         )}
       </main>
