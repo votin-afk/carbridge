@@ -1061,9 +1061,8 @@ const CustomsDialog = ({ open, onClose, customsData, contractors, onSelectContra
                       calcResult.customs_duty + 
                       calcResult.utilization_fee + 
                       (calcResult.vat || 0) + 
-                      120 + 70 - 
-                      (calcResult.decree_140_discount || 0) +
-                      getBrokerPrice(customsBrokers.find(b => b.id === selectedBroker)) * 3.2 // Convert USD to BYN
+                      120 + 70 +
+                      getBrokerPrice(customsBrokers.find(b => b.id === selectedBroker)) * 3.2
                     )} BYN
                   </p>
                   <p className="text-slate-400 text-sm">
@@ -1071,8 +1070,7 @@ const CustomsDialog = ({ open, onClose, customsData, contractors, onSelectContra
                       (calcResult.customs_duty + 
                        calcResult.utilization_fee + 
                        (calcResult.vat || 0) + 
-                       120 + 70 - 
-                       (calcResult.decree_140_discount || 0)) / 3.2 +
+                       120 + 70) / 3.2 +
                       getBrokerPrice(customsBrokers.find(b => b.id === selectedBroker))
                     )} USD
                   </p>
