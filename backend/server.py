@@ -4856,14 +4856,22 @@ def generate_search_links(brand: str = None, model: str = None, query: str = Non
 
 @api_router.get("/catalog/brands")
 async def get_catalog_brands():
-    """Get list of all brands in catalog - fetches live data from pro-auctions"""
+    """Get list of all brands in catalog - fetches live data from Che168 API"""
     try:
-        # Try to get live data from pro-auctions
+        # Try to get live data from Che168 API (primary source)
+        che168_brands = await Che168API.get_brands()
+        if che168_brands:
+            return che168_brands
+    except Exception as e:
+        logger.error(f"Error fetching Che168 brands: {e}")
+    
+    try:
+        # Fallback to pro-auctions
         live_brands = await ProAuctionsParser.get_brands()
         if live_brands:
             return live_brands
     except Exception as e:
-        logger.error(f"Error fetching live brands: {e}")
+        logger.error(f"Error fetching pro-auctions brands: {e}")
     
     # Fallback to static data
     brands = {}
