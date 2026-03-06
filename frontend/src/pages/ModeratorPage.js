@@ -49,7 +49,8 @@ import {
   FileText,
   Image,
   Download,
-  ExternalLink
+  ExternalLink,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
