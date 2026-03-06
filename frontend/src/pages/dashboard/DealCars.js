@@ -973,14 +973,15 @@ const CustomsDialog = ({ open, onClose, customsData, contractors, onSelectContra
                   <span className="text-white">70,00 BYN</span>
                 </div>
 
+                {/* Show discount info if applied - discount is already included in customs_duty */}
                 {calcResult.decree_140_discount > 0 && (
                   <div className="flex justify-between text-sm py-2 border-b border-[#27272A] text-emerald-400">
-                    <span>Льгота по Указу №140</span>
+                    <span>Льгота по Указу №140 (применена)</span>
                     <span>-{formatNumber(calcResult.decree_140_discount)} BYN</span>
                   </div>
                 )}
 
-                {/* Subtotal customs payments */}
+                {/* Subtotal customs payments - customs_duty already includes discount */}
                 <div className="flex justify-between pt-2">
                   <span className="text-white font-semibold">Итого таможенные платежи</span>
                   <span className="text-[#00E5FF] font-bold text-lg">
@@ -988,8 +989,7 @@ const CustomsDialog = ({ open, onClose, customsData, contractors, onSelectContra
                       calcResult.customs_duty + 
                       calcResult.utilization_fee + 
                       (calcResult.vat || 0) + 
-                      120 + 70 - 
-                      (calcResult.decree_140_discount || 0)
+                      120 + 70
                     )} BYN
                   </span>
                 </div>
@@ -1002,7 +1002,7 @@ const CustomsDialog = ({ open, onClose, customsData, contractors, onSelectContra
                   <div>
                     <p className="text-emerald-400 font-medium text-sm">Льгота по Указу 140 применена</p>
                     <p className="text-slate-400 text-xs">
-                      Экономия: {formatNumber(calcResult.decree_140_discount)} BYN
+                      Экономия: {formatNumber(calcResult.decree_140_discount)} BYN (50% от пошлины)
                     </p>
                   </div>
                 </div>
