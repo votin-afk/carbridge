@@ -543,8 +543,62 @@ const ContractorRegisterPage = () => {
             </div>
           )}
 
-          {/* Step 4 - Final */}
+          {/* Step 4 - Service Prices */}
           {step === 4 && (
+            <div className="space-y-6">
+              <h2 className="text-lg font-semibold text-white mb-4">Стоимость услуг</h2>
+              <p className="text-slate-400 text-sm mb-4">
+                Укажите стоимость ваших услуг в USD. Эта сумма будет списываться со счёта клиента при выборе вас в качестве подрядчика.
+              </p>
+              
+              <div className="space-y-4">
+                {formData.services.map(service => {
+                  const serviceLabels = {
+                    inspection: { name: '🔍 Инспекция авто', desc: 'Проверка технического состояния автомобиля' },
+                    purchase: { name: '💰 Выкуп авто', desc: 'Покупка автомобиля у продавца' },
+                    export: { name: '📦 Экспорт', desc: 'Оформление экспорта из Китая' },
+                    logistics: { name: '🚚 Логистика', desc: 'Доставка автомобиля в Беларусь' },
+                    leasing: { name: '📋 Лизинг', desc: 'Оформление лизинга' },
+                    customs: { name: '🏛️ Растаможка', desc: 'Таможенное оформление' }
+                  };
+                  const label = serviceLabels[service] || { name: service, desc: '' };
+                  
+                  return (
+                    <div key={service} className="bg-[#0B0F14] border border-[#27272A] rounded-sm p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-medium">{label.name}</p>
+                          <p className="text-slate-500 text-sm">{label.desc}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-400">$</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="10"
+                            value={formData.service_prices[service] || ''}
+                            onChange={(e) => handlePriceChange(service, e.target.value)}
+                            placeholder="0"
+                            className="w-32 bg-[#15191E] border-[#27272A] text-right"
+                          />
+                          <span className="text-slate-400">USD</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {formData.services.length === 0 && (
+                <div className="text-center py-8 text-slate-500">
+                  <p>Вернитесь на предыдущий шаг и выберите услуги</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 5 - Final */}
+          {step === 5 && (
             <div className="space-y-6">
               <h2 className="text-lg font-semibold text-white mb-4">Дополнительная информация</h2>
               
@@ -592,10 +646,33 @@ const ContractorRegisterPage = () => {
                       <span className="text-white">{formData.contact_person || '—'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Email:</span>
+                      <span className="text-slate-500">Email (логин):</span>
                       <span className="text-white">{formData.email || '—'}</span>
                     </div>
                   </div>
+                  
+                  {/* Prices Summary */}
+                  {formData.services.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-[#27272A]">
+                      <h4 className="text-slate-400 text-xs uppercase mb-2">Стоимость услуг</h4>
+                      {formData.services.map(service => {
+                        const names = {
+                          inspection: 'Инспекция',
+                          purchase: 'Выкуп',
+                          export: 'Экспорт',
+                          logistics: 'Логистика',
+                          leasing: 'Лизинг',
+                          customs: 'Растаможка'
+                        };
+                        return (
+                          <div key={service} className="flex justify-between text-sm">
+                            <span className="text-slate-500">{names[service] || service}:</span>
+                            <span className="text-[#00E5FF]">${formData.service_prices[service] || 0} USD</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 <p className="text-slate-500 text-sm">
