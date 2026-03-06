@@ -5865,6 +5865,79 @@ async def reject_contractor(contractor_id: str, data: dict, current_user: dict =
     
     return {"message": "Заявка отклонена"}
 
+# ==================== GPS TRACKING ENDPOINT ====================
+
+@api_router.get("/deals/{deal_id}/tracking")
+async def get_deal_tracking(deal_id: str, current_user: dict = Depends(get_current_user)):
+    """Get GPS tracking data for a deal"""
+    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # Check if tracking data exists
+    tracking = await db.tracking.find_one({"deal_id": deal_id})
+    
+    if tracking:
+        # Return existing tracking data
+        return {
+            "deal_id": deal_id,
+            "car_info": deal.get("car_info"),
+            "current_stage": tracking.get("current_stage", "china_warehouse"),
+            "current_location": tracking.get("current_location"),
+            "progress": tracking.get("progress", 0),
+            "estimated_arrival": tracking.get("estimated_arrival"),
+            "history": tracking.get("history", []),
+            "last_updated": tracking.get("last_updated")
+        }
+    
+    # Generate tracking based on deal stages
+    stages = deal.get("stages", {})
+    
+    # Determine current tracking stage
+    tracking_stage = "china_warehouse"
+    progress = 0
+    
+    if stages.get("customs", {}).get("completed") or stages.get("customs", {}).get("paid"):
+        tracking_stage = "delivery"
+        progress = 85
+    elif stages.get("delivery_rb", {}).get("completed") or stages.get("delivery_rb", {}).get("paid"):
+        tracking_stage = "customs"
+        progress = 70
+    elif stages.get("insurance", {}).get("completed") or stages.get("insurance", {}).get("skipped"):
+        tracking_stage = "eu_port"
+        progress = 55
+    elif stages.get("logistics_china", {}).get("completed") or stages.get("logistics_china", {}).get("skipped"):
+        tracking_stage = "in_transit"
+        progress = 40
+    elif stages.get("export", {}).get("completed") or stages.get("export", {}).get("paid"):
+        tracking_stage = "china_port"
+        progress = 20
+    
+    # Location data
+    locations = {
+        "china_warehouse": {"lat": 31.2304, "lng": 121.4737, "city": "Шанхай"},
+        "china_port": {"lat": 22.5431, "lng": 114.0579, "city": "Шэньчжэнь"},
+        "in_transit": {"lat": 35.6762, "lng": 139.6503, "city": "В море"},
+        "eu_port": {"lat": 54.6872, "lng": 25.2797, "city": "Клайпеда"},
+        "customs": {"lat": 53.9006, "lng": 27.5590, "city": "Минск"},
+        "delivery": {"lat": 53.9006, "lng": 27.5590, "city": "Минск"}
+    }
+    
+    # Calculate estimated arrival
+    days_remaining = max(0, int((100 - progress) / 15))
+    estimated_arrival = (datetime.now(timezone.utc) + timedelta(days=days_remaining)).isoformat()
+    
+    return {
+        "deal_id": deal_id,
+        "car_info": deal.get("car_info"),
+        "current_stage": tracking_stage,
+        "current_location": locations.get(tracking_stage),
+        "progress": progress,
+        "estimated_arrival": estimated_arrival,
+        "history": [],
+        "last_updated": datetime.now(timezone.utc).isoformat()
+    }
+
 # ==================== STATUS ENDPOINT ====================
 
 @api_router.get("/")
