@@ -92,6 +92,7 @@ const DealCars = () => {
   const [invoiceDialog, setInvoiceDialog] = useState(null);
   const [skipDialog, setSkipDialog] = useState(null);
   const [customsDialog, setCustomsDialog] = useState(null);
+  const [cancelDealDialog, setCancelDealDialog] = useState(null); // { dealId: string }
 
   const headers = { Authorization: `Bearer ${token}` };
 
