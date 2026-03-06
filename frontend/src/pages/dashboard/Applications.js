@@ -309,7 +309,17 @@ const Applications = () => {
 
   useEffect(() => {
     fetchApplications();
+    fetchAccountSummary();
   }, []);
+
+  const fetchAccountSummary = async () => {
+    try {
+      const response = await axios.get(`${API}/account/summary`, { headers });
+      setAccountSummary(response.data);
+    } catch (error) {
+      console.log('Account endpoint not available');
+    }
+  };
 
   const fetchApplications = async () => {
     try {
@@ -319,6 +329,63 @@ const Applications = () => {
       console.error('Error fetching applications:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const cancelApplication = async (appId) => {
+    setCancellingApp(true);
+    try {
+      await axios.delete(`${API}/applications/${appId}`, { headers });
+      toast.success('Заявка отменена');
+      setSelectedApp(null);
+      fetchApplications();
+    } catch (error) {
+      toast.error('Не удалось отменить заявку');
+    } finally {
+      setCancellingApp(false);
+    }
+  };
+
+  const requestManagerHelp = async (appId) => {
+    if ((accountSummary?.balance || 0) < 200) {
+      toast.error('Недостаточно средств. Требуется $200 для помощи менеджера');
+      return;
+    }
+    
+    setRequestingManagerHelp(true);
+    try {
+      await axios.post(`${API}/applications/${appId}/request-manager-help`, {}, { headers });
+      toast.success('Менеджер назначен! С баланса списано $200');
+      fetchApplications();
+      fetchAccountSummary();
+      // Обновляем выбранную заявку
+      const updated = await axios.get(`${API}/applications/${appId}`, { headers });
+      setSelectedApp(updated.data);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка при запросе помощи');
+    } finally {
+      setRequestingManagerHelp(false);
+    }
+  };
+
+  const startTenderFromApplication = async (appId) => {
+    if (!accountSummary?.contract_signed) {
+      toast.error('Для запуска тендера необходимо подписать договор в разделе "Верификация"');
+      return;
+    }
+    
+    setStartingTender(true);
+    try {
+      await axios.post(`${API}/applications/${appId}/start-tender`, {}, { headers });
+      toast.success('Тендер запущен! Проверьте раздел "Тендеры"');
+      fetchApplications();
+      // Обновляем выбранную заявку
+      const updated = await axios.get(`${API}/applications/${appId}`, { headers });
+      setSelectedApp(updated.data);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка при запуске тендера');
+    } finally {
+      setStartingTender(false);
     }
   };
 
