@@ -360,6 +360,30 @@ const DealCars = () => {
         onSelectContractor={selectContractor}
         processing={processing}
       />
+
+      {/* Cancel Deal Confirmation Dialog */}
+      <AlertDialog open={!!cancelDealDialog} onOpenChange={() => setCancelDealDialog(null)}>
+        <AlertDialogContent className="bg-[#15191E] border-[#27272A]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Отменить сделку?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Авто вернётся в гараж. Это действие необратимо.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-[#27272A] text-white border-[#27272A] hover:bg-[#3f3f46]">
+              Нет, оставить
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={executeCancelDeal}
+              disabled={processing}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {processing ? 'Отмена...' : 'Да, отменить'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
