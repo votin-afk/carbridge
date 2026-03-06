@@ -65,6 +65,17 @@ const WeChatIcon = () => (
 );
 import axios from 'axios';
 
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+// Helper to proxy Chinese CDN images
+const getProxiedImageUrl = (url) => {
+  if (!url) return 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800';
+  if (url.includes('autoimg.cn') || url.includes('che168.com') || url.includes('autohome.com')) {
+    return `${API}/proxy/image?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+};
+
 // Popular cars data with prices for Belarus
 const popularCars = [
   {
