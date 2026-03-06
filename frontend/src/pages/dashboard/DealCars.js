@@ -739,6 +739,315 @@ const InvoiceDialog = ({ open, onClose, invoiceData, balance, onPay, processing 
   );
 };
 
+// Customs Calculator Dialog
+const CustomsDialog = ({ open, onClose, customsData, contractors, onSelectContractor, processing }) => {
+  const [engineVolume, setEngineVolume] = useState(2000);
+  const [isElectric, setIsElectric] = useState(false);
+  const [useDecree140, setUseDecree140] = useState(false);
+  const [selectedBroker, setSelectedBroker] = useState(null);
+
+  if (!customsData) return null;
+
+  const { dealId, carInfo } = customsData;
+  const carPrice = carInfo?.price_usd || 0;
+  const carYear = carInfo?.year || new Date().getFullYear();
+  const carAge = new Date().getFullYear() - carYear;
+
+  // EUR/USD rate (approximate)
+  const EUR_USD = 1.08;
+  const carPriceEur = carPrice / EUR_USD;
+
+  // Calculate customs payments for Belarus
+  const calculateCustomsPayments = () => {
+    // 1. Утилизационный сбор (Utilization fee)
+    let utilizationFee = 0;
+    if (isElectric) {
+      utilizationFee = carAge <= 3 ? 3400 : 5200; // BYN base for electric
+    } else {
+      if (engineVolume <= 1000) {
+        utilizationFee = carAge <= 3 ? 544 : 1088;
+      } else if (engineVolume <= 2000) {
+        utilizationFee = carAge <= 3 ? 870 : 2610;
+      } else if (engineVolume <= 3000) {
+        utilizationFee = carAge <= 3 ? 1305 : 5655;
+      } else if (engineVolume <= 3500) {
+        utilizationFee = carAge <= 3 ? 2175 : 9353;
+      } else {
+        utilizationFee = carAge <= 3 ? 3480 : 14964;
+      }
+    }
+    // Convert BYN to USD (approx rate 3.2)
+    const utilizationFeeUsd = Math.round(utilizationFee / 3.2);
+
+    // 2. Таможенная пошлина (Customs duty) - based on engine volume and age
+    let customsDuty = 0;
+    if (isElectric) {
+      customsDuty = carPriceEur * 0.15; // 15% for electric
+    } else if (carAge <= 3) {
+      // New cars - percentage of price
+      if (carPriceEur < 8500) customsDuty = Math.max(carPriceEur * 0.54, engineVolume * 2.5);
+      else if (carPriceEur < 16700) customsDuty = Math.max(carPriceEur * 0.48, engineVolume * 3.5);
+      else if (carPriceEur < 42300) customsDuty = Math.max(carPriceEur * 0.48, engineVolume * 5.5);
+      else if (carPriceEur < 84500) customsDuty = Math.max(carPriceEur * 0.48, engineVolume * 7.5);
+      else if (carPriceEur < 169000) customsDuty = Math.max(carPriceEur * 0.48, engineVolume * 15);
+      else customsDuty = Math.max(carPriceEur * 0.48, engineVolume * 20);
+    } else if (carAge <= 5) {
+      // 3-5 years old
+      if (engineVolume <= 1000) customsDuty = engineVolume * 1.5;
+      else if (engineVolume <= 1500) customsDuty = engineVolume * 1.7;
+      else if (engineVolume <= 1800) customsDuty = engineVolume * 2.5;
+      else if (engineVolume <= 2300) customsDuty = engineVolume * 2.7;
+      else if (engineVolume <= 3000) customsDuty = engineVolume * 3.0;
+      else customsDuty = engineVolume * 3.6;
+    } else {
+      // Over 5 years
+      if (engineVolume <= 1000) customsDuty = engineVolume * 3.0;
+      else if (engineVolume <= 1500) customsDuty = engineVolume * 3.2;
+      else if (engineVolume <= 1800) customsDuty = engineVolume * 3.5;
+      else if (engineVolume <= 2300) customsDuty = engineVolume * 4.8;
+      else if (engineVolume <= 3000) customsDuty = engineVolume * 5.0;
+      else customsDuty = engineVolume * 5.7;
+    }
+    const customsDutyUsd = Math.round(customsDuty * EUR_USD);
+
+    // 3. Таможенный сбор (Customs fee) - fixed
+    const customsFee = 120; // USD
+
+    // 4. ЭПТС (Electronic vehicle passport)
+    const eptsСost = 45; // USD
+
+    // 5. Apply Decree 140 discount (50% on customs duty for certain categories)
+    let decree140Discount = 0;
+    if (useDecree140) {
+      decree140Discount = customsDutyUsd * 0.5;
+    }
+
+    const totalPayments = utilizationFeeUsd + customsDutyUsd + customsFee + eptsСost - decree140Discount;
+
+    return {
+      utilizationFee: utilizationFeeUsd,
+      customsDuty: customsDutyUsd,
+      customsFee,
+      eptsCost: eptsСost,
+      decree140Discount,
+      total: totalPayments
+    };
+  };
+
+  const payments = calculateCustomsPayments();
+
+  // Filter customs brokers
+  const customsBrokers = contractors.filter(c => {
+    const services = c.services?.toLowerCase() || '';
+    return services.includes('customs') || services.includes('таможн');
+  });
+
+  const getBrokerPrice = (broker) => {
+    return broker.service_prices?.customs || 300;
+  };
+
+  const handleSelectBroker = () => {
+    if (!selectedBroker) {
+      toast.error('Выберите таможенного брокера');
+      return;
+    }
+    const broker = customsBrokers.find(b => b.id === selectedBroker);
+    const brokerPrice = getBrokerPrice(broker);
+    onSelectContractor(dealId, 'customs', selectedBroker, brokerPrice);
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Calculator size={20} className="text-[#00E5FF]" />
+            Таможенные платежи
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-6 mt-4">
+          {/* Car Info */}
+          <div className="p-4 bg-[#0B0F14] rounded-sm">
+            <p className="text-slate-400 text-sm">Автомобиль</p>
+            <p className="text-white font-medium">{carInfo?.brand} {carInfo?.model} {carInfo?.year}</p>
+            <p className="text-[#00E5FF]">${carPrice.toLocaleString()}</p>
+          </div>
+
+          {/* Engine Parameters */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div
+                onClick={() => setIsElectric(false)}
+                className={`flex-1 p-3 rounded-sm border cursor-pointer ${
+                  !isElectric ? 'border-[#00E5FF] bg-[#00E5FF]/10' : 'border-[#27272A] bg-[#0B0F14]'
+                }`}
+              >
+                <p className="text-white font-medium text-center">ДВС / Гибрид</p>
+              </div>
+              <div
+                onClick={() => setIsElectric(true)}
+                className={`flex-1 p-3 rounded-sm border cursor-pointer ${
+                  isElectric ? 'border-[#00E5FF] bg-[#00E5FF]/10' : 'border-[#27272A] bg-[#0B0F14]'
+                }`}
+              >
+                <p className="text-white font-medium text-center">Электро</p>
+              </div>
+            </div>
+
+            {!isElectric && (
+              <div>
+                <div className="flex justify-between mb-2">
+                  <Label className="text-white">Объём двигателя</Label>
+                  <span className="text-[#00E5FF] font-bold">{engineVolume} см³</span>
+                </div>
+                <Slider
+                  value={[engineVolume]}
+                  onValueChange={(v) => setEngineVolume(v[0])}
+                  min={500}
+                  max={6000}
+                  step={100}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-slate-500 text-xs mt-1">
+                  <span>500</span>
+                  <span>3000</span>
+                  <span>6000 см³</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Decree 140 Toggle */}
+          <div
+            onClick={() => setUseDecree140(!useDecree140)}
+            className={`p-4 rounded-sm border cursor-pointer ${
+              useDecree140 ? 'border-emerald-500 bg-emerald-500/10' : 'border-[#27272A] bg-[#0B0F14]'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Checkbox checked={useDecree140} />
+              <div>
+                <p className="text-white font-medium">Льгота по Указу №140</p>
+                <p className="text-slate-400 text-sm">Скидка 50% на таможенную пошлину для отдельных категорий граждан</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Payments Breakdown */}
+          <div className="space-y-2 p-4 bg-[#0B0F14] rounded-sm">
+            <h4 className="text-white font-medium mb-3">Расчёт таможенных платежей</h4>
+            
+            <div className="flex justify-between py-2 border-b border-[#27272A]">
+              <span className="text-slate-400">Утилизационный сбор</span>
+              <span className="text-white font-medium">${payments.utilizationFee.toLocaleString()}</span>
+            </div>
+            
+            <div className="flex justify-between py-2 border-b border-[#27272A]">
+              <span className="text-slate-400">Таможенная пошлина</span>
+              <span className="text-white font-medium">${payments.customsDuty.toLocaleString()}</span>
+            </div>
+            
+            <div className="flex justify-between py-2 border-b border-[#27272A]">
+              <span className="text-slate-400">Таможенный сбор</span>
+              <span className="text-white font-medium">${payments.customsFee}</span>
+            </div>
+            
+            <div className="flex justify-between py-2 border-b border-[#27272A]">
+              <span className="text-slate-400">ЭПТС</span>
+              <span className="text-white font-medium">${payments.eptsCost}</span>
+            </div>
+
+            {useDecree140 && (
+              <div className="flex justify-between py-2 border-b border-[#27272A] text-emerald-400">
+                <span>Льгота по Указу №140 (-50%)</span>
+                <span>-${payments.decree140Discount.toLocaleString()}</span>
+              </div>
+            )}
+
+            <div className="flex justify-between pt-3">
+              <span className="text-white font-bold">Итого платежи</span>
+              <span className="text-[#00E5FF] font-bold text-xl">${payments.total.toLocaleString()}</span>
+            </div>
+          </div>
+
+          {/* Select Broker */}
+          <div>
+            <Label className="text-white mb-3 block">Выберите таможенного брокера</Label>
+            {customsBrokers.length === 0 ? (
+              <p className="text-slate-500 text-sm">Нет доступных таможенных брокеров</p>
+            ) : (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {customsBrokers.map(broker => {
+                  const price = getBrokerPrice(broker);
+                  const isSelected = selectedBroker === broker.id;
+
+                  return (
+                    <div
+                      key={broker.id}
+                      onClick={() => setSelectedBroker(broker.id)}
+                      className={`p-4 rounded-sm border cursor-pointer ${
+                        isSelected
+                          ? 'border-[#00E5FF] bg-[#00E5FF]/10'
+                          : 'border-[#27272A] bg-[#0B0F14] hover:border-[#00E5FF]/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-medium">{broker.name}</p>
+                          {broker.rating && (
+                            <p className="text-amber-400 text-xs">★ {broker.rating.toFixed(1)}</p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[#00E5FF] font-bold">${price}</p>
+                          <p className="text-slate-500 text-xs">услуга брокера</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Total with broker */}
+          {selectedBroker && (
+            <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-emerald-400">Всего к оплате (платежи + брокер)</span>
+                <span className="text-emerald-400 font-bold text-xl">
+                  ${(payments.total + getBrokerPrice(customsBrokers.find(b => b.id === selectedBroker))).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="flex-1 border-slate-500"
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={handleSelectBroker}
+              disabled={processing || !selectedBroker}
+              className="flex-1 bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
+            >
+              {processing ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
+              Выбрать брокера
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // Deal Card Component
 const DealCard = ({ 
   deal, 
