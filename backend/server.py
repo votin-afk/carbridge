@@ -969,6 +969,92 @@ class Che168API:
         except Exception as e:
             logger.error(f"Che168API.get_offer_details error: {e}")
         return None
+    
+    @staticmethod
+    async def translate_to_russian(text: str) -> str:
+        """Translate Chinese text to Russian using LLM"""
+        if not text or len(text) < 3:
+            return text
+        
+        # Check if text is mostly Chinese
+        chinese_chars = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+        if chinese_chars < len(text) * 0.3:
+            return text  # Not mostly Chinese, return as is
+        
+        try:
+            from emergentintegrations.llm.chat import LlmChat, UserMessage
+            
+            api_key = os.environ.get("EMERGENT_LLM_KEY")
+            if not api_key:
+                return text
+            
+            chat = LlmChat(
+                api_key=api_key,
+                model="gemini-2.0-flash",
+                system_message="Ты - переводчик с китайского на русский. Переводи текст кратко и точно. Отвечай только переводом, без пояснений."
+            )
+            
+            response = await chat.send_async([
+                UserMessage(content=f"Переведи на русский:\n{text[:500]}")
+            ])
+            
+            return response.content.strip() if response and response.content else text
+        except Exception as e:
+            logger.error(f"Translation error: {e}")
+            return text
+
+# ==================== IMAGE PROXY ====================
+
+@api_router.get("/proxy/image")
+async def proxy_image(url: str):
+    """Proxy images from Chinese CDN to bypass CORS restrictions"""
+    if not url or not url.startswith("http"):
+        raise HTTPException(status_code=400, detail="Invalid image URL")
+    
+    # Only allow specific domains
+    allowed_domains = ["autoimg.cn", "che168.com", "autohome.com", "2sc2.autoimg.cn"]
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    
+    if not any(domain in parsed.netloc for domain in allowed_domains):
+        raise HTTPException(status_code=400, detail="Domain not allowed")
+    
+    try:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            response = await client.get(
+                url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+                    "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+                    "Referer": "https://www.che168.com/"
+                }
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=404, detail="Image not found")
+            
+            # Determine content type
+            content_type = response.headers.get("content-type", "image/jpeg")
+            if "webp" in url:
+                content_type = "image/webp"
+            elif "png" in url:
+                content_type = "image/png"
+            elif "jpg" in url or "jpeg" in url:
+                content_type = "image/jpeg"
+            
+            return StreamingResponse(
+                BytesIO(response.content),
+                media_type=content_type,
+                headers={
+                    "Cache-Control": "public, max-age=86400",
+                    "Access-Control-Allow-Origin": "*"
+                }
+            )
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Image fetch timeout")
+    except Exception as e:
+        logger.error(f"Image proxy error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch image")
 
 # ==================== PRO-AUCTIONS PARSER ====================
 
