@@ -118,7 +118,8 @@ const ModeratorPage = () => {
     setLoading(true);
     try {
       if (activeTab === 'applications') {
-        const response = await axios.get(`${API}/moderator/applications`, { headers });
+        // Fetch CAR applications (user requests for car selection)
+        const response = await axios.get(`${API}/moderator/car-applications`, { headers });
         setApplications(response.data);
       } else if (activeTab === 'deals') {
         const response = await axios.get(`${API}/moderator/deals`, { headers });
@@ -133,6 +134,7 @@ const ModeratorPage = () => {
         const response = await axios.get(`${API}/moderator/verifications/pending`, { headers });
         setVerifications(response.data);
       } else if (activeTab === 'contractors') {
+        // Fetch CONTRACTOR applications (not approved contractors)
         const response = await axios.get(`${API}/moderator/contractor-applications`, { headers });
         setContractorApplications(response.data);
       }
@@ -140,11 +142,11 @@ const ModeratorPage = () => {
       console.error('Error fetching data:', error);
       // Use demo data if API not ready
       if (activeTab === 'applications') {
-        setApplications(DEMO_APPLICATIONS);
+        setApplications([]);
       } else if (activeTab === 'deals') {
-        setDeals(DEMO_DEALS);
+        setDeals([]);
       } else if (activeTab === 'tenders') {
-        setTenders(DEMO_TENDERS);
+        setTenders([]);
       }
     } finally {
       setLoading(false);
