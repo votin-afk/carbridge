@@ -1056,6 +1056,15 @@ async def proxy_image(url: str):
         logger.error(f"Image proxy error: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch image")
 
+class TranslateRequest(BaseModel):
+    text: str
+
+@api_router.post("/translate")
+async def translate_text(request: TranslateRequest):
+    """Translate Chinese text to Russian"""
+    translated = await Che168API.translate_to_russian(request.text)
+    return {"original": request.text, "translated": translated}
+
 # ==================== PRO-AUCTIONS PARSER ====================
 
 class ProAuctionsParser:
