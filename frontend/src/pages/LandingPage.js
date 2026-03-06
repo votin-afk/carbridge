@@ -84,11 +84,6 @@ const popularCars = [
     priceUSD: 19961.47,
     image: "https://customer-assets.emergentagent.com/job_china-motors-by/artifacts/os4c665q_GEELY%20MANJARO.jpg"
   },
-  {
-    id: 2,
-    name: "BMW iX1",
-    priceUSD: 24819.83,
-    image: "https://customer-assets.emergentagent.com/job_china-motors-by/artifacts/m2yr3tp2_BMW%20IX1.jpg"
   },
   {
     id: 3,
