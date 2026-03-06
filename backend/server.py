@@ -5182,15 +5182,77 @@ async def get_catalog_car(car_id: str):
                 "search_links": generate_search_links(car["brand"], car["model"])
             }
     
-    # If not found, it might be a live car from pro-auctions
-    # The car_id format from pro-auctions is like "2_10412458"
-    return {
-        "id": car_id,
-        "brand": "Unknown",
-        "model": "Unknown",
-        "message": "Car details not available",
-        "search_links": {}
-    }
+    # Check Che168 cache
+    for key in list(_cache.keys()):
+        if key.startswith("che168_search_"):
+            cached_data = _cache.get(key, {})
+            cars = cached_data.get("cars", [])
+            for car in cars:
+                if car["id"] == car_id:
+                    return {
+                        **car,
+                        "search_links": generate_search_links(car["brand"], car["model"])
+                    }
+    
+    # If it's a Che168 ID, fetch from API directly
+    if car_id.startswith("che168-"):
+        inner_id = car_id.replace("che168-", "")
+        try:
+            car_details = await Che168API.get_offer_details(inner_id)
+            if car_details:
+                # Parse images
+                images = car_details.get("images", [])
+                if isinstance(images, str):
+                    try:
+                        import json as json_lib
+                        images = json_lib.loads(images)
+                    except:
+                        images = []
+                
+                return {
+                    "id": car_id,
+                    "inner_id": inner_id,
+                    "brand": car_details.get("mark", "Unknown"),
+                    "model": car_details.get("model", "Unknown"),
+                    "year_from": car_details.get("year", 2023),
+                    "year_to": car_details.get("year", 2023),
+                    "price_from_cny": car_details.get("price", 0),
+                    "engine_type": Che168API.map_engine_type(car_details.get("engine_type", "")),
+                    "engine_volume": int(float(car_details.get("displacement", 0) or 0) * 1000) or None,
+                    "body_type": Che168API.map_body_type(car_details.get("body_type", "")),
+                    "image_url": images[0] if images else "",
+                    "images": images,
+                    "mileage": car_details.get("km_age"),
+                    "color": car_details.get("color", ""),
+                    "address": car_details.get("address", car_details.get("city", "")),
+                    "vin": car_details.get("vin", ""),
+                    "power": car_details.get("power", 0),
+                    "transmission": car_details.get("transmission_type", ""),
+                    "drive_type": car_details.get("drive_type", ""),
+                    "description": car_details.get("description", ""),
+                    "source": "che168",
+                    "source_url": car_details.get("url", f"https://www.che168.com/dealer/{inner_id}.html"),
+                    "offer_created": car_details.get("offer_created", ""),
+                    "first_registration": car_details.get("first_registration", ""),
+                    "is_dealer": car_details.get("is_dealer", False),
+                    "search_links": generate_search_links(car_details.get("mark", ""), car_details.get("model", ""))
+                }
+        except Exception as e:
+            logger.error(f"Error fetching car details from Che168: {e}")
+    
+    # Check pro-auctions cache (fallback)
+    for key in list(_cache.keys()):
+        if key.startswith("pro_auctions_cars_"):
+            cached_data = _cache.get(key, {})
+            cars = cached_data.get("cars", [])
+            for car in cars:
+                if car["id"] == car_id:
+                    return {
+                        **car,
+                        "search_links": generate_search_links(car["brand"], car["model"])
+                    }
+    
+    raise HTTPException(status_code=404, detail="Car not found")
 
 @api_router.post("/catalog/{car_id}/add-to-garage")
 async def add_catalog_car_to_garage(
