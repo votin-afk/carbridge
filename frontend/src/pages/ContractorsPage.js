@@ -230,12 +230,20 @@ const ContractorsPage = () => {
           <p className="text-slate-400 max-w-2xl mx-auto mb-6">
             Проверенные компании для каждого этапа покупки автомобиля из Китая
           </p>
-          <Link to="/contractor-register">
-            <Button className="bg-gradient-to-r from-[#00E5FF] to-[#22D3EE] text-black">
-              <UserPlus size={18} className="mr-2" />
-              Стать подрядчиком
-            </Button>
-          </Link>
+          <div className="flex flex-col sm:flex-row justify-center gap-3">
+            <Link to="/contractor-register">
+              <Button className="bg-gradient-to-r from-[#00E5FF] to-[#22D3EE] text-black">
+                <UserPlus size={18} className="mr-2" />
+                Стать подрядчиком
+              </Button>
+            </Link>
+            <Link to="/contractor-dashboard">
+              <Button variant="outline" className="border-[#00E5FF] text-[#00E5FF] hover:bg-[#00E5FF]/10">
+                <Building2 size={18} className="mr-2" />
+                Войти в кабинет подрядчика
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Tabs */}
