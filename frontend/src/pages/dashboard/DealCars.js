@@ -1058,6 +1058,7 @@ const DealCard = ({
   onOpenContractor, 
   onOpenInvoice,
   onSkipStage,
+  onOpenCustoms,
   onCompleteDeal
 }) => {
   const getStageStatus = (stageKey) => {
