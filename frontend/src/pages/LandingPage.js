@@ -114,6 +114,10 @@ const LandingPage = () => {
   // Hot deals state
   const [hotDeals, setHotDeals] = useState([]);
   const [hotDealsLoading, setHotDealsLoading] = useState(true);
+  
+  // Catalog preview state
+  const [catalogCars, setCatalogCars] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
 
   // Fetch hot deals
   useEffect(() => {
@@ -128,6 +132,21 @@ const LandingPage = () => {
       }
     };
     fetchHotDeals();
+  }, []);
+
+  // Fetch catalog preview
+  useEffect(() => {
+    const fetchCatalogPreview = async () => {
+      try {
+        const response = await axios.get(`${API}/catalog/search?limit=8`);
+        setCatalogCars(response.data.cars || []);
+      } catch (error) {
+        console.error('Error fetching catalog:', error);
+      } finally {
+        setCatalogLoading(false);
+      }
+    };
+    fetchCatalogPreview();
   }, []);
 
   // Scroll to bottom of chat only after user sends a message
