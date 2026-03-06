@@ -237,7 +237,7 @@ const ContractorRegisterPage = () => {
 
         {/* Progress Steps */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          {[1, 2, 3, 4].map((s) => (
+          {[1, 2, 3, 4, 5].map((s) => (
             <div key={s} className="flex items-center">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                 s === step 
@@ -248,7 +248,7 @@ const ContractorRegisterPage = () => {
               }`}>
                 {s < step ? <CheckCircle2 size={16} /> : s}
               </div>
-              {s < 4 && (
+              {s < 5 && (
                 <div className={`w-12 h-0.5 ${s < step ? 'bg-emerald-500' : 'bg-[#27272A]'}`} />
               )}
             </div>
