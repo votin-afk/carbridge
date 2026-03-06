@@ -7,48 +7,65 @@ Recent feature requests have expanded the scope to include:
 - An affiliate program for users to earn commissions.
 - Advanced administrative controls for moderators, including managing user balances, impersonating users, and verifying accounts/documents.
 - A complete client verification system where users submit personal data (e.g., passport) and upload scans to generate a formal contract for download.
-- A multi-step application form for car search requests.
-- Personal dashboards for contractors (from Belarus and China) with a dedicated registration form.
-- A complete redesign of the user dashboard to create a logical, step-by-step process for managing car deals, from garage to tender to final purchase with contractor selection and stage-based payments.
+- A multi-step application form for car search requests, which must now match a user-provided PDF template.
+- Personal dashboards for contractors with a dedicated registration form where they set their own login credentials and service prices.
+- A complete redesign of the user dashboard to create a logical, step-by-step process for managing car deals, from garage to tender to final purchase with contractor selection and stage-based payments. This includes a new 8-stage process with calculators for leasing and customs, and a detailed payment flow.
+- A public page listing all approved contractors with their service prices.
+- A GPS tracking feature for vehicles in a deal.
+- A car catalog on the main page, populated by scraping data from a third-party site.
 
 PRODUCT REQUIREMENTS:
 -   **MVP:** Main Page, AI Agent, Cost Calculator, FAQ, Contacts.
--   **User Dashboard:** A redesigned, logical flow including Overview, My Garage, Tenders, Applications, Deal Cars, Verification, Documents, and Calculator.
--   **Client Verification:** Users must submit personal data and upload document scans. The system must generate a downloadable PDF contract based on a provided template.
--   **Moderator Controls:** Moderators must be able to view and approve/reject user verification documents and deal stages. User impersonation is also a requirement.
--   **Deal Flow:** A new Deal Cars page will be the central hub for managing a specific car purchase, including selecting contractors (inspection, export, logistics), tracking deal stages, and paying for services from the user's balance.
--   **Contractor Ecosystem:** Public registration form where contractors can select their country and services, with a dedicated dashboard for them (to be built).
+-   **User Dashboard:** A redesigned, logical flow including Overview, My Garage, Tenders, Applications, Deal Cars, Verification, Documents, and a GPS Tracking page.
+-   **Deal Flow:** A Deal Cars page as the central hub for managing a car purchase, featuring an 8-stage process with integrated calculators and contractor selection.
+-   **Payment Logic:** Stage payments must include the contractor's service cost, item cost, and platform commissions, paid via the platform balance.
+-   **Application Form:** The Application for car selection form must match the structure and fields of a user-provided PDF document.
+-   **Contractor Ecosystem:** Public registration with service pricing, a functional contractor dashboard, and a public page listing all contractors.
 -   **Role-Based Access Control (RBAC):** user, moderator, and admin roles.
--   **Paid Services:** Certain actions, like adding a car to a deal (00) or requesting consultant help (00), will deduct from the user's balance.
+-   **Car Catalog:** A new feature to display cars from a third-party site () on the main page.
 
 **User's preferred language**: Русский (Russian)
 
 **what currently exists?**
-A full-stack application with a FastAPI backend and a React frontend. The application includes:
-- A landing page with a cleaned-up header, Hot Deals section, and AI chat assistant.
-- A complete JWT-based authentication system with RBAC.
-- A redesigned user dashboard layout with new navigation.
-- **Client Verification System**: A new page () where users submit passport data and upload documents. The system generates a downloadable PDF contract based on the user's data and a template.
-- **Car Application System**: A new page () with a multi-step survey-style form for users to submit car search requests.
-- **Contractor Registration**: The registration page has been updated to support country selection (Belarus/China) and a choice of services.
-- **Moderator Panel**: Includes tabs for managing applications, deals, users, and now a dedicated Documents tab.
-    - The Documents tab allows moderators to review pending client verifications, view uploaded documents, and approve/reject them.
-    - The  page allows moderators to view a user's full profile (info, garage, deals) but no longer allows direct user verification from this screen to avoid redundancy.
+A full-stack application with a FastAPI backend and React frontend.
+-   **Completely Overhauled Application Form**: The  page now features a new, multi-step form that perfectly matches the user-provided PDF. It is divided into 6 sections, captures extensive details about the desired car, and successfully submits this data to the backend.
+-   **Post-Application Actions**: After an application is created and viewed, users are now presented with buttons to Request Manager Assistance (for a fee) or Start Tender.
+-   **Redesigned Deal Cars Page**: A fully functional 8-stage deal process (Leasing, Inspection, etc.) with integrated leasing and customs calculators and a payment flow using the platform balance.
+-   **Public Contractor Page**: A page at  that lists approved contractors and their specific service prices.
+-   **GPS Tracking Page**: A page at  with a mock UI for tracking vehicles.
+-   A landing page, authentication system (JWT with User, Moderator, Contractor roles), and moderator/contractor dashboards.
 
 **Last working item**:
--   Last item agent was working: A complete redesign of the user dashboard experience to create a more logical and interconnected deal flow. The agent began by laying the groundwork for the new Deal Cars feature.
+-   Last item agent was working: The user requested the implementation of a car catalog on the main page by scraping data from . The agent began investigating the feasibility of scraping this site.
 -   Status: IN PROGRESS
 -   Agent Testing Done: N
--   Which testing method agent to use? **frontend testing agent**. The next steps involve significant UI implementation across multiple dashboard pages (, , ). After the UI is built, the testing agent should be used to verify the new end-to-end flow, from adding a car to a deal to selecting contractors and simulating stage payments.
+-   Which testing method agent to use? backend testing agent. After implementing the scraper, the agent should use the backend testing agent to create a test that verifies the scraper can fetch and parse data correctly and handle potential errors (like CAPTCHAs or site structure changes).
 -   User Testing Done: N
 
 **All Pending/In progress Issue list**:
--   Issue 1: AI chat on landing page is unreliable (Priority: P1)
--   Issue 2: AI URL parser for My Garage is not robust (Priority: P2)
+-   Issue 1: Implement car catalog on the main page (Priority: P0)
+-   Issue 2: AI chat on landing page is unreliable (Priority: P1)
+-   Issue 3: URL parser for My Garage is not robust (Priority: P2)
 
 Issues Detail:
 -   Issue 1:
-    -   **Description**: The AI chat on the landing page, a core feature, sometimes fails to display responses or has long delays. This is a long-standing issue.
+    -   **Description**: The user wants a car catalog on the main page populated with data from . The initial investigation showed the site is protected against simple scraping (static HTML does not contain prices; data is loaded dynamically via JavaScript).
+    -   **Attempted fixes**: The agent tried a direct  on the URL and found that critical data is missing and the site structure is complex (Next.js).
+    -   **Next debug checklist**:
+        1.  Open  in a browser with developer tools.
+        2.  Go to the Network tab and filter for  requests.
+        3.  Browse the car listings and identify the API endpoint that returns the car data (likely in JSON format).
+        4.  Analyze the structure of the API response to understand how to extract car details (make, model, price, image URL, etc.).
+        5.  Implement a new backend endpoint (e.g., ) in  that calls this external API, parses the response, and returns a structured list of cars.
+        6.  Create a new component on the  to fetch data from  and display the car listings.
+    -   **Why fix this issue and what will be achieved with the fix?**: This will add a major, user-facing feature that makes the landing page much more engaging and useful.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?**: both
+    -   **Blocked on other issue**: None
+
+-   Issue 2:
+    -   **Description**: A long-standing issue where the AI chat on the landing page sometimes fails to display responses or has long delays.
     -   **Next debug checklist**:
         1.  Investigate frontend console logs in  for WebSocket or HTTP errors.
         2.  Check the  endpoint in  for potential timeouts or unhandled exceptions.
@@ -59,10 +76,10 @@ Issues Detail:
     -   **Should Test frontend/backend/both after fix?**: both
     -   **Blocked on other issue**: None
 
--   Issue 2:
+-   Issue 3:
     -   **Description**: The feature allowing users to add a car by pasting a URL often fails due to anti-scraping measures on target websites.
     -   **Next debug checklist**:
-        1.  Research and choose a more robust scraping solution (e.g., a third-party scraping API or a browser automation tool like Playwright).
+        1.  Research and choose a more robust scraping solution (e.g., a third-party scraping API like ScraperAPI or ScrapingBee).
         2.  Replace the  call in the  endpoint in .
         3.  Implement proper error handling for scraping failures.
     -   **Why fix this issue and what will be achieved with the fix?**: This will make a key automation feature reliable, significantly improving the user experience.
@@ -72,147 +89,112 @@ Issues Detail:
     -   **Blocked on other issue**: None
 
 **In progress Task List**:
--   Task 1: Complete User Dashboard Redesign (Priority: P0)
-
- Task Detail:
-  - Task 1:
-     - **Where to resume**: The backend endpoints and basic frontend routing are in place. The next steps are to implement the UI and logic:
-        1.  **Build **: Implement the UI for the new Авто для сделки page. This page should display the selected car, the deal progress timeline, sections for selecting contractors (inspection, export, logistics), and buttons to pay for each stage.
-        2.  **Refactor **: Update the overview page to show the user's balance, verification/contract status, and the new Процесс сделки (Deal Process) tracker. Add the Запросить помощь консультанта (Request Consultant Help) button.
-        3.  **Refactor **: Simplify the car cards to remove contractor selection and add the new Добавить в сделку (Add to Deal) primary button.
-        4.  **Refactor **: Add the Помощь менеджера (Manager Help) and Запустить тендер (Start Tender) buttons.
-        5.  **Build **: Implement the UI for the tenders page to display offers from contractors for a user's application.
-     - **What will be achieved with this?**: A complete, logical, and interconnected user journey for finding, selecting, and purchasing a car through the platform.
-     - **Status**: IN PROGRESS
-     - **Should Test frontend/backend/both after fix?**: both
-     - **Blocked on something**: None
+-   Task 1: Implement car catalog on the main page.
+    -   **Where to resume**: The agent needs to analyze network traffic on  to find the underlying API endpoint for car data.
+    -   **What will be achieved with this?**: A live car catalog on the site's main page.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: both
+    -   **Blocked on something**: Potentially complex anti-bot measures on the target API.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-    -   **(P1) Implement Balance Top-Up:** Integrate a payment gateway (e.g., Stripe) to allow users to add funds to their balance. This is now critical for the new deal flow.
-    -   **(P1) Build Contractor Dashboard:** Implement the UI for , which is currently a placeholder file.
-    -   **(P1) Complete Tender Flow:** Build the frontend UI for the  page to display and manage contractor bids.
+    -   **(P1) Implement Balance Top-Up:** Integrate a payment gateway (e.g., Stripe) to allow users to add funds to their balance.
+    -   **(P1) Complete Tender Flow:** Enhance the frontend UI for the  page to allow users to properly view, compare, and accept bids from contractors.
 - **Future Tasks:**
     -   Implement a full payment/escrow system.
-    -   Implement GPS tracking for car delivery.
     -   Implement Telegram/Email notifications.
-    -   **CRITICAL REFACTORING**: Break down the monolithic  and frontend God components (, ).
+    -   **(P0) CRITICAL REFACTORING**: Break down the monolithic  (now over 5900 lines), the massive  component (over 1300 lines), and the newly expanded  (over 1600 lines) into smaller, maintainable modules.
+    -   A minor UI cleanup: the old, redundant Calculator link at the very bottom of the dashboard sidebar was not removed.
 
 **Completed work in this session**
--   **Client Verification & Contract Generation**: Implemented a full flow for users to submit personal data, upload document scans, and have the system generate a downloadable PDF contract based on a template.
--   **Moderator Document Approval**: Added a Documents tab to the moderator panel, allowing moderators to review, approve, or reject user-submitted verification documents.
--   **Car Application Form**: Created a new multi-step survey style form for users to submit car search requests.
--   **Contractor Registration Update**: Enhanced the contractor registration page with country (Belarus/China) and service selection options.
--   **UI/UX Cleanup**:
-    -   Removed redundant navigation links from the main header.
-    -   Simplified the moderator's workflow by removing the direct Verify User button from the user profile page, consolidating verification approvals in the Documents tab.
--   **Moderator User Profile**: Completed and tested the  page, which was previously a placeholder.
+-   **Application Form Overhaul (Completed & Tested)**: Completely redesigned the Application for car selection form () to match the user's PDF. This included creating a 6-step wizard UI, updating the backend  model to accept dozens of new fields, and modifying the  endpoint.
+-   **Post-Application Actions (Completed & Tested)**: Added Request Manager Assistance and Start Tender buttons to the application details modal, which appear after a new application is submitted.
+-   **Full-Form Testing (Completed & Tested)**: Used  to test the new endpoint, verified all data was saved correctly in MongoDB, used screenshots to validate every step of the new UI, and finally ran the  for comprehensive validation.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1**: AI chat on landing page has intermittent reliability issues.
 -   **Issue 2**: The URL parser for adding cars to the garage is not robust.
 
 **Known issue recurrence from previous fork**
--   None observed in this session.
+-   None.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Backend:** FastAPI, Python, MongoDB, ReportLab (for PDF generation).
+-   **Backend:** FastAPI, Python, MongoDB.
 -   **Frontend:** React, Tailwind CSS, Shadcn UI components.
--   **Authentication:** JWT-based with RBAC.
--   **System Design:** Monolithic Backend, Client-Side State Management, Component-based UI.
+-   **Authentication:** JWT-based with RBAC for three distinct roles (user, moderator, contractor).
+-   **UI/UX**: Multi-step form wizard with progress tracking for a complex data entry process.
 
 **key DB schema**
--   **verifications (New Collection):** 
--   **applications (New Collection):** 
--   **contractor_applications (New Collection):** 
--   **deals (New/Heavily Modified Collection):** 
+-   **applications:** The schema was significantly expanded to include dozens of new fields from the new application form, such as , , , , , and .
 
 **changes in tech stack**
--   **Backend**: Added  and  for PDF generation and document parsing.
+-   None.
 
 **All files of reference**
--   : Grew from ~3700 to over 5200 lines. Contains all backend logic.
--   : New page for client data/document submission and contract viewing.
--   : New page for submitting car requests.
--   : New placeholder for the core deal management UI.
--   : Significantly updated with the Documents tab and its associated logic and components.
--   : Updated with country and service selection logic.
--   : Updated with the new dashboard navigation structure.
--   : Updated with routes for all new pages.
--   : Updated to remove redundant verification controls.
+-   **/app/frontend/src/pages/dashboard/Applications.js**: Completely overwritten and significantly expanded to ~1641 lines. Contains the new multi-step application form logic.
+-   **/app/backend/server.py**: Modified to update the  Pydantic model and the  endpoint to handle the new, complex data structure.
+-   **/app/memory/PRD.md**: Updated to reflect the completion of the application form and the new catalog task.
 
 **Areas that need refactoring**:
--   **CRITICAL**:  is extremely large and difficult to maintain. It MUST be broken down into separate modules (routes, models, services/logic).
--   **CRITICAL**: Frontend pages like  and  are classic God components. They must be broken down into smaller, reusable components to improve maintainability. The current dashboard refactoring is a good opportunity to start this.
+-   **CRITICAL (P0)**:  is dangerously large. It must be broken down into separate modules (e.g., , , ).
+-   **CRITICAL (P0)**:  is now unmaintainable at over 1600 lines. The multi-step form and application list should be broken into smaller components.
+-   **CRITICAL (P0)**:  remains over 1300 lines and needs to be componentized.
 
 **key api endpoints**
--   **Verification/Contract**:
-    -   
-    -   
-    -   
--   **Applications**: 
--   **Contractors**: 
--   **Moderator-Documents**:
-    -   
-    -   
-    -   
--   **Deal Management**:
-    -   
-    -   
-    -   
-    -   
-    -   
+-   : Endpoint was heavily updated to accept the new, significantly larger request body from the redesigned application form.
 
 **Critical Info for New Agent**
 -   The user's primary language is **Russian**. All communication MUST be in Russian.
--   The immediate task is the **massive redesign of the user dashboard**. Resume by building the UI for  and then refactoring the other dashboard pages (, , etc.) to fit the new flow.
--   The technical debt in  is severe and has worsened. The agent must prioritize refactoring opportunities while implementing the new dashboard features. Do not add more logic to the monolithic files if it can be avoided.
--   The  (password: ) user has  privileges.
+-   The immediate next task is to implement a car catalog by finding and using a dynamic API from , as direct scraping is not viable.
+-   The technical debt in , , and now  is critical. The next agent should strongly consider proposing this refactoring work alongside the new catalog feature, as the codebase's complexity is becoming a major risk.
 
 **documents and test reports created in this job**
--    (updated multiple times)
--   
--   
+-    (updated)
+-    (from testing agent for the application form)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **Request (Highest Priority):** A comprehensive redesign of the entire user dashboard to create a logical, step-by-step deal flow. (Status: IN PROGRESS)
-2.  **Clarification:** Provided cost details for paid services: 00 to add a car to a deal, 00 for consultant help, and stage payments are based on contractor prices. (Status: ACKNOWLEDGED)
-3.  **Request:** Simplify verification by removing the redundant Verify User button from the moderator's user profile view. (Status: COMPLETED)
-4.  **Request:** Clean up the main website header by removing internal page anchor links. (Status: COMPLETED)
-5.  **Request:** Ensure the generated user contract exactly matches the provided  template and is downloadable as a PDF. (Status: COMPLETED)
-6.  **Request:** Give moderators the ability to access, view, and confirm/reject user-uploaded documents. (Status: COMPLETED)
-7.  **Clarification:** Confirmed the plan for implementing the verification, application, and contractor features. (Status: ACKNOWLEDGED)
-8.  **Request:** Implement three major features: a client verification system with contract generation, a car application form, and personal dashboards for contractors, based on provided documents. (Status: COMPLETED)
-9.  **Confirmation:** Approved the P0 task to complete the moderator user profile page. (Status: ACKNOWLEDGED)
+1.  **User Request:** Implement a car catalog on the main page using data from .
+2.  **Agent Finding:** The site  is protected by CAPTCHA, making scraping very difficult.
+3.  **Agent Suggestion:** Proposed using mock data or finding an alternative site.
+4.  **User Response:** try to integrate http://www.dongchedi.com/.
+5.  **Agent Finding:** The site  is accessible but loads data dynamically via JavaScript, so the agent needs to find the underlying API. (Current state)
+6.  **User Request:** After creating an application, add options to start a tender or request manager assistance. (Completed in this session)
+7.  **Agent Action:** Completed the application form redesign.
+8.  **Agent Action:** Used the testing agent to verify the new form.
+9.  **User Request:** The application form must strictly match the attached PDF file. (Completed in this session)
+10. **Agent Action:** Began analysis of the PDF file to start the form redesign.
 
 **Project Health Check:**
 -   **Broken**:
     -   AI Chat on the landing page remains unreliable.
     -   The add car via URL parser is fragile and often fails.
 -   **Mocked**:
-    -   Contractor data is still hardcoded.
-    -   The Contractor Dashboard () is an empty placeholder.
-    -   The Tenders page for displaying contractor offers is not yet built.
-    -   User balance top-up (payment gateway integration) is not implemented.
+    -   User balance top-up is still done via manual DB updates.
+    -   The tender comparison/acceptance flow () is not fully built out.
+    -   The new GPS tracking feature uses static, hardcoded data.
 
 **3rd Party Integrations**
--   **Emergent LLM Key**: Used for the AI chat feature.
+-   **Emergent LLM Key**: Used for the (unreliable) AI chat feature on the landing page.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES (used twice in this session for major feature completions).
+-   **Testing agent used after significant changes**: YES (for the application form redesign).
 -   **Troubleshoot agent used after agent stuck in loop**: NO
--   **Test files created**: None.
+-   **Test files created**:
+    - 
 -   **Known regressions**: None.
 
 **Credentials to test flow:**
--   **Admin User**:
+-   **Admin/Moderator User**:
     -   **Email**: 
     -   **Password**: 
--   **Regular User**: Register a new user via the UI.
+-   **Contractor User**:
+    -   Register a new contractor via the UI.
+    -   Alternatively, use an existing approved contractor. **All existing contractors have the password **.
 
 **What agent forgot to execute**
--   The two long-standing, high-priority issues (unreliable AI chat, fragile URL parser) have been ignored again in this session.
--   The critical need to refactor the monolithic  and large frontend components was acknowledged but not addressed. Instead, more code was added to these files, increasing the technical debt and making future work more difficult and risky.</analysis>
+-   The long-standing issues with the AI chat and URL parser have not been addressed.
+-   The critical refactoring of , , and  has been postponed again, increasing technical debt.
+-   A minor UI cleanup: the old, redundant Calculator link at the very bottom of the dashboard sidebar was not removed after the main navigation link was replaced with Track Car.</analysis>
