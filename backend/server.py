@@ -5400,7 +5400,7 @@ class CarApplicationCreate(BaseModel):
 
 @api_router.post("/applications/create")
 async def create_car_application(data: CarApplicationCreate, current_user: dict = Depends(get_current_user)):
-    """Create a new car application"""
+    """Create a new car application - new comprehensive form matching PDF template"""
     application_id = str(uuid.uuid4())
     application_number = f"APP-{datetime.now().strftime('%Y%m%d')}-{application_id[:6].upper()}"
     
@@ -5408,37 +5408,86 @@ async def create_car_application(data: CarApplicationCreate, current_user: dict 
         "id": application_id,
         "application_number": application_number,
         "user_id": current_user["id"],
+        
+        # РАЗДЕЛ 1: Данные клиента
         "client_type": data.client_type,
         "full_name": data.full_name,
-        "phone": data.phone,
-        "email": data.email,
-        "preferred_contact": data.preferred_contact,
-        # Car preferences
+        "delivery_city": data.delivery_city,
+        
+        # РАЗДЕЛ 2.1: Основные характеристики
         "brand": data.brand,
         "model": data.model,
-        "body_type": data.body_type,
-        "engine_type": data.engine_type,
         "year_from": data.year_from,
         "year_to": data.year_to,
-        "mileage_max": data.mileage_max,
-        # Budget
-        "budget_min": data.budget_min,
-        "budget_max": data.budget_max,
-        "budget_currency": data.budget_currency,
-        # Additional
-        "color_preferences": data.color_preferences,
+        "body_type": data.body_type,
+        
+        # РАЗДЕЛ 2.2: Двигатель и трансмиссия
+        "engine_type": data.engine_type,
+        "engine_volume": data.engine_volume,
+        "power_from": data.power_from,
+        "power_to": data.power_to,
         "transmission": data.transmission,
         "drive_type": data.drive_type,
-        # Special
+        
+        # РАЗДЕЛ 2.3: Внешний вид
+        "body_color": data.body_color,
+        "body_color_other": data.body_color_other,
+        "exact_color": data.exact_color,
+        "color_importance": data.color_importance,
+        "interior_color": data.interior_color,
+        "interior_color_other": data.interior_color_other,
+        "interior_material": data.interior_material,
+        
+        # РАЗДЕЛ 3: Пробег и состояние
+        "mileage_max": data.mileage_max,
+        "car_condition": data.car_condition,
+        "allow_damage": data.allow_damage,
+        "damage_level": data.damage_level,
+        "damage_comment": data.damage_comment,
+        
+        # РАЗДЕЛ 4: Дополнительные опции
+        "options_electronic": data.options_electronic or [],
+        "options_comfort": data.options_comfort or [],
+        "options_exterior": data.options_exterior or [],
+        "options_other": data.options_other or [],
+        "required_options": data.required_options,
+        "preferred_options": data.preferred_options,
+        
+        # РАЗДЕЛ 5: Бюджет и условия
+        "budget_china_from": data.budget_china_from,
+        "budget_china_to": data.budget_china_to,
+        "budget_total": data.budget_total,
+        "purchase_timeline": data.purchase_timeline,
+        "payment_method": data.payment_method,
+        "car_purpose": data.car_purpose,
+        "customs_clearance": data.customs_clearance,
+        
+        # РАЗДЕЛ 6: Приоритеты и комментарии
+        "priority_price": data.priority_price,
+        "priority_reliability": data.priority_reliability,
+        "priority_technology": data.priority_technology,
+        "priority_prestige": data.priority_prestige,
+        "priority_fuel": data.priority_fuel,
+        "additional_requirements": data.additional_requirements,
+        
+        # Legacy fields (for backward compatibility)
+        "phone": data.phone or current_user.get("phone"),
+        "email": data.email or current_user.get("email"),
+        "preferred_contact": data.preferred_contact,
+        "budget_min": data.budget_min,
+        "budget_max": data.budget_max,
+        "budget_currency": data.budget_currency or "USD",
+        "color_preferences": data.color_preferences,
         "has_decree_140": data.has_decree_140,
         "decree_140_category": data.decree_140_category,
-        "payment_method": data.payment_method,
         "needs_manager_help": data.needs_manager_help,
-        "additional_requirements": data.additional_requirements,
         "urgent": data.urgent,
+        
         # Status
-        "status": "new",  # new, in_progress, offers_received, completed, cancelled
+        "status": "new",
         "offers_count": 0,
+        "manager_assigned": False,
+        "tender_started": False,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
