@@ -990,15 +990,14 @@ class Che168API:
             
             chat = LlmChat(
                 api_key=api_key,
-                model="gemini-2.0-flash",
                 system_message="Ты - переводчик с китайского на русский. Переводи текст кратко и точно. Отвечай только переводом, без пояснений."
+            ).with_model("google", "gemini-2.0-flash")
+            
+            response = await chat.send_message(
+                UserMessage(text=f"Переведи на русский:\n{text[:500]}")
             )
             
-            response = await chat.send_async([
-                UserMessage(content=f"Переведи на русский:\n{text[:500]}")
-            ])
-            
-            return response.content.strip() if response and response.content else text
+            return response.strip() if response else text
         except Exception as e:
             logger.error(f"Translation error: {e}")
             return text
