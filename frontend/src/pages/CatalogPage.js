@@ -618,7 +618,7 @@ const CatalogPage = () => {
                 <Link to={`/catalog/${car.id}`} className="block">
                   <div className="relative h-44 bg-[#1C2128]">
                     <img
-                      src={car.image_url}
+                      src={getProxiedImageUrl(car.image_url)}
                       alt={`${car.brand} ${car.model}`}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={(e) => {
