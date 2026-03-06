@@ -2558,6 +2558,35 @@ async def complete_deal(deal_id: str, current_user: dict = Depends(get_current_u
 
 # ==================== END NEW DEAL STAGES ENDPOINTS ====================
 
+@api_router.delete("/deals/{deal_id}")
+async def cancel_deal(deal_id: str, current_user: dict = Depends(get_current_user)):
+    """Cancel a deal and return car to garage"""
+    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # Check if deal is not completed
+    if deal.get("status") == "completed":
+        raise HTTPException(status_code=400, detail="Нельзя отменить завершённую сделку")
+    
+    # Check if any payments were made
+    total_paid = deal.get("total_paid", 0)
+    if total_paid > 0:
+        raise HTTPException(status_code=400, detail=f"Нельзя отменить сделку с оплаченными этапами (оплачено: ${total_paid})")
+    
+    # Update car status back to "in_garage"
+    car_id = deal.get("car_id")
+    if car_id:
+        await db.garage.update_one(
+            {"id": car_id},
+            {"$set": {"status": "in_garage"}}
+        )
+    
+    # Delete the deal
+    await db.deals.delete_one({"id": deal_id})
+    
+    return {"message": "Сделка отменена, авто возвращено в гараж"}
+
 @api_router.post("/consultant/request")
 async def request_consultant_help(data: dict, current_user: dict = Depends(get_current_user)):
     """Request consultant help ($200)"""
