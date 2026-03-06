@@ -200,6 +200,7 @@ class ContractorResponse(BaseModel):
     contractor_type: Optional[str] = None
     description: Optional[str] = None
     services: Any = None  # Can be string or list
+    service_prices: Optional[dict] = None  # {service_name: price_usd}
     price_range: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
