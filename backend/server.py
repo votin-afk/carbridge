@@ -5422,6 +5422,7 @@ async def register_contractor(data: ContractorRegister):
         "wechat": data.wechat,
         "telegram": data.telegram,
         "services": data.services,
+        "service_prices": data.service_prices or {},  # Store service pricing
         "description": data.description,
         "experience_years": data.experience_years,
         "website": data.website,
