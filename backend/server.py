@@ -988,8 +988,10 @@ class Che168API:
             if not api_key:
                 return text
             
+            session_id = f"translate_{uuid.uuid4()}"
             chat = LlmChat(
                 api_key=api_key,
+                session_id=session_id,
                 system_message="Ты - переводчик с китайского на русский. Переводи текст кратко и точно. Отвечай только переводом, без пояснений."
             ).with_model("google", "gemini-2.0-flash")
             
