@@ -609,9 +609,9 @@ const CatalogPage = () => {
                     {getEngineIcon(car.engine_type)}
                     <span className="text-white">{getEngineLabel(car.engine_type)}</span>
                   </div>
-                  {car.source === 'pro-auctions' && (
-                    <div className="absolute top-3 right-3 px-2 py-1 bg-emerald-500/80 backdrop-blur-sm rounded text-xs text-white font-medium">
-                      LIVE
+                  {car.source === 'che168' && (
+                    <div className="absolute top-3 right-3 px-2 py-1 bg-blue-500/80 backdrop-blur-sm rounded text-xs text-white font-medium">
+                      CHE168
                     </div>
                   )}
                 </div>
@@ -642,16 +642,18 @@ const CatalogPage = () => {
                         {formatMileage(car.mileage)}
                       </span>
                     )}
-                    {car.fuel_type && (
+                    {car.color && (
                       <span className="px-2 py-0.5 bg-[#27272A] rounded text-xs text-slate-400">
-                        {car.fuel_type}
+                        {car.color}
                       </span>
                     )}
                   </div>
 
-                  <p className="text-slate-400 text-xs line-clamp-2 mb-4">
-                    {car.description}
-                  </p>
+                  {car.address && (
+                    <p className="text-slate-500 text-xs mb-2 truncate">
+                      📍 {car.address}
+                    </p>
+                  )}
 
                   {/* Actions */}
                   <div className="flex gap-2">
@@ -663,14 +665,25 @@ const CatalogPage = () => {
                       <Plus size={14} className="mr-1" />
                       В гараж
                     </Button>
-                    <a
-                      href={`https://www.dongchedi.com/search?keyword=${encodeURIComponent(car.brand + ' ' + car.model)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2 border border-[#27272A] rounded text-slate-400 hover:text-[#00E5FF] hover:border-[#00E5FF] transition-colors"
-                    >
-                      <ExternalLink size={16} />
-                    </a>
+                    {car.source_url ? (
+                      <a
+                        href={car.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 border border-[#27272A] rounded text-slate-400 hover:text-[#00E5FF] hover:border-[#00E5FF] transition-colors"
+                      >
+                        <ExternalLink size={16} />
+                      </a>
+                    ) : (
+                      <a
+                        href={`https://www.che168.com/china/a0_0msdgscncgpi1ltocsp1exx0/?keyword=${encodeURIComponent(car.brand + ' ' + car.model)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 border border-[#27272A] rounded text-slate-400 hover:text-[#00E5FF] hover:border-[#00E5FF] transition-colors"
+                      >
+                        <ExternalLink size={16} />
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>
