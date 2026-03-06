@@ -384,8 +384,30 @@ const ContractorCard = ({ contractor, onDelete, isAuthenticated }) => {
           <p className="text-slate-300 text-sm line-clamp-2">{contractor.services}</p>
         </div>
 
-        {/* Price Range */}
-        {contractor.price_range && (
+        {/* Service Prices */}
+        {contractor.service_prices && Object.keys(contractor.service_prices).length > 0 && (
+          <div className="mb-3 p-2 bg-[#0B0F14] rounded-sm">
+            <p className="text-slate-500 text-xs mb-2">Стоимость услуг:</p>
+            <div className="space-y-1">
+              {Object.entries(contractor.service_prices).map(([service, price]) => (
+                <div key={service} className="flex justify-between items-center text-sm">
+                  <span className="text-slate-400 capitalize">
+                    {service === 'inspection' ? 'Проверка' :
+                     service === 'export' ? 'Экспорт' :
+                     service === 'logistics' ? 'Логистика' :
+                     service === 'purchase' ? 'Покупка' :
+                     service === 'leasing' ? 'Лизинг' :
+                     service === 'customs' ? 'Таможня' : service}
+                  </span>
+                  <span className="text-[#00E5FF] font-medium">${price}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Price Range (fallback) */}
+        {!contractor.service_prices && contractor.price_range && (
           <div className="mb-4 p-2 bg-[#0B0F14] rounded-sm">
             <span className="text-slate-500 text-xs">Стоимость: </span>
             <span className="text-[#00E5FF] font-medium">{contractor.price_range}</span>
