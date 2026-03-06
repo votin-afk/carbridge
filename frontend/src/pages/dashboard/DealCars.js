@@ -1299,7 +1299,8 @@ const DealCard = ({
                     size="sm"
                     onClick={() => onOpenInvoice(deal.id, stage.key, {
                       service_price: stageData.price,
-                      car_price: stage.key === 'export' ? (deal.car_info?.price_usd || 0) : 0
+                      // For export stage: use base price in China (CNY converted to USD)
+                      car_price: stage.key === 'export' ? Math.round((deal.car_info?.price_cny || 0) / 7.2) : 0
                     })}
                     className="bg-blue-500 hover:bg-blue-600 text-white"
                   >
