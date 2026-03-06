@@ -514,6 +514,106 @@ const LandingPage = () => {
         </section>
       )}
 
+      {/* Car Catalog Section */}
+      <section id="catalog" className="py-16 bg-[#0B0F14]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#00E5FF]/10 border border-[#00E5FF]/20 rounded-full mb-4">
+                <Car size={16} className="text-[#00E5FF]" />
+                <span className="text-[#00E5FF] text-sm font-medium">Каталог авто</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">Авто из Китая</h2>
+              <p className="text-slate-400 mt-2">Актуальные предложения с китайских площадок</p>
+            </div>
+            <Link to="/catalog">
+              <Button variant="outline" className="border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10">
+                Весь каталог
+                <ArrowRight size={16} className="ml-2" />
+              </Button>
+            </Link>
+          </div>
+
+          {catalogLoading ? (
+            <div className="flex items-center justify-center h-48">
+              <Loader2 size={32} className="text-[#00E5FF] animate-spin" />
+            </div>
+          ) : catalogCars.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {catalogCars.slice(0, 8).map((car) => (
+                <Link 
+                  key={car.id} 
+                  to="/catalog"
+                  className="bg-[#15191E] border border-[#27272A] rounded-sm overflow-hidden hover:border-[#00E5FF]/50 transition-colors group"
+                  data-testid={`catalog-car-${car.id}`}
+                >
+                  <div className="h-36 bg-[#1C2128] relative overflow-hidden">
+                    <img 
+                      src={car.image_url} 
+                      alt={`${car.brand} ${car.model}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        e.target.src = 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800';
+                      }}
+                    />
+                    <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 bg-black/60 backdrop-blur-sm rounded text-xs">
+                      {car.engine_type === 'electric' ? (
+                        <Battery size={12} className="text-emerald-400" />
+                      ) : car.engine_type === 'hybrid' ? (
+                        <Zap size={12} className="text-amber-400" />
+                      ) : (
+                        <Fuel size={12} className="text-slate-400" />
+                      )}
+                      <span className="text-white">
+                        {car.engine_type === 'electric' ? 'Электро' : car.engine_type === 'hybrid' ? 'Гибрид' : 'ДВС'}
+                      </span>
+                    </div>
+                    {car.source === 'pro-auctions' && (
+                      <div className="absolute top-2 right-2 px-2 py-0.5 bg-emerald-500/80 backdrop-blur-sm rounded text-xs text-white font-medium">
+                        LIVE
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <p className="text-slate-500 text-xs">{car.brand}</p>
+                    <h4 className="text-white font-medium text-sm mb-1 truncate">{car.model}</h4>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#00E5FF] font-bold">
+                        {car.price_from_cny ? (
+                          car.price_from_cny >= 10000 
+                            ? `¥${(car.price_from_cny / 10000).toFixed(1)}万` 
+                            : `¥${car.price_from_cny.toLocaleString()}`
+                        ) : '—'}
+                      </span>
+                      <span className="text-slate-500 text-xs">{car.year_from} г.</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Car size={48} className="text-slate-600 mb-4" />
+              <p className="text-slate-400">Загрузка каталога...</p>
+            </div>
+          )}
+
+          {/* Popular brands */}
+          <div className="mt-8 flex flex-wrap gap-3 justify-center">
+            <span className="text-slate-500 text-sm self-center mr-2">Популярные марки:</span>
+            {['BYD', 'Geely', 'Changan', 'Li Auto', 'NIO', 'Haval'].map((brand) => (
+              <Link
+                key={brand}
+                to={`/catalog?brand=${brand}`}
+                className="px-3 py-1.5 text-xs bg-[#15191E] border border-[#27272A] text-slate-400 rounded-full hover:border-[#00E5FF] hover:text-[#00E5FF] transition-colors"
+              >
+                {brand}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* AI Agent Section */}
       <section id="ai-agent" className="py-16 bg-[#15191E]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
