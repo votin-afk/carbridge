@@ -85,7 +85,13 @@ const ContractorDashboard = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setDashboardData(response.data);
-      setContractor(response.data.contractor);
+      
+      // Handle services that might be string or array
+      const contractorData = response.data.contractor;
+      if (contractorData && typeof contractorData.services === 'string') {
+        contractorData.services = contractorData.services.split(',').map(s => s.trim()).filter(s => s);
+      }
+      setContractor(contractorData);
     } catch (error) {
       console.error('Error fetching dashboard:', error);
       if (error.response?.status === 401) {
