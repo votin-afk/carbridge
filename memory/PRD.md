@@ -227,7 +227,7 @@ CONSULTANT_FEE = 200    # $200 за помощь консультанта/мен
 - **Admin User**: test@test.com / test
 - **Contractor**: test.contractor@example.com / contractor123
   (Все существующие подрядчики имеют пароль `contractor123`)
-- **API URL**: https://china-auto-import.preview.emergentagent.com/api
+- **API URL**: https://china-car-import.preview.emergentagent.com/api
 
 ---
 
