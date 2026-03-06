@@ -98,6 +98,16 @@ const ContractorRegisterPage = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handlePriceChange = (service, value) => {
+    setFormData(prev => ({
+      ...prev,
+      service_prices: {
+        ...prev.service_prices,
+        [service]: value
+      }
+    }));
+  };
+
   const selectType = (type) => {
     setFormData(prev => ({ ...prev, contractor_type: type }));
   };
@@ -122,6 +132,14 @@ const ContractorRegisterPage = () => {
     if (step === 3 && (formData.services.length === 0 || !formData.description)) {
       toast.error('Выберите услуги и добавьте описание');
       return;
+    }
+    if (step === 4) {
+      // Validate prices for selected services
+      const missingPrices = formData.services.filter(s => !formData.service_prices[s] || parseFloat(formData.service_prices[s]) <= 0);
+      if (missingPrices.length > 0) {
+        toast.error('Укажите стоимость для всех выбранных услуг');
+        return;
+      }
     }
     setStep(step + 1);
   };
