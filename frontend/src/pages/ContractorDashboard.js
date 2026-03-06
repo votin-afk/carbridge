@@ -162,8 +162,8 @@ const ContractorDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0F14] pb-20 overflow-y-auto">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="min-h-screen bg-[#0B0F14] pb-24 sm:pb-20 overflow-y-auto">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
