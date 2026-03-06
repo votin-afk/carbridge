@@ -1502,6 +1502,29 @@ const ModeratorPage = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!deleteDialog} onOpenChange={() => setDeleteDialog(null)}>
+          <AlertDialogContent className="bg-[#15191E] border-[#27272A]">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-white">Подтвердите действие</AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-400">
+                {deleteDialog?.title || 'Вы уверены?'} Это действие необратимо.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="bg-[#27272A] text-white border-[#27272A] hover:bg-[#3f3f46]">
+                Отмена
+              </AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={executeDelete}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Удалить
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
