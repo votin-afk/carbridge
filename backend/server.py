@@ -1950,6 +1950,206 @@ async def complete_deal_stage(deal_id: str, data: dict, current_user: dict = Dep
     
     return {"message": "Этап отмечен как выполненный, ожидает подтверждения модератора"}
 
+# ==================== NEW DEAL STAGES ENDPOINTS ====================
+
+# Platform commission constants
+PLATFORM_COMMISSION = 0.03  # 3%
+PLATFORM_PAYMENT_FEE = 0.01  # +1% if paid through platform
+
+# New stages list
+NEW_DEAL_STAGES = [
+    "leasing", "inspection", "export", "logistics_china", 
+    "insurance", "delivery_rb", "customs", "completion"
+]
+
+@api_router.post("/deals/{deal_id}/skip-stage")
+async def skip_deal_stage(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Skip an optional stage"""
+    stage = data.get("stage")
+    
+    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # Check if stage is optional
+    optional_stages = ["leasing", "inspection", "logistics_china", "insurance", "delivery_rb", "customs"]
+    if stage not in optional_stages:
+        raise HTTPException(status_code=400, detail="Этот этап нельзя пропустить")
+    
+    # Find next stage
+    current_idx = NEW_DEAL_STAGES.index(stage) if stage in NEW_DEAL_STAGES else 0
+    next_stage = NEW_DEAL_STAGES[current_idx + 1] if current_idx < len(NEW_DEAL_STAGES) - 1 else "completion"
+    
+    await db.deals.update_one(
+        {"id": deal_id},
+        {
+            "$set": {
+                f"stages.{stage}.skipped": True,
+                f"stages.{stage}.completed": True,
+                "current_stage": next_stage,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": f"Этап '{stage}' пропущен", "next_stage": next_stage}
+
+@api_router.post("/deals/{deal_id}/leasing-request")
+async def submit_leasing_request(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Submit leasing request to selected companies"""
+    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    term = data.get("term", 36)
+    down_payment_percent = data.get("down_payment_percent", 20)
+    loan_amount = data.get("loan_amount", 0)
+    selected_companies = data.get("selected_companies", [])
+    
+    if not selected_companies:
+        raise HTTPException(status_code=400, detail="Выберите хотя бы одну лизинговую компанию")
+    
+    # Create leasing requests
+    leasing_requests = []
+    for company_id in selected_companies:
+        leasing_requests.append({
+            "id": str(uuid.uuid4()),
+            "company_id": company_id,
+            "term": term,
+            "down_payment_percent": down_payment_percent,
+            "loan_amount": loan_amount,
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    
+    await db.deals.update_one(
+        {"id": deal_id},
+        {
+            "$set": {
+                "stages.leasing.requested": True,
+                "stages.leasing.leasing_requests": leasing_requests,
+                "stages.leasing.term": term,
+                "stages.leasing.down_payment_percent": down_payment_percent,
+                "stages.leasing.completed": True,
+                "current_stage": "inspection",
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {
+        "message": f"Заявки на лизинг отправлены в {len(selected_companies)} компаний",
+        "next_stage": "inspection"
+    }
+
+@api_router.post("/deals/{deal_id}/pay-invoice")
+async def pay_deal_invoice(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Pay invoice for a deal stage"""
+    stage = data.get("stage")
+    amount = data.get("amount", 0)
+    through_platform = data.get("through_platform", False)
+    
+    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    if through_platform:
+        # Get account balance
+        account = await db.accounts.find_one({"user_id": current_user["id"]})
+        balance = account.get("balance", 0) if account else 0
+        
+        if balance < amount:
+            raise HTTPException(status_code=400, detail=f"Недостаточно средств. Необходимо ${amount:.2f}, баланс: ${balance:.2f}")
+        
+        # Deduct from balance
+        await db.accounts.update_one(
+            {"user_id": current_user["id"]},
+            {"$inc": {"balance": -amount}}
+        )
+        
+        # Log transaction
+        await db.transactions.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": current_user["id"],
+            "deal_id": deal_id,
+            "type": "stage_payment",
+            "stage": stage,
+            "amount": -amount,
+            "payment_method": "platform",
+            "description": f"Оплата этапа: {stage}",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    
+    # Find next stage
+    current_idx = NEW_DEAL_STAGES.index(stage) if stage in NEW_DEAL_STAGES else 0
+    next_stage = NEW_DEAL_STAGES[current_idx + 1] if current_idx < len(NEW_DEAL_STAGES) - 1 else "completion"
+    
+    # Update deal
+    await db.deals.update_one(
+        {"id": deal_id},
+        {
+            "$set": {
+                f"stages.{stage}.paid": True,
+                f"stages.{stage}.paid_amount": amount,
+                f"stages.{stage}.paid_through_platform": through_platform,
+                f"stages.{stage}.paid_at": datetime.now(timezone.utc).isoformat(),
+                f"stages.{stage}.completed": True,
+                "current_stage": next_stage,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            },
+            "$inc": {"total_paid": amount},
+            "$push": {
+                "payments": {
+                    "id": str(uuid.uuid4()),
+                    "stage": stage,
+                    "amount": amount,
+                    "through_platform": through_platform,
+                    "paid_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        }
+    )
+    
+    return {
+        "message": "Оплата прошла успешно" if through_platform else "Счёт отмечен как оплаченный",
+        "next_stage": next_stage
+    }
+
+@api_router.post("/deals/{deal_id}/complete")
+async def complete_deal(deal_id: str, current_user: dict = Depends(get_current_user)):
+    """Complete the deal"""
+    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # Check if export stage is completed (minimum requirement)
+    export_stage = deal.get("stages", {}).get("export", {})
+    if not export_stage.get("completed") and not export_stage.get("paid"):
+        raise HTTPException(status_code=400, detail="Для завершения сделки необходимо завершить этап 'Экспорт'")
+    
+    await db.deals.update_one(
+        {"id": deal_id},
+        {
+            "$set": {
+                "status": "completed",
+                "stages.completion.completed": True,
+                "current_stage": "completed",
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    # Update car status
+    await db.garage.update_one(
+        {"id": deal.get("car_id")},
+        {"$set": {"status": "delivered"}}
+    )
+    
+    return {"message": "Сделка успешно завершена!"}
+
+# ==================== END NEW DEAL STAGES ENDPOINTS ====================
+
 @api_router.post("/consultant/request")
 async def request_consultant_help(data: dict, current_user: dict = Depends(get_current_user)):
     """Request consultant help ($200)"""
