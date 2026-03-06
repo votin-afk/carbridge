@@ -14,6 +14,7 @@ import DealCars from "./pages/dashboard/DealCars";
 import Tracking from "./pages/dashboard/Tracking";
 import Calculator from "./pages/Calculator";
 import CatalogPage from "./pages/CatalogPage";
+import CarDetailPage from "./pages/CarDetailPage";
 import ContractorsPage from "./pages/ContractorsPage";
 import ContractorRegisterPage from "./pages/ContractorRegisterPage";
 import ContractorDashboard from "./pages/ContractorDashboard";
@@ -34,6 +35,7 @@ function App() {
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/calculator" element={<Calculator />} />
           <Route path="/catalog" element={<CatalogPage />} />
+          <Route path="/catalog/:carId" element={<CarDetailPage />} />
           <Route path="/contractors" element={<ContractorsPage />} />
           <Route path="/contractor-register" element={<ContractorRegisterPage />} />
           <Route path="/contractor-dashboard" element={<ContractorDashboard />} />
