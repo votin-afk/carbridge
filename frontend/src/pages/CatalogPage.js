@@ -301,11 +301,11 @@ const CatalogPage = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Каталог авто из Китая</h1>
           <p className="text-slate-400">
-            Актуальные предложения с китайских площадок — цены в юанях, пробег, характеристики
+            Реальные объявления с che168.com — крупнейшей площадки б/у авто в Китае
           </p>
-          <p className="text-emerald-400/80 text-xs mt-1 flex items-center gap-1">
-            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
-            Данные синхронизируются с demo.pro-auctions.ru
+          <p className="text-blue-400/80 text-xs mt-1 flex items-center gap-1">
+            <span className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></span>
+            Данные синхронизируются через API che168.com в реальном времени
           </p>
         </div>
 
