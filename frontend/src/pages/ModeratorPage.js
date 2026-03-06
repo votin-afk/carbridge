@@ -838,9 +838,14 @@ const ModeratorPage = () => {
                         Детали
                       </Button>
                       <Button
+                        type="button"
                         size="sm"
                         variant="outline"
-                        onClick={() => handleDeleteTender(tender.id)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDeleteTender(tender.id);
+                        }}
                         className="border-red-500/30 text-red-400 hover:bg-red-500/10"
                       >
                         <Trash2 size={14} />
