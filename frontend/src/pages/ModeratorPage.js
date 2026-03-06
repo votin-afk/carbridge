@@ -513,24 +513,100 @@ const ModeratorPage = () => {
             )}
           </TabsList>
 
-          {/* Applications Tab */}
+          {/* Applications Tab - User Car Applications */}
           <TabsContent value="applications">
             {loading ? (
               <LoadingState />
             ) : applications.length > 0 ? (
               <div className="space-y-4">
                 {applications.map(app => (
-                  <ApplicationCard 
+                  <div 
                     key={app.id} 
-                    application={app}
-                    onView={() => setSelectedApplication(app)}
-                    onApprove={() => handleApproveApplication(app.id)}
-                    onReject={() => handleRejectApplication(app.id)}
-                  />
+                    className="bg-[#15191E] border border-[#27272A] rounded-sm p-4"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-[#00E5FF]/10 rounded-full flex items-center justify-center">
+                          <Car size={24} className="text-[#00E5FF]" />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-medium">
+                            {app.car_params?.brand || 'Любая марка'} {app.car_params?.model || ''}
+                          </h3>
+                          <p className="text-slate-400 text-sm">
+                            Клиент: {app.user_name || app.client_data?.full_name || 'Не указан'}
+                          </p>
+                          <p className="text-slate-500 text-xs">
+                            {app.user_email || app.client_data?.email || ''}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          app.status === 'pending' ? 'bg-amber-500/10 text-amber-400' :
+                          app.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400' :
+                          app.status === 'rejected' ? 'bg-red-500/10 text-red-400' :
+                          'bg-slate-500/10 text-slate-400'
+                        }`}>
+                          {app.status === 'pending' ? 'Ожидает' : 
+                           app.status === 'approved' ? 'Одобрена' :
+                           app.status === 'rejected' ? 'Отклонена' : app.status}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <span className="text-slate-500">Бюджет:</span>
+                        <p className="text-white">
+                          {app.budget_terms?.budget_from && app.budget_terms?.budget_to 
+                            ? `${app.budget_terms.budget_from} - ${app.budget_terms.budget_to} ${app.budget_terms.currency || 'USD'}`
+                            : 'Не указан'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Год:</span>
+                        <p className="text-white">
+                          {app.car_params?.year_from ? `от ${app.car_params.year_from}` : 'Любой'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Кузов:</span>
+                        <p className="text-white">{app.car_params?.body_type || 'Любой'}</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Создана:</span>
+                        <p className="text-white">
+                          {app.created_at ? new Date(app.created_at).toLocaleDateString('ru') : '—'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedApplication(app)}
+                        className="border-[#27272A] text-slate-300"
+                      >
+                        <Eye size={14} className="mr-1" />
+                        Подробнее
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteCarApplication(app.id)}
+                        className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                      >
+                        <Trash2 size={14} className="mr-1" />
+                        Удалить
+                      </Button>
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (
-              <EmptyState text="Нет заявок на рассмотрение" />
+              <EmptyState text="Нет заявок на подбор авто" />
             )}
           </TabsContent>
 
