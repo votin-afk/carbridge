@@ -780,9 +780,16 @@ const DealCard = ({
             </p>
           </div>
         </div>
-        <span className="px-3 py-1 bg-[#00E5FF]/10 text-[#00E5FF] rounded-full text-sm">
-          Активна
-        </span>
+        <div className="flex items-center gap-4">
+          {/* Total Paid Badge */}
+          <div className="text-right">
+            <p className="text-slate-500 text-xs">Оплачено</p>
+            <p className="text-emerald-400 font-bold">${(deal.total_paid || 0).toLocaleString()}</p>
+          </div>
+          <span className="px-3 py-1 bg-[#00E5FF]/10 text-[#00E5FF] rounded-full text-sm">
+            Активна
+          </span>
+        </div>
       </div>
 
       {/* Progress Bar */}
