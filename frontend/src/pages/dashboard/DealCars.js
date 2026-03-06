@@ -1233,8 +1233,8 @@ const DealCard = ({
                       </>
                     )}
 
-                    {/* Contractor selection stages */}
-                    {['inspection', 'export', 'logistics_china', 'insurance', 'delivery_rb', 'customs'].includes(stage.key) && (
+                    {/* Contractor selection stages (except customs) */}
+                    {['inspection', 'export', 'logistics_china', 'insurance', 'delivery_rb'].includes(stage.key) && (
                       <>
                         {stage.optional && (
                           <Button
@@ -1252,6 +1252,28 @@ const DealCard = ({
                           className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
                         >
                           Выбрать подрядчика
+                        </Button>
+                      </>
+                    )}
+
+                    {/* Customs stage with calculator */}
+                    {stage.key === 'customs' && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onSkipStage(deal.id, stage.key)}
+                          className="border-slate-500 text-slate-400"
+                        >
+                          Пропустить
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => onOpenCustoms(deal.id, deal.car_info)}
+                          className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
+                        >
+                          <Calculator size={16} className="mr-1" />
+                          Рассчитать платежи
                         </Button>
                       </>
                     )}
