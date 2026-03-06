@@ -136,6 +136,21 @@ const DealCars = () => {
     }
   };
 
+  // Cancel deal
+  const cancelDeal = async (dealId) => {
+    if (!window.confirm('Отменить сделку? Авто вернётся в гараж. Это действие необратимо.')) return;
+    setProcessing(true);
+    try {
+      await axios.delete(`${API}/deals/${dealId}`, { headers });
+      toast.success('Сделка отменена');
+      setDeals(prev => prev.filter(d => d.id !== dealId));
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка при отмене сделки');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   // Submit leasing request
   const submitLeasingRequest = async (dealId, leasingData) => {
     setProcessing(true);
