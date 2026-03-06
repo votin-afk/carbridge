@@ -151,6 +151,14 @@ const ContractorRegisterPage = () => {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
+      // Prepare service prices - only for selected services
+      const prices = {};
+      formData.services.forEach(service => {
+        if (formData.service_prices[service]) {
+          prices[service] = parseFloat(formData.service_prices[service]);
+        }
+      });
+
       await axios.post(`${API}/contractors/register`, {
         company_name: formData.company_name,
         country: formData.country,
@@ -166,6 +174,7 @@ const ContractorRegisterPage = () => {
         telegram: formData.telegram,
         website: formData.website,
         services: formData.services,
+        service_prices: prices,
         description: formData.description,
         experience_years: formData.experience_years ? parseInt(formData.experience_years) : null
       });
