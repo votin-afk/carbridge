@@ -794,7 +794,44 @@ const ModeratorPage = () => {
             ) : tenders.length > 0 ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {tenders.map(tender => (
-                  <TenderCard key={tender.id} tender={tender} />
+                  <div key={tender.id} className="bg-[#15191E] border border-[#27272A] rounded-sm p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[#00E5FF] text-xs">#{tender.id?.slice(0, 8)}</span>
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        tender.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' :
+                        tender.status === 'closed' ? 'bg-slate-500/10 text-slate-400' :
+                        'bg-amber-500/10 text-amber-400'
+                      }`}>
+                        {tender.status === 'active' ? 'Активен' : 
+                         tender.status === 'closed' ? 'Закрыт' : tender.status}
+                      </span>
+                    </div>
+                    <h3 className="text-white font-medium mb-1">{tender.car_brand} {tender.car_model}</h3>
+                    <p className="text-slate-400 text-sm mb-3">
+                      Бюджет: до ${tender.budget?.toLocaleString() || '—'}
+                    </p>
+                    <p className="text-slate-500 text-xs mb-3">
+                      Предложений: {tender.offers_count || 0}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 border-[#27272A] text-slate-300"
+                      >
+                        <Eye size={14} className="mr-1" />
+                        Детали
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteTender(tender.id)}
+                        className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (
