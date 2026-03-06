@@ -722,12 +722,54 @@ const ModeratorPage = () => {
             ) : deals.length > 0 ? (
               <div className="space-y-4">
                 {deals.map(deal => (
-                  <DealCard 
-                    key={deal.id} 
-                    deal={deal}
-                    onConfirmStage={(stage) => handleConfirmStage(deal.id, stage)}
-                    onView={() => setSelectedDeal(deal)}
-                  />
+                  <div key={deal.id} className="bg-[#15191E] border border-[#27272A] rounded-sm p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-[#00E5FF]/10 rounded-full flex items-center justify-center">
+                          <Car size={24} className="text-[#00E5FF]" />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-medium">{deal.car_brand} {deal.car_model}</h3>
+                          <p className="text-slate-400 text-sm">Клиент: {deal.client_name}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[#00E5FF] font-bold">${deal.amount?.toLocaleString() || 0}</span>
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          deal.status === 'in_progress' ? 'bg-blue-500/10 text-blue-400' :
+                          deal.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' :
+                          'bg-amber-500/10 text-amber-400'
+                        }`}>
+                          {deal.status === 'in_progress' ? 'В работе' : 
+                           deal.status === 'completed' ? 'Завершена' : 'Тендер'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex items-center gap-2">
+                      <span className="text-slate-500 text-sm">Текущий этап:</span>
+                      <span className="text-white text-sm">{dealStages[deal.current_stage]?.label || deal.current_stage}</span>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedDeal(deal)}
+                        className="border-[#27272A] text-slate-300"
+                      >
+                        <Eye size={14} className="mr-1" />
+                        Детали
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteDeal(deal.id)}
+                        className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                      >
+                        <Trash2 size={14} className="mr-1" />
+                        Отменить сделку
+                      </Button>
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (
