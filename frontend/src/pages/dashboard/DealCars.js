@@ -968,14 +968,6 @@ const DealCard = ({
           );
         })}
       </div>
-
-      {/* Total Paid */}
-      <div className="p-4 border-t border-[#27272A] bg-[#0B0F14]">
-        <div className="flex justify-between items-center">
-          <span className="text-slate-400">Всего оплачено</span>
-          <span className="text-emerald-400 font-bold text-lg">${(deal.total_paid || 0).toLocaleString()}</span>
-        </div>
-      </div>
     </div>
   );
 };
