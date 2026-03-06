@@ -886,10 +886,20 @@ class Che168API:
                         displacement = car_data.get("displacement", "0")
                         if isinstance(displacement, str):
                             try:
-                                displacement = float(displacement)
+                                displacement = float(displacement) if displacement else 0
                             except:
                                 displacement = 0
                         engine_volume = int(displacement * 1000) if displacement else None
+                        
+                        # Parse power
+                        power_raw = car_data.get("power", 0)
+                        if isinstance(power_raw, str):
+                            try:
+                                power = int(power_raw) if power_raw else 0
+                            except:
+                                power = 0
+                        else:
+                            power = power_raw or 0
                         
                         car = {
                             "id": f"che168-{item.get('inner_id', item.get('id', ''))}",
@@ -910,7 +920,7 @@ class Che168API:
                             "description": car_data.get("description", ""),
                             "features": [],
                             "popularity": 80,
-                            "mileage": km_age,
+                            "mileage": km_age if km_age else None,
                             "source": "che168",
                             "source_url": car_data.get("url", ""),
                             "fuel_type": car_data.get("engine_type", "Бензин"),
@@ -918,7 +928,7 @@ class Che168API:
                             "color": car_data.get("color", ""),
                             "address": car_data.get("address", ""),
                             "vin": car_data.get("vin", ""),
-                            "power": car_data.get("power", 0),
+                            "power": power,
                             "drive_type": car_data.get("drive_type", ""),
                             "is_dealer": car_data.get("is_dealer", False),
                             "offer_created": car_data.get("offer_created", "")
