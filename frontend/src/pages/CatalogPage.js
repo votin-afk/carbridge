@@ -96,6 +96,15 @@ const CatalogPage = () => {
     fetchModels();
   }, [filters.brand, brands]);
 
+  // Auto-search when URL parameters are present on initial load
+  useEffect(() => {
+    const hasUrlParams = searchParams.get('brand') || searchParams.get('q') || 
+                         searchParams.get('engine') || searchParams.get('body');
+    if (hasUrlParams && !hasSearched) {
+      searchCars();
+    }
+  }, [brands]); // Trigger after brands are loaded
+
   // Search cars function
   const searchCars = useCallback(async () => {
     // Don't search if no filters are applied
