@@ -589,9 +589,12 @@ const LandingPage = () => {
                       </div>
                     )}
                   </div>
+                  </Link>
                   <div className="p-3">
-                    <p className="text-slate-500 text-xs">{car.brand}</p>
-                    <h4 className="text-white font-medium text-sm mb-1 truncate">{car.model}</h4>
+                    <Link to={`/catalog/${car.id}`}>
+                      <p className="text-slate-500 text-xs">{car.brand}</p>
+                      <h4 className="text-white font-medium text-sm mb-1 truncate hover:text-[#00E5FF]">{car.model}</h4>
+                    </Link>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[#00E5FF] font-bold">
                         {car.price_from_cny ? (
@@ -607,7 +610,7 @@ const LandingPage = () => {
                     )}
                     <div className="flex gap-2">
                       <Link 
-                        to="/catalog" 
+                        to={`/catalog/${car.id}`} 
                         className="flex-1 text-center px-2 py-1.5 text-xs bg-[#00E5FF]/10 text-[#00E5FF] rounded hover:bg-[#00E5FF]/20 transition-colors"
                       >
                         <Plus size={12} className="inline mr-1" />
