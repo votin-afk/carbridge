@@ -993,7 +993,7 @@ class Che168API:
                 api_key=api_key,
                 session_id=session_id,
                 system_message="Ты - переводчик с китайского на русский. Переводи текст кратко и точно. Отвечай только переводом, без пояснений."
-            ).with_model("google", "gemini-2.0-flash")
+            ).with_model("openai", "gpt-4o-mini")
             
             response = await chat.send_message(
                 UserMessage(text=f"Переведи на русский:\n{text[:500]}")
