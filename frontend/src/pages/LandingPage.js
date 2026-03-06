@@ -32,7 +32,11 @@ import {
   MessageCircle,
   Flame,
   Clock,
-  ShoppingCart
+  ShoppingCart,
+  Battery,
+  Zap,
+  Fuel,
+  Plus
 } from 'lucide-react';
 
 // Messenger icons as SVG components
