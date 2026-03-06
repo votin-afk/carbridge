@@ -54,6 +54,7 @@ function App() {
             <Route path="tenders" element={<Tenders />} />
             <Route path="verification" element={<Verification />} />
             <Route path="documents" element={<Documents />} />
+            <Route path="tracking" element={<Tracking />} />
           </Route>
           
           <Route path="*" element={<Navigate to="/" replace />} />
