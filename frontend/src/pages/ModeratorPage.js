@@ -322,10 +322,14 @@ const ModeratorPage = () => {
   const handleDeleteCarApplication = async (appId) => {
     if (!window.confirm('Удалить заявку на подбор авто?')) return;
     try {
-      await axios.delete(`${API}/moderator/car-applications/${appId}`, { headers });
+      console.log('Deleting application:', appId);
+      const response = await axios.delete(`${API}/moderator/car-applications/${appId}`, { headers });
+      console.log('Delete response:', response.data);
       toast.success('Заявка удалена');
-      fetchData();
+      // Force refresh
+      setApplications(prev => prev.filter(app => app.id !== appId));
     } catch (error) {
+      console.error('Delete error:', error);
       toast.error(error.response?.data?.detail || 'Ошибка при удалении заявки');
     }
   };
