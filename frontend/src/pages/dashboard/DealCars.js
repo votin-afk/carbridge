@@ -315,6 +315,16 @@ const DealCars = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Customs Calculator Dialog */}
+      <CustomsDialog
+        open={!!customsDialog}
+        onClose={() => setCustomsDialog(null)}
+        customsData={customsDialog}
+        contractors={contractors}
+        onSelectContractor={selectContractor}
+        processing={processing}
+      />
     </div>
   );
 };
