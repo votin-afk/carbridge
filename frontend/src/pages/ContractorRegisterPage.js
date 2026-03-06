@@ -61,7 +61,7 @@ const ContractorRegisterPage = () => {
     registration_number: '',
     legal_address: '',
     
-    // Step 2 - Contact Info
+    // Step 2 - Contact Info & Login
     contact_person: '',
     position: '',
     phone: '',
@@ -78,7 +78,17 @@ const ContractorRegisterPage = () => {
     description: '',
     experience_years: '',
     
-    // Step 4 - Documents
+    // Step 4 - Service Prices
+    service_prices: {
+      inspection: '',
+      purchase: '',
+      export: '',
+      logistics: '',
+      leasing: '',
+      customs: ''
+    },
+    
+    // Step 5 - Documents
     license_info: '',
     additional_info: ''
   });
