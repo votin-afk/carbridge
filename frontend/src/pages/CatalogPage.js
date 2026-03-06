@@ -604,40 +604,44 @@ const CatalogPage = () => {
                 data-testid={`car-card-${car.id}`}
                 className="bg-[#15191E] border border-[#27272A] rounded-lg overflow-hidden card-hover group"
               >
-                {/* Image */}
-                <div className="relative h-44 bg-[#1C2128]">
-                  <img
-                    src={car.image_url}
-                    alt={`${car.brand} ${car.model}`}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      e.target.src = 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800';
-                    }}
-                  />
-                  <div className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 bg-black/60 backdrop-blur-sm rounded text-xs">
-                    {getEngineIcon(car.engine_type)}
-                    <span className="text-white">{getEngineLabel(car.engine_type)}</span>
-                  </div>
-                  {car.source === 'che168' && (
-                    <div className="absolute top-3 right-3 px-2 py-1 bg-blue-500/80 backdrop-blur-sm rounded text-xs text-white font-medium">
-                      CHE168
+                {/* Image - clickable */}
+                <Link to={`/catalog/${car.id}`} className="block">
+                  <div className="relative h-44 bg-[#1C2128]">
+                    <img
+                      src={car.image_url}
+                      alt={`${car.brand} ${car.model}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        e.target.src = 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800';
+                      }}
+                    />
+                    <div className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 bg-black/60 backdrop-blur-sm rounded text-xs">
+                      {getEngineIcon(car.engine_type)}
+                      <span className="text-white">{getEngineLabel(car.engine_type)}</span>
                     </div>
-                  )}
-                </div>
+                    {car.source === 'che168' && (
+                      <div className="absolute top-3 right-3 px-2 py-1 bg-blue-500/80 backdrop-blur-sm rounded text-xs text-white font-medium">
+                        CHE168
+                      </div>
+                    )}
+                  </div>
+                </Link>
 
                 {/* Content */}
                 <div className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <p className="text-slate-500 text-xs">{car.brand}</p>
-                      <h3 className="text-white font-semibold">{car.model}</h3>
+                  <Link to={`/catalog/${car.id}`} className="block mb-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-slate-500 text-xs">{car.brand}</p>
+                        <h3 className="text-white font-semibold hover:text-[#00E5FF] transition-colors">{car.model}</h3>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[#00E5FF] font-bold text-lg">
+                          {formatPrice(car.price_from_cny)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-[#00E5FF] font-bold text-lg">
-                        {formatPrice(car.price_from_cny)}
-                      </span>
-                    </div>
-                  </div>
+                  </Link>
 
                   <div className="flex flex-wrap gap-1.5 mb-3">
                     <span className="px-2 py-0.5 bg-[#27272A] rounded text-xs text-slate-400">
