@@ -692,7 +692,11 @@ const LandingPage = () => {
               </div>
 
               {/* Chat Messages */}
-              <div className="h-[350px] overflow-y-auto p-6 space-y-4" data-testid="ai-agent-chat">
+              <div 
+                ref={chatContainerRef}
+                className="h-[400px] overflow-y-auto p-6 space-y-4 scroll-smooth" 
+                data-testid="ai-agent-chat"
+              >
                 {chatMessages.map((msg, index) => (
                   <div
                     key={index}
@@ -707,7 +711,7 @@ const LandingPage = () => {
                         <Bot className="w-4 h-4 text-[#00E5FF]" />
                       )}
                     </div>
-                    <div className={`max-w-[80%] px-4 py-3 text-sm leading-relaxed ${
+                    <div className={`max-w-[80%] px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
                       msg.role === 'user' 
                         ? 'bg-[#27272A] text-white rounded-2xl rounded-tr-sm' 
                         : 'bg-[#00E5FF]/10 border border-[#00E5FF]/20 text-slate-200 rounded-2xl rounded-tl-sm'
@@ -726,7 +730,6 @@ const LandingPage = () => {
                     </div>
                   </div>
                 )}
-                <div ref={chatEndRef} />
               </div>
 
               {/* Chat Input */}
