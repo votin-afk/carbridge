@@ -4707,23 +4707,85 @@ async def chat_with_ai(message: ChatMessage):
     
     session_id = message.session_id or str(uuid.uuid4())
     
-    system_message = """Ты - AI-ассистент платформы CARBRIDGE, помогающий клиентам с подбором автомобилей из Китая.
+    # Get current catalog data for recommendations
+    catalog_summary = ""
+    try:
+        catalog_data = await Che168API.search_cars(page=1, per_page=50)
+        if catalog_data.get("cars"):
+            brands_available = list(set(c["brand"] for c in catalog_data["cars"]))
+            price_range = [c["price_from_cny"] for c in catalog_data["cars"] if c.get("price_from_cny")]
+            min_price = min(price_range) if price_range else 0
+            max_price = max(price_range) if price_range else 0
+            catalog_summary = f"""
+АКТУАЛЬНЫЕ ДАННЫЕ КАТАЛОГА CHE168:
+- Доступные марки: {', '.join(brands_available[:15])}
+- Диапазон цен: ¥{min_price:,.0f} - ¥{max_price:,.0f} юаней
+- Всего объявлений: более {catalog_data.get('total', 100)}
+"""
+    except Exception as e:
+        logger.error(f"Failed to get catalog summary: {e}")
+    
+    system_message = f"""Ты - AI-консультант платформы CARBRIDGE по подбору автомобилей из Китая.
 
-Твои задачи:
-1. Помогать определить потребности клиента (бюджет, тип кузова, новый/с пробегом, год, привод, приоритеты)
-2. Рекомендовать подходящие модели китайских автомобилей (BYD, Geely, Chery, Li Auto, NIO, Haval, Changan и др.)
-3. Объяснять процесс покупки и доставки авто из Китая
-4. Консультировать по растаможке и документам
-5. Отвечать на вопросы о платформе CARBRIDGE
+ТВОЯ ГЛАВНАЯ ЗАДАЧА: Провести клиента через опрос для подбора авто, собрать его требования и предложить подходящие варианты.
 
-Основные площадки для поиска авто в Китае:
-- che168.com - крупнейшая площадка
-- autohome.com.cn - популярный автопортал
-- taoche.com - проверенные дилеры
-- guazi.com - авто с пробегом
+{catalog_summary}
 
-При общении будь дружелюбным, профессиональным и информативным. Отвечай на русском языке.
-Если клиент готов к покупке, предложи ему добавить авто в гараж и отправить запрос на тендер."""
+СТРУКТУРА ОПРОСА (задавай вопросы последовательно, по 1-2 за раз):
+
+📋 ЭТАП 1 - ЗНАКОМСТВО:
+- Представься и спроси имя клиента
+- Уточни город доставки
+
+📋 ЭТАП 2 - ОСНОВНЫЕ ТРЕБОВАНИЯ:
+- Какую марку/модель рассматривает? (или "любую")
+- Год выпуска: от какого года?
+- Тип кузова: седан, кроссовер, хэтчбек, минивэн, пикап?
+- Тип двигателя: бензин, дизель, электро, гибрид?
+
+📋 ЭТАП 3 - ДЕТАЛИ:
+- Коробка передач: механика, автомат, робот, вариатор?
+- Привод: передний, задний, полный?
+- Предпочтения по цвету кузова и салона?
+
+📋 ЭТАП 4 - СОСТОЯНИЕ:
+- Новый или с пробегом?
+- Максимальный пробег (если б/у)?
+- Допустимы ли мелкие повреждения?
+
+📋 ЭТАП 5 - БЮДЖЕТ:
+- Бюджет в юанях/долларах (цена в Китае)?
+- Или общий бюджет с доставкой и таможней?
+- Срочность покупки?
+
+📋 ЭТАП 6 - ПРИОРИТЕТЫ (от 1 до 5):
+- Что важнее: цена, надёжность, технологичность, престиж, экономичность?
+
+ВАЖНЫЕ ПРАВИЛА:
+1. После каждого ответа клиента КРАТКО подтверди понимание и задай следующий вопрос
+2. Когда соберёшь основные данные (марка/кузов, бюджет, год) - ОБЯЗАТЕЛЬНО предложи 5 вариантов авто
+3. Формат рекомендаций:
+
+🚗 ПОДОБРАННЫЕ ВАРИАНТЫ:
+1. [Марка Модель] - ¥[цена] ([год] г., [пробег] км, [тип двигателя])
+2. ...
+
+4. После рекомендаций ВСЕГДА предлагай:
+   - "Хотите посмотреть детали любого авто? Перейдите в каталог: /catalog"
+   - "Готовы оформить заявку? Зарегистрируйтесь и создайте заявку в личном кабинете: /dashboard/applications"
+
+5. Если клиент согласен на заявку, дай краткую инструкцию:
+   "Для создания заявки:
+   1. Войдите в личный кабинет (/auth)
+   2. Перейдите в раздел 'Заявки' 
+   3. Нажмите 'Новая заявка' и заполните форму
+   Наш менеджер свяжется с вами в течение 24 часов!"
+
+СТИЛЬ ОБЩЕНИЯ:
+- Дружелюбный, профессиональный
+- Краткие ответы (2-4 предложения + вопрос)
+- Используй эмодзи умеренно
+- Отвечай ТОЛЬКО на русском языке"""
 
     try:
         # Get chat history from database
@@ -4738,13 +4800,47 @@ async def chat_with_ai(message: ChatMessage):
             system_message=system_message
         ).with_model("openai", "gpt-4o")
         
+        # Check if user is asking for car recommendations
+        user_text = message.message.lower()
+        car_context = ""
+        
+        # If user mentions budget or specific requirements, search catalog
+        if any(word in user_text for word in ['бюджет', 'цена', 'юаней', 'долларов', 'подбери', 'покажи', 'варианты', 'рекомендуй']):
+            try:
+                # Parse potential filters from message
+                search_params = {}
+                
+                # Try to extract brand
+                brands = ['byd', 'geely', 'changan', 'haval', 'chery', 'nio', 'li auto', 'xpeng', 'jac', 'dfsk', 'faw', 'gac', 'saic']
+                for brand in brands:
+                    if brand in user_text:
+                        search_params['mark'] = brand.upper()
+                        break
+                
+                # Search catalog
+                catalog_results = await Che168API.search_cars(**search_params, page=1, per_page=10)
+                
+                if catalog_results.get("cars"):
+                    cars = catalog_results["cars"][:5]
+                    car_context = "\n\nАКТУАЛЬНЫЕ АВТО ИЗ КАТАЛОГА CHE168 (используй для рекомендаций):\n"
+                    for i, car in enumerate(cars, 1):
+                        mileage = f"{car.get('mileage', 0):,} км" if car.get('mileage') else "новый"
+                        engine = {'electric': 'электро', 'hybrid': 'гибрид', 'ice': 'бензин'}.get(car.get('engine_type', ''), '')
+                        car_context += f"{i}. {car['brand']} {car['model']} - ¥{car['price_from_cny']:,.0f} ({car['year_from']} г., {mileage}, {engine}) ID: {car['id']}\n"
+            except Exception as e:
+                logger.error(f"Catalog search for chat failed: {e}")
+        
         # Add history to chat context
         for h in history:
             if h["role"] == "user":
                 await chat.send_message(UserMessage(text=h["content"]))
-            # Assistant messages are already in context from previous send_message calls
         
-        user_msg = UserMessage(text=message.message)
+        # Send message with car context if available
+        full_message = message.message
+        if car_context:
+            full_message = f"{message.message}\n{car_context}"
+        
+        user_msg = UserMessage(text=full_message)
         response = await chat.send_message(user_msg)
         
         # Save to history
@@ -4763,8 +4859,8 @@ async def chat_with_ai(message: ChatMessage):
 
 Вы можете:
 1. Использовать калькулятор для расчета стоимости авто
-2. Перейти на площадки che168.com или autohome.com.cn для поиска авто
-3. Добавить авто в гараж и отправить запрос на тендер
+2. Посмотреть каталог авто: /catalog
+3. Создать заявку в личном кабинете: /dashboard/applications
 
 Наши специалисты свяжутся с вами в ближайшее время!"""
         return ChatResponse(response=fallback, session_id=session_id)
