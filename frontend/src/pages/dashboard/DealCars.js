@@ -79,6 +79,7 @@ const DealCars = () => {
   const [contractorDialog, setContractorDialog] = useState(null);
   const [invoiceDialog, setInvoiceDialog] = useState(null);
   const [skipDialog, setSkipDialog] = useState(null);
+  const [customsDialog, setCustomsDialog] = useState(null);
 
   const headers = { Authorization: `Bearer ${token}` };
 
