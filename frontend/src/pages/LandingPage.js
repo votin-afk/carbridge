@@ -524,7 +524,11 @@ const LandingPage = () => {
                 <span className="text-[#00E5FF] text-sm font-medium">Каталог авто</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-bold text-white">Авто из Китая</h2>
-              <p className="text-slate-400 mt-2">Актуальные предложения с китайских площадок</p>
+              <p className="text-slate-400 mt-2">Реальные объявления с che168.com — крупнейшей площадки Китая</p>
+              <p className="text-blue-400/70 text-xs mt-1 flex items-center gap-1">
+                <span className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></span>
+                Данные синхронизируются через API che168.com
+              </p>
             </div>
             <Link to="/catalog">
               <Button variant="outline" className="border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10">
