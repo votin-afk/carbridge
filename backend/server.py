@@ -4893,12 +4893,20 @@ async def get_catalog_brands():
 async def get_catalog_models(brand_slug: str):
     """Get list of all models for a specific brand"""
     try:
-        # Get models directly from the brand page
+        # Try Che168 API first
+        models = await Che168API.get_models(brand_slug)
+        if models:
+            return models
+    except Exception as e:
+        logger.error(f"Error fetching models from Che168 for {brand_slug}: {e}")
+    
+    try:
+        # Fallback to pro-auctions
         models = await ProAuctionsParser.get_models(brand_slug)
         if models:
             return models
     except Exception as e:
-        logger.error(f"Error fetching models for {brand_slug}: {e}")
+        logger.error(f"Error fetching models from pro-auctions for {brand_slug}: {e}")
     
     return []
 
@@ -4916,7 +4924,80 @@ async def search_catalog(
     page: int = 1,
     limit: int = 20
 ):
-    """Search cars in catalog with filters - fetches live data from pro-auctions"""
+    """Search cars in catalog with filters - fetches live data from Che168 API"""
+    
+    # Try Che168 API first (primary source with real listings)
+    try:
+        che168_result = await Che168API.search_cars(
+            mark=brand,
+            model=model,
+            year_from=min_year,
+            year_to=max_year,
+            price_from=min_price,
+            price_to=max_price,
+            engine_type=engine_type,
+            body_type=body_type,
+            page=page,
+            per_page=limit
+        )
+        
+        if che168_result["cars"]:
+            # Apply query filter if present
+            cars = che168_result["cars"]
+            if query:
+                query_lower = query.lower()
+                cars = [c for c in cars if 
+                    query_lower in c["brand"].lower() or 
+                    query_lower in c["model"].lower() or
+                    query_lower in c.get("description", "").lower()
+                ]
+            
+            # Generate search links
+            search_links = generate_search_links(brand, model, query)
+            
+            # Convert to response model
+            cars_for_response = []
+            for c in cars:
+                car_dict = {
+                    "id": c["id"],
+                    "brand": c["brand"],
+                    "brand_cn": c.get("brand_cn", ""),
+                    "model": c["model"],
+                    "model_cn": c.get("model_cn", ""),
+                    "year_from": c["year_from"],
+                    "year_to": c.get("year_to"),
+                    "price_from_cny": c["price_from_cny"],
+                    "price_to_cny": c.get("price_to_cny", c["price_from_cny"]),
+                    "engine_type": c["engine_type"],
+                    "engine_volume": c.get("engine_volume"),
+                    "body_type": c["body_type"],
+                    "image_url": c["image_url"],
+                    "description": c.get("description", ""),
+                    "features": c.get("features", []),
+                    "popularity": c.get("popularity", 80),
+                    "mileage": c.get("mileage"),
+                    "source": "che168",
+                    "fuel_type": c.get("fuel_type", "Бензин"),
+                    "source_url": c.get("source_url", ""),
+                    "transmission": c.get("transmission", ""),
+                    "color": c.get("color", ""),
+                    "address": c.get("address", ""),
+                    "vin": c.get("vin", ""),
+                    "power": c.get("power", 0)
+                }
+                cars_for_response.append(CatalogCarModel(**car_dict))
+            
+            return CatalogSearchResult(
+                cars=cars_for_response,
+                total=che168_result["total"],
+                page=page,
+                pages=che168_result["pages"],
+                search_links=search_links
+            )
+    except Exception as e:
+        logger.error(f"Error fetching from Che168 API: {e}")
+    
+    # Fallback to pro-auctions
     try:
         # Try to get live data from pro-auctions
         # Find brand slug if brand name provided
