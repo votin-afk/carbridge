@@ -561,23 +561,24 @@ const LandingPage = () => {
                   className="bg-[#15191E] border border-[#27272A] rounded-sm overflow-hidden hover:border-[#00E5FF]/50 transition-colors group"
                   data-testid={`catalog-car-${car.id}`}
                 >
-                  <div className="h-36 bg-[#1C2128] relative overflow-hidden">
-                    <img 
-                      src={car.image_url} 
-                      alt={`${car.brand} ${car.model}`}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        e.target.src = 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800';
-                      }}
-                    />
-                    <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 bg-black/60 backdrop-blur-sm rounded text-xs">
-                      {car.engine_type === 'electric' ? (
-                        <Battery size={12} className="text-emerald-400" />
-                      ) : car.engine_type === 'hybrid' ? (
-                        <Zap size={12} className="text-amber-400" />
-                      ) : (
-                        <Fuel size={12} className="text-slate-400" />
-                      )}
+                  <Link to={`/catalog/${car.id}`} className="block">
+                    <div className="h-36 bg-[#1C2128] relative overflow-hidden">
+                      <img 
+                        src={getProxiedImageUrl(car.image_url)} 
+                        alt={`${car.brand} ${car.model}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          e.target.src = 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800';
+                        }}
+                      />
+                      <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 bg-black/60 backdrop-blur-sm rounded text-xs">
+                        {car.engine_type === 'electric' ? (
+                          <Battery size={12} className="text-emerald-400" />
+                        ) : car.engine_type === 'hybrid' ? (
+                          <Zap size={12} className="text-amber-400" />
+                        ) : (
+                          <Fuel size={12} className="text-slate-400" />
+                        )}
                       <span className="text-white">
                         {car.engine_type === 'electric' ? 'Электро' : car.engine_type === 'hybrid' ? 'Гибрид' : 'ДВС'}
                       </span>
