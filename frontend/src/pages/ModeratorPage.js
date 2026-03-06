@@ -1161,6 +1161,31 @@ const ModeratorPage = () => {
                   </div>
                 )}
 
+                {/* Service Prices */}
+                {selectedContractor.service_prices && Object.keys(selectedContractor.service_prices).length > 0 && (
+                  <div className="p-4 bg-[#0B0F14] rounded-sm border border-[#27272A]">
+                    <h4 className="text-[#00E5FF] font-medium mb-3">Стоимость услуг</h4>
+                    <div className="space-y-2">
+                      {Object.entries(selectedContractor.service_prices).map(([service, price]) => {
+                        const serviceNames = {
+                          inspection: 'Инспекция',
+                          purchase: 'Выкуп авто',
+                          export: 'Экспорт',
+                          logistics: 'Логистика',
+                          leasing: 'Лизинг',
+                          customs: 'Растаможка'
+                        };
+                        return (
+                          <div key={service} className="flex justify-between text-sm">
+                            <span className="text-slate-400">{serviceNames[service] || service}</span>
+                            <span className="text-white font-medium">${price} USD</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Actions */}
                 {selectedContractor.status === 'pending' && (
                   <div className="flex gap-3">
