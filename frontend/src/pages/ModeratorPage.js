@@ -116,6 +116,9 @@ const ModeratorPage = () => {
   const [updatingBalance, setUpdatingBalance] = useState(false);
   const [userAccounts, setUserAccounts] = useState({}); // user_id -> account data
   
+  // Delete confirmation dialog state
+  const [deleteDialog, setDeleteDialog] = useState(null); // { type: 'user'|'tender'|..., id: string, title: string }
+  
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
