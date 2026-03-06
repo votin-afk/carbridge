@@ -801,6 +801,16 @@ const CustomsDialog = ({ open, onClose, customsData, contractors, onSelectContra
     return broker.service_prices?.customs || 300;
   };
 
+  // Calculate total customs payments in USD
+  const getCustomsPaymentsUsd = () => {
+    if (!calcResult) return 0;
+    const totalByn = calcResult.customs_duty + 
+                     calcResult.utilization_fee + 
+                     (calcResult.vat || 0) + 
+                     120 + 70;
+    return Math.round(totalByn / 3.2); // Convert BYN to USD
+  };
+
   const handleSelectBroker = () => {
     if (!selectedBroker) {
       toast.error('Выберите таможенного брокера');
@@ -808,7 +818,10 @@ const CustomsDialog = ({ open, onClose, customsData, contractors, onSelectContra
     }
     const broker = customsBrokers.find(b => b.id === selectedBroker);
     const brokerPrice = getBrokerPrice(broker);
-    onSelectContractor(dealId, 'customs', selectedBroker, brokerPrice);
+    const customsPaymentsUsd = getCustomsPaymentsUsd();
+    const totalPrice = customsPaymentsUsd + brokerPrice; // Total: customs payments + broker fee
+    
+    onSelectContractor(dealId, 'customs', selectedBroker, totalPrice);
     onClose();
   };
 
