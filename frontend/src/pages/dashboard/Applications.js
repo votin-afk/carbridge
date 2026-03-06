@@ -45,7 +45,10 @@ import {
   Sparkles,
   Package,
   Clock,
-  Target
+  Target,
+  Send,
+  Headphones,
+  XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
