@@ -147,12 +147,12 @@ const CarDetailPage = () => {
     return `${km.toLocaleString('ru-RU')} км`;
   };
 
-  // Get images array
-  const images = car?.images && car.images.length > 0 
+  // Get images array with proxied URLs
+  const images = (car?.images && car.images.length > 0 
     ? car.images 
     : car?.image_url 
       ? [car.image_url] 
-      : [];
+      : []).map(url => getProxiedImageUrl(url));
 
   if (loading) {
     return (
