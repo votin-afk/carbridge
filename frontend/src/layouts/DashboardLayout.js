@@ -11,7 +11,7 @@ import {
   LogOut, 
   Menu, 
   X,
-  Calculator,
+  MapPin,
   Bell,
   ChevronRight,
   Shield,
@@ -37,7 +37,7 @@ const DashboardLayout = () => {
     { to: '/dashboard/deals', icon: ShoppingCart, label: 'Авто для сделки' },
     { to: '/dashboard/verification', icon: Shield, label: 'Верификация' },
     { to: '/dashboard/documents', icon: FileText, label: 'Документы' },
-    { to: '/calculator', icon: Calculator, label: 'Калькулятор' },
+    { to: '/dashboard/tracking', icon: MapPin, label: 'Отследить авто' },
   ];
 
   return (
