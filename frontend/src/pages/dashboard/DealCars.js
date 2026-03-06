@@ -147,18 +147,24 @@ const DealCars = () => {
     }
   };
 
-  // Cancel deal
-  const cancelDeal = async (dealId) => {
-    if (!window.confirm('Отменить сделку? Авто вернётся в гараж. Это действие необратимо.')) return;
+  // Cancel deal - show confirmation dialog
+  const showCancelDealDialog = (dealId) => {
+    setCancelDealDialog({ dealId });
+  };
+
+  // Execute cancel deal after confirmation
+  const executeCancelDeal = async () => {
+    if (!cancelDealDialog) return;
     setProcessing(true);
     try {
-      await axios.delete(`${API}/deals/${dealId}`, { headers });
+      await axios.delete(`${API}/deals/${cancelDealDialog.dealId}`, { headers });
       toast.success('Сделка отменена');
-      setDeals(prev => prev.filter(d => d.id !== dealId));
+      setDeals(prev => prev.filter(d => d.id !== cancelDealDialog.dealId));
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Ошибка при отмене сделки');
     } finally {
       setProcessing(false);
+      setCancelDealDialog(null);
     }
   };
 
