@@ -949,6 +949,16 @@ const ModeratorPage = () => {
                                   <DollarSign size={14} className="mr-1" />
                                   Баланс
                                 </Button>
+                                {u.role !== 'admin' && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleDeleteUser(u.id)}
+                                    className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                                  >
+                                    <Trash2 size={14} />
+                                  </Button>
+                                )}
                               </div>
                             </td>
                           </tr>
