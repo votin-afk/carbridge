@@ -750,9 +750,8 @@ const CustomsDialog = ({ open, onClose, customsData, contractors, onSelectContra
   const [calcResult, setCalcResult] = useState(null);
   const [calcLoading, setCalcLoading] = useState(false);
 
-  if (!customsData) return null;
-
-  const { dealId, carInfo } = customsData;
+  const dealId = customsData?.dealId;
+  const carInfo = customsData?.carInfo;
   const priceCny = carInfo?.price_cny || 180000;
 
   const formatNumber = (num) => {
@@ -764,6 +763,7 @@ const CustomsDialog = ({ open, onClose, customsData, contractors, onSelectContra
 
   // Call calculator API
   const handleCalculate = async () => {
+    if (!priceCny) return;
     setCalcLoading(true);
     try {
       const response = await axios.post(`${API}/calculator`, {
