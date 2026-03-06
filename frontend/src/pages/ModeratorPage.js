@@ -971,9 +971,14 @@ const ModeratorPage = () => {
                                 </Button>
                                 {u.role !== 'admin' && (
                                   <Button
+                                    type="button"
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => handleDeleteUser(u.id)}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleDeleteUser(u.id);
+                                    }}
                                     className="border-red-500/30 text-red-400 hover:bg-red-500/10"
                                   >
                                     <Trash2 size={14} />
