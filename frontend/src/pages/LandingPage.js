@@ -541,9 +541,8 @@ const LandingPage = () => {
           ) : catalogCars.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
               {catalogCars.slice(0, 8).map((car) => (
-                <Link 
+                <div 
                   key={car.id} 
-                  to="/catalog"
                   className="bg-[#15191E] border border-[#27272A] rounded-sm overflow-hidden hover:border-[#00E5FF]/50 transition-colors group"
                   data-testid={`catalog-car-${car.id}`}
                 >
@@ -568,16 +567,16 @@ const LandingPage = () => {
                         {car.engine_type === 'electric' ? 'Электро' : car.engine_type === 'hybrid' ? 'Гибрид' : 'ДВС'}
                       </span>
                     </div>
-                    {car.source === 'pro-auctions' && (
-                      <div className="absolute top-2 right-2 px-2 py-0.5 bg-emerald-500/80 backdrop-blur-sm rounded text-xs text-white font-medium">
-                        LIVE
+                    {car.source === 'che168' && (
+                      <div className="absolute top-2 right-2 px-2 py-0.5 bg-blue-500/80 backdrop-blur-sm rounded text-xs text-white font-medium">
+                        CHE168
                       </div>
                     )}
                   </div>
                   <div className="p-3">
                     <p className="text-slate-500 text-xs">{car.brand}</p>
                     <h4 className="text-white font-medium text-sm mb-1 truncate">{car.model}</h4>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-2">
                       <span className="text-[#00E5FF] font-bold">
                         {car.price_from_cny ? (
                           car.price_from_cny >= 10000 
@@ -587,8 +586,31 @@ const LandingPage = () => {
                       </span>
                       <span className="text-slate-500 text-xs">{car.year_from} г.</span>
                     </div>
+                    {car.mileage && (
+                      <p className="text-slate-500 text-xs mb-2">{car.mileage.toLocaleString()} км</p>
+                    )}
+                    <div className="flex gap-2">
+                      <Link 
+                        to="/catalog" 
+                        className="flex-1 text-center px-2 py-1.5 text-xs bg-[#00E5FF]/10 text-[#00E5FF] rounded hover:bg-[#00E5FF]/20 transition-colors"
+                      >
+                        <Plus size={12} className="inline mr-1" />
+                        В гараж
+                      </Link>
+                      {car.source_url && (
+                        <a
+                          href={car.source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-1.5 text-xs border border-[#27272A] text-slate-400 rounded hover:border-[#00E5FF] hover:text-[#00E5FF] transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink size={12} />
+                        </a>
+                      )}
+                    </div>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           ) : (
