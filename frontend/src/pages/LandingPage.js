@@ -124,7 +124,6 @@ const LandingPage = () => {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
-  const chatEndRef = useRef(null);
   
   // Popular cars carousel state
   const [currentCarIndex, setCurrentCarIndex] = useState(0);
