@@ -697,7 +697,7 @@ const ContractorRegisterPage = () => {
               <div />
             )}
             
-            {step < 4 ? (
+            {step < 5 ? (
               <Button
                 onClick={nextStep}
                 className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
