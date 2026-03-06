@@ -218,21 +218,59 @@ const DealCars = () => {
                   if (contractorDialog.stage === 'logistics') return c.services?.includes('logistics');
                   return true;
                 })
-                .map(contractor => (
-                  <div
-                    key={contractor.id}
-                    className="p-4 bg-[#0B0F14] rounded-sm border border-[#27272A] hover:border-[#00E5FF]/50 cursor-pointer"
-                    onClick={() => selectContractor(contractorDialog.dealId, contractorDialog.stage, contractor.id, contractor.base_price || 500)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-white font-medium">{contractor.name}</p>
-                        <p className="text-slate-400 text-sm">{contractor.description}</p>
+                .map(contractor => {
+                  // Get price from service_prices based on current stage
+                  const getContractorPrice = () => {
+                    const stage = contractorDialog.stage;
+                    const prices = contractor.service_prices;
+                    if (prices && prices[stage]) {
+                      return prices[stage];
+                    }
+                    // Fallback for export stage - check customs price too
+                    if (stage === 'export' && prices?.customs) {
+                      return prices.customs;
+                    }
+                    return null;
+                  };
+                  const price = getContractorPrice();
+                  
+                  // Only show contractors that have a price for this service
+                  if (!price) return null;
+                  
+                  return (
+                    <div
+                      key={contractor.id}
+                      className="p-4 bg-[#0B0F14] rounded-sm border border-[#27272A] hover:border-[#00E5FF]/50 cursor-pointer"
+                      onClick={() => selectContractor(contractorDialog.dealId, contractorDialog.stage, contractor.id, price)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-medium">{contractor.name}</p>
+                          <p className="text-slate-400 text-sm">{contractor.description}</p>
+                          {contractor.rating && (
+                            <p className="text-amber-400 text-xs mt-1">★ {contractor.rating.toFixed(1)} • {contractor.deals_count || 0} сделок</p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[#00E5FF] font-bold text-lg">${price}</p>
+                          <p className="text-slate-500 text-xs">за услугу</p>
+                        </div>
                       </div>
-                      <p className="text-[#00E5FF] font-bold">${contractor.base_price || 500}</p>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
+              {contractors.filter(c => {
+                const stage = contractorDialog.stage;
+                const hasService = stage === 'inspection' ? c.services?.includes('inspection') :
+                                   stage === 'export' ? (c.services?.includes('export') || c.services?.includes('customs')) :
+                                   stage === 'logistics' ? c.services?.includes('logistics') : true;
+                const hasPrice = c.service_prices && (c.service_prices[stage] || (stage === 'export' && c.service_prices.customs));
+                return hasService && !hasPrice;
+              }).length > 0 && (
+                <p className="text-slate-500 text-xs text-center pt-2 border-t border-[#27272A]">
+                  Некоторые подрядчики не указали цены на этот этап
+                </p>
+              )}
               {processing && <Loader2 className="animate-spin mx-auto" />}
             </div>
           )}
