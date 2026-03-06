@@ -209,6 +209,13 @@ CONSULTANT_FEE = 200    # $200 за помощь консультанта/мен
 
 ## Ключевые API эндпоинты
 
+### Каталог автомобилей (Che168)
+- `GET /api/catalog/search` - Поиск авто (brand, model, min/max_price, min/max_year, engine_type, body_type)
+- `GET /api/catalog/brands` - Список всех марок
+- `GET /api/catalog/models/{brand}` - Модели для марки
+- `GET /api/catalog/{car_id}` - Детали авто
+- `POST /api/catalog/{car_id}/add-to-garage` - Добавить в гараж
+
 ### Заявки на подбор
 - `POST /api/applications/create` - Создание заявки (новая расширенная схема ~70 полей)
 - `GET /api/applications/my` - Список заявок пользователя
