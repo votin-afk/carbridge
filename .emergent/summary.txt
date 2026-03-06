@@ -27,49 +27,37 @@ PRODUCT REQUIREMENTS:
 **User's preferred language**: Русский (Russian)
 
 **what currently exists?**
-A full-stack application with a FastAPI backend and React frontend.
--   **Completely Overhauled Application Form**: The  page now features a new, multi-step form that perfectly matches the user-provided PDF. It is divided into 6 sections, captures extensive details about the desired car, and successfully submits this data to the backend.
--   **Post-Application Actions**: After an application is created and viewed, users are now presented with buttons to Request Manager Assistance (for a fee) or Start Tender.
--   **Redesigned Deal Cars Page**: A fully functional 8-stage deal process (Leasing, Inspection, etc.) with integrated leasing and customs calculators and a payment flow using the platform balance.
--   **Public Contractor Page**: A page at  that lists approved contractors and their specific service prices.
--   **GPS Tracking Page**: A page at  with a mock UI for tracking vehicles.
--   A landing page, authentication system (JWT with User, Moderator, Contractor roles), and moderator/contractor dashboards.
+A full-stack application with a FastAPI backend and React frontend. The application features a live car catalog integrated with the  API, complete with an image proxy to display photos correctly and on-the-fly translation for car descriptions. The AI assistant has been enhanced to guide users through a car search based on the new catalog. The moderator panel is now highly functional, with corrected data display and working delete capabilities for all major entities (users, deals, tenders, etc.). Numerous UI/UX bugs have been resolved, including page jumping in the AI chat and scrolling issues in the contractor's mobile dashboard.
 
 **Last working item**:
--   Last item agent was working: The user requested the implementation of a car catalog on the main page by scraping data from . The agent began investigating the feasibility of scraping this site.
+-   Last item agent was working: Debugging a critical login failure for the user's specific admin account (). The agent created the account but encountered an Invalid credentials error. Despite manually verifying that the password hash was correct, the API login endpoint continued to fail.
 -   Status: IN PROGRESS
 -   Agent Testing Done: N
--   Which testing method agent to use? backend testing agent. After implementing the scraper, the agent should use the backend testing agent to create a test that verifies the scraper can fetch and parse data correctly and handle potential errors (like CAPTCHAs or site structure changes).
+-   Which testing method agent to use? manual testing by curl. The agent needs to continue debugging the backend  endpoint by adding verbose logging to trace the data flow and investigate a recurring  which points to a potential dependency issue with  or .
 -   User Testing Done: N
 
 **All Pending/In progress Issue list**:
--   Issue 1: Implement car catalog on the main page (Priority: P0)
+-   Issue 1: Admin account  cannot log in (Priority: P0)
 -   Issue 2: AI chat on landing page is unreliable (Priority: P1)
 -   Issue 3: URL parser for My Garage is not robust (Priority: P2)
 
 Issues Detail:
 -   Issue 1:
-    -   **Description**: The user wants a car catalog on the main page populated with data from . The initial investigation showed the site is protected against simple scraping (static HTML does not contain prices; data is loaded dynamically via JavaScript).
-    -   **Attempted fixes**: The agent tried a direct  on the URL and found that critical data is missing and the site structure is complex (Next.js).
+    -   **Description**: The user's specific admin account  is unable to log in, receiving an Invalid credentials error. This blocks the user from personally verifying the new moderator functionalities. The agent's debugging confirmed that the password hashing and verification logic works correctly in a standalone script but fails within the context of the FastAPI login request.
+    -   **Attempted fixes**: Created the user account; corrected the database schema ( -> ); added the missing  field; manually verified the password hash successfully.
     -   **Next debug checklist**:
-        1.  Open  in a browser with developer tools.
-        2.  Go to the Network tab and filter for  requests.
-        3.  Browse the car listings and identify the API endpoint that returns the car data (likely in JSON format).
-        4.  Analyze the structure of the API response to understand how to extract car details (make, model, price, image URL, etc.).
-        5.  Implement a new backend endpoint (e.g., ) in  that calls this external API, parses the response, and returns a structured list of cars.
-        6.  Create a new component on the  to fetch data from  and display the car listings.
-    -   **Why fix this issue and what will be achieved with the fix?**: This will add a major, user-facing feature that makes the landing page much more engaging and useful.
+        1.  Investigate the  error that appeared in logs. Run No broken requirements found. to find dependency conflicts and consider reinstalling  and .
+        2.  Add detailed logging to the  endpoint in  to inspect the incoming credentials, the user document retrieved from MongoDB, and the result of the  call within the live request.
+        3.  Compare the execution environment of the live API call versus the successful manual script to identify discrepancies.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical blocker preventing the user from testing and validating completed work on the moderator panel.
     -   **Status**: IN PROGRESS
     -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?**: both
+    -   **Should Test frontend/backend/both after fix?**: backend
     -   **Blocked on other issue**: None
 
 -   Issue 2:
-    -   **Description**: A long-standing issue where the AI chat on the landing page sometimes fails to display responses or has long delays.
-    -   **Next debug checklist**:
-        1.  Investigate frontend console logs in  for WebSocket or HTTP errors.
-        2.  Check the  endpoint in  for potential timeouts or unhandled exceptions.
-        3.  Verify the state update logic for  in React.
+    -   **Description**: A long-standing issue where the AI chat on the landing page sometimes fails to display responses or has long delays. While the chat prompt and flow were improved, the underlying reliability issue was not addressed.
+    -   **Next debug checklist**: Investigate frontend console logs for WebSocket/HTTP errors and check the  endpoint in  for timeouts.
     -   **Why fix this issue and what will be achieved with the fix?**: A reliable AI assistant is crucial for user engagement and lead generation.
     -   **Status**: NOT STARTED
     -   **Is recurring issue?** Y
@@ -77,11 +65,8 @@ Issues Detail:
     -   **Blocked on other issue**: None
 
 -   Issue 3:
-    -   **Description**: The feature allowing users to add a car by pasting a URL often fails due to anti-scraping measures on target websites.
-    -   **Next debug checklist**:
-        1.  Research and choose a more robust scraping solution (e.g., a third-party scraping API like ScraperAPI or ScrapingBee).
-        2.  Replace the  call in the  endpoint in .
-        3.  Implement proper error handling for scraping failures.
+    -   **Description**: The add car by URL feature in My Garage is fragile and frequently fails due to anti-scraping measures on target websites.
+    -   **Next debug checklist**: Research and integrate a robust third-party scraping API to replace the direct  call in the  endpoint.
     -   **Why fix this issue and what will be achieved with the fix?**: This will make a key automation feature reliable, significantly improving the user experience.
     -   **Status**: NOT STARTED
     -   **Is recurring issue?** Y
@@ -89,27 +74,33 @@ Issues Detail:
     -   **Blocked on other issue**: None
 
 **In progress Task List**:
--   Task 1: Implement car catalog on the main page.
-    -   **Where to resume**: The agent needs to analyze network traffic on  to find the underlying API endpoint for car data.
-    -   **What will be achieved with this?**: A live car catalog on the site's main page.
-    -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: both
-    -   **Blocked on something**: Potentially complex anti-bot measures on the target API.
+-   None.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
     -   **(P1) Implement Balance Top-Up:** Integrate a payment gateway (e.g., Stripe) to allow users to add funds to their balance.
     -   **(P1) Complete Tender Flow:** Enhance the frontend UI for the  page to allow users to properly view, compare, and accept bids from contractors.
 - **Future Tasks:**
+    -   **(P0) CRITICAL REFACTORING**: The codebase is becoming unmaintainable. The following files must be broken down into smaller, single-responsibility modules:
+        -    (over 6800 lines)
+        -    (over 1800 lines)
+        -    (over 1600 lines)
+        -    (over 1300 lines)
     -   Implement a full payment/escrow system.
     -   Implement Telegram/Email notifications.
-    -   **(P0) CRITICAL REFACTORING**: Break down the monolithic  (now over 5900 lines), the massive  component (over 1300 lines), and the newly expanded  (over 1600 lines) into smaller, maintainable modules.
+    -   Cache translated car descriptions in MongoDB to reduce LLM API calls.
     -   A minor UI cleanup: the old, redundant Calculator link at the very bottom of the dashboard sidebar was not removed.
 
 **Completed work in this session**
--   **Application Form Overhaul (Completed & Tested)**: Completely redesigned the Application for car selection form () to match the user's PDF. This included creating a 6-step wizard UI, updating the backend  model to accept dozens of new fields, and modifying the  endpoint.
--   **Post-Application Actions (Completed & Tested)**: Added Request Manager Assistance and Start Tender buttons to the application details modal, which appear after a new application is submitted.
--   **Full-Form Testing (Completed & Tested)**: Used  to test the new endpoint, verified all data was saved correctly in MongoDB, used screenshots to validate every step of the new UI, and finally ran the  for comprehensive validation.
+-   **Live Car Catalog Integration**: Replaced the old parser with a full integration of the  catalog via the  service.
+-   **Image Proxy and Translation**: Implemented a backend image proxy to correctly display car photos from Chinese CDNs and an LLM-based translation service for car descriptions.
+-   **Car Detail Page**: Created a new page () to display a full gallery of photos and detailed, translated information for each vehicle.
+-   **AI Assistant Upgrade**: Enhanced the AI assistant to consult the new live catalog and guide users through the application process based on their queries.
+-   **Moderator Panel Overhaul**: Implemented and fixed full CRUD functionality. This included adding working delete buttons for users, applications, deals, and tenders, fixing the data source for the applications tab, and resolving an access bug that blocked admins.
+-   **UI/UX Bug Fixes**:
+    -   Fixed the AI chat section to prevent the entire page from scrolling on new messages.
+    -   Resolved scrolling issues on the mobile view of the contractor dashboard.
+    -   Fixed a bug where the UI would not update automatically after a moderator deleted an item.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1**: AI chat on landing page has intermittent reliability issues.
@@ -124,77 +115,98 @@ Issues Detail:
 **Key Technical Concepts**
 -   **Backend:** FastAPI, Python, MongoDB.
 -   **Frontend:** React, Tailwind CSS, Shadcn UI components.
--   **Authentication:** JWT-based with RBAC for three distinct roles (user, moderator, contractor).
--   **UI/UX**: Multi-step form wizard with progress tracking for a complex data entry process.
+-   **Authentication:** JWT-based with RBAC (user, moderator, admin).
+-   **3rd Party API:** Integration with  for car data.
+-   **Image Proxy:** A custom FastAPI endpoint to fetch and serve images from external, access-restricted CDNs.
+-   **LLM-based Translation:** Using  to translate text on-the-fly.
 
 **key DB schema**
--   **applications:** The schema was significantly expanded to include dozens of new fields from the new application form, such as , , , , , and .
+-   **users:** The schema was debugged and confirmed to require , , , and  fields for proper authentication.
 
 **changes in tech stack**
 -   None.
 
 **All files of reference**
--   **/app/frontend/src/pages/dashboard/Applications.js**: Completely overwritten and significantly expanded to ~1641 lines. Contains the new multi-step application form logic.
--   **/app/backend/server.py**: Modified to update the  Pydantic model and the  endpoint to handle the new, complex data structure.
--   **/app/memory/PRD.md**: Updated to reflect the completion of the application form and the new catalog task.
+-   **/app/backend/server.py**: Heavily modified to add the Che168 API client, image proxy, translation endpoint, multiple moderator deletion endpoints, and fixes for data retrieval.
+-   **/app/frontend/src/pages/ModeratorPage.js**: Heavily modified to implement delete functionality, fix data display, correct role-based access, and ensure the UI updates after deletion.
+-   **/app/frontend/src/pages/LandingPage.js**: Updated with the live catalog preview and a fix for the AI chat's scrolling behavior.
+-   **/app/frontend/src/pages/CatalogPage.js**: Updated to use the new Che168 API data and link to the new detail page.
+-   **/app/frontend/src/pages/CarDetailPage.js**: New file created to display detailed car information, including an image gallery and translated text.
+-   **/app/frontend/src/pages/ContractorDashboard.js**: Modified to fix mobile layout scrolling and a data parsing bug.
+-   **/app/frontend/src/App.js**: Modified to add the route for .
+-   **/app/memory/PRD.md**: Updated to reflect the completed  catalog integration.
 
 **Areas that need refactoring**:
--   **CRITICAL (P0)**:  is dangerously large. It must be broken down into separate modules (e.g., , , ).
--   **CRITICAL (P0)**:  is now unmaintainable at over 1600 lines. The multi-step form and application list should be broken into smaller components.
--   **CRITICAL (P0)**:  remains over 1300 lines and needs to be componentized.
+-   **CRITICAL (P0)**:  (6800+ lines).
+-   **CRITICAL (P0)**:  (1800+ lines).
+-   **CRITICAL (P0)**:  (1600+ lines).
+-   **CRITICAL (P0)**:  (1300+ lines).
 
 **key api endpoints**
--   : Endpoint was heavily updated to accept the new, significantly larger request body from the redesigned application form.
+-   : Fetches car listings from the Che168 API.
+-   : New endpoint for single car details.
+-   : New endpoint to serve images from external CDNs.
+-   : New endpoint to translate text using an LLM.
+-   : New.
+-   : New.
+-   : New.
+-   : New.
+-   : New.
+-   : Corrected to return user car applications.
+-   : The endpoint currently being debugged.
 
 **Critical Info for New Agent**
 -   The user's primary language is **Russian**. All communication MUST be in Russian.
--   The immediate next task is to implement a car catalog by finding and using a dynamic API from , as direct scraping is not viable.
--   The technical debt in , , and now  is critical. The next agent should strongly consider proposing this refactoring work alongside the new catalog feature, as the codebase's complexity is becoming a major risk.
+-   The immediate task is a **critical bug fix**: resolve the login failure for the  admin account. The root cause is likely a backend dependency issue (/) or a subtle bug in the  endpoint logic.
+-   The codebase's technical debt is extremely high. Once the login bug is fixed, strongly recommend prioritizing the **critical refactoring** of  and several large React components.
 
 **documents and test reports created in this job**
 -    (updated)
--    (from testing agent for the application form)
+-   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User Request:** Implement a car catalog on the main page using data from .
-2.  **Agent Finding:** The site  is protected by CAPTCHA, making scraping very difficult.
-3.  **Agent Suggestion:** Proposed using mock data or finding an alternative site.
-4.  **User Response:** try to integrate http://www.dongchedi.com/.
-5.  **Agent Finding:** The site  is accessible but loads data dynamically via JavaScript, so the agent needs to find the underlying API. (Current state)
-6.  **User Request:** After creating an application, add options to start a tender or request manager assistance. (Completed in this session)
-7.  **Agent Action:** Completed the application form redesign.
-8.  **Agent Action:** Used the testing agent to verify the new form.
-9.  **User Request:** The application form must strictly match the attached PDF file. (Completed in this session)
-10. **Agent Action:** Began analysis of the PDF file to start the form redesign.
+1.  **User:** The delete buttons in the moderator panel still don't work.
+2.  **Agent:** Investigates and proves via screenshots/logs that the API call works and the UI updates, but the user is still experiencing issues.
+3.  **User:** Maybe it's not working for my admin account: .
+4.  **Agent:** Investigates and finds the account does not exist.
+5.  **Agent:** Creates the admin account  with password .
+6.  **Agent:** Encounters a series of backend errors (, Invalid credentials) while trying to get the new account to work.
+7.  **Agent:** Debugs the password hash, database schema (, ), and login endpoint.
+8.  **Agent:** Manually verifies that the password hash is correct, yet the API login continues to fail.
+9.  **Agent:** Suspects a deeper issue with the  library or the API's execution context.
+10. **Agent:** Is in the middle of debugging the login failure for  when the session ends.
 
 **Project Health Check:**
 -   **Broken**:
-    -   AI Chat on the landing page remains unreliable.
+    -   Login for the user's specific admin account () is non-functional.
+    -   AI Chat on the landing page has underlying reliability issues.
     -   The add car via URL parser is fragile and often fails.
 -   **Mocked**:
-    -   User balance top-up is still done via manual DB updates.
+    -   User balance top-up is still a manual process.
     -   The tender comparison/acceptance flow () is not fully built out.
-    -   The new GPS tracking feature uses static, hardcoded data.
+    -   The GPS tracking feature uses static, hardcoded data.
 
 **3rd Party Integrations**
--   **Emergent LLM Key**: Used for the (unreliable) AI chat feature on the landing page.
+-   **auto-api.com**: Used for the car catalog. Requires User API Key ( was provided).
+-   **Emergent LLM Key**: Used for the AI chat feature and for translating car descriptions.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES (for the application form redesign).
+-   **Testing agent used after significant changes**: YES (for the catalog feature).
 -   **Troubleshoot agent used after agent stuck in loop**: NO
--   **Test files created**:
-    - 
--   **Known regressions**: None.
+-   **Test files created**: None in this session.
+-   **Known regressions**: The login functionality for a newly created admin user is broken.
 
 **Credentials to test flow:**
--   **Admin/Moderator User**:
+-   **Admin/Moderator User (Working)**:
+    -   **Email**: 
+    -   **Password**: 
+-   **Admin User (BROKEN LOGIN)**:
     -   **Email**: 
     -   **Password**: 
 -   **Contractor User**:
-    -   Register a new contractor via the UI.
-    -   Alternatively, use an existing approved contractor. **All existing contractors have the password **.
+    -   **Email**: 
+    -   **Password**: 
 
 **What agent forgot to execute**
--   The long-standing issues with the AI chat and URL parser have not been addressed.
--   The critical refactoring of , , and  has been postponed again, increasing technical debt.
--   A minor UI cleanup: the old, redundant Calculator link at the very bottom of the dashboard sidebar was not removed after the main navigation link was replaced with Track Car.</analysis>
+-   The agent did not fully resolve the root cause of the  error, which is a strong indicator of a corrupted environment or dependency conflict and is likely related to the login failure.
+-   The long-standing issues (AI chat reliability, URL parser robustness) from the previous handoff remain in the backlog.</analysis>
