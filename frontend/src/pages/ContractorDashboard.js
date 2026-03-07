@@ -91,16 +91,16 @@ const ContractorDashboard = () => {
 
   useEffect(() => {
     if (token) {
-      fetchDashboard();
+      fetchDashboard(token);
     } else {
       setLoading(false);
     }
   }, [token]);
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = async (currentToken) => {
     try {
       const response = await axios.get(`${API}/contractor-dashboard`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${currentToken}` }
       });
       setDashboardData(response.data);
       
