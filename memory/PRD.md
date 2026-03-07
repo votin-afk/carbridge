@@ -261,6 +261,7 @@ CONSULTANT_FEE = 200    # $200 за помощь консультанта/мен
 1. **AI чат** - периодически не отвечает (P1)
 2. **URL парсер** - блокируется анти-скрейпингом (P2)
 3. **Баланс** - пополнение не реализовано (placeholder)
+4. **bcrypt warning** - в логах backend'а появляется `AttributeError: module 'bcrypt' has no attribute '__about__'` (не критично, но указывает на конфликт зависимостей passlib/bcrypt)
 
 ---
 
