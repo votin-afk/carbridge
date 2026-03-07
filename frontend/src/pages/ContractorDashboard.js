@@ -67,6 +67,8 @@ const ContractorDashboard = () => {
   const [offerDialog, setOfferDialog] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [token, setToken] = useState(() => localStorage.getItem('contractor_token'));
+  const [detailsDialog, setDetailsDialog] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState(null);
   
   const [offerData, setOfferData] = useState({
     price_usd: '',
