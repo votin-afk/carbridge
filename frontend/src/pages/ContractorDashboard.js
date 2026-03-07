@@ -492,7 +492,7 @@ const ContractorDashboard = () => {
 
       {/* Offer Dialog */}
       <Dialog open={offerDialog} onOpenChange={setOfferDialog}>
-        <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-lg">
+        <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Send size={20} className="text-[#00E5FF]" />
@@ -502,6 +502,7 @@ const ContractorDashboard = () => {
 
           {selectedTender && (
             <div className="space-y-4 mt-4">
+              {/* Tender Info */}
               <div className="p-3 bg-[#0B0F14] rounded-sm">
                 <p className="text-white font-medium">
                   {selectedTender.car_info?.brand || selectedTender.brand || 'Автомобиль'} {selectedTender.car_info?.model || selectedTender.model || ''}
@@ -511,24 +512,135 @@ const ContractorDashboard = () => {
                 </p>
               </div>
 
+              {/* Car Link */}
+              <div>
+                <Label className="text-slate-300">🔗 Ссылка на автомобиль</Label>
+                <Input
+                  type="url"
+                  value={offerData.car_link}
+                  onChange={(e) => setOfferData(p => ({ ...p, car_link: e.target.value }))}
+                  placeholder="https://che168.com/car/123..."
+                  className="mt-1 bg-[#0B0F14] border-[#27272A]"
+                />
+                <p className="text-slate-500 text-xs mt-1">Ссылка на объявление, если авто в общем доступе</p>
+              </div>
+
+              {/* Car Details */}
+              <div>
+                <Label className="text-slate-300">📋 Детали автомобиля</Label>
+                <textarea
+                  value={offerData.car_details}
+                  onChange={(e) => setOfferData(p => ({ ...p, car_details: e.target.value }))}
+                  placeholder="VIN, год, комплектация, пробег, цвет, состояние..."
+                  rows={3}
+                  className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500"
+                />
+              </div>
+
+              {/* Photo/Video Links */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-slate-300">Цена (USD) *</Label>
+                  <Label className="text-slate-300">📷 Фото (ссылки)</Label>
+                  <textarea
+                    value={offerData.car_photos.join('\n')}
+                    onChange={(e) => setOfferData(p => ({ ...p, car_photos: e.target.value.split('\n').filter(l => l.trim()) }))}
+                    placeholder="Ссылки на фото (по одной на строку)"
+                    rows={2}
+                    className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500 text-xs"
+                  />
+                </div>
+                <div>
+                  <Label className="text-slate-300">🎥 Видео (ссылки)</Label>
+                  <textarea
+                    value={offerData.car_videos.join('\n')}
+                    onChange={(e) => setOfferData(p => ({ ...p, car_videos: e.target.value.split('\n').filter(l => l.trim()) }))}
+                    placeholder="Ссылки на видео (по одной на строку)"
+                    rows={2}
+                    className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500 text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Services Selection */}
+              <div>
+                <Label className="text-slate-300 mb-2 block">🛠️ Этапы сделки в предложении</Label>
+                <div className="space-y-3 p-3 bg-[#0B0F14] rounded-sm">
+                  {[
+                    { key: 'inspection', label: 'Инспекция авто', desc: 'Проверка технического состояния' },
+                    { key: 'export', label: 'Выкуп и экспорт', desc: 'Покупка и оформление экспорта из Китая' },
+                    { key: 'logistics_china', label: 'Доставка до порта (Китай)', desc: 'Логистика до порта отправления' },
+                    { key: 'delivery_rb', label: 'Доставка в Беларусь', desc: 'Морская/ж/д доставка' },
+                    { key: 'insurance', label: 'Страхование авто', desc: 'Страхование на время транспортировки' }
+                  ].map(service => (
+                    <div key={service.key} className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 flex-1">
+                        <input
+                          type="checkbox"
+                          checked={offerData.included_services[service.key]}
+                          onChange={(e) => setOfferData(p => ({
+                            ...p,
+                            included_services: { ...p.included_services, [service.key]: e.target.checked }
+                          }))}
+                          className="w-4 h-4 rounded border-[#27272A] bg-[#15191E] text-[#00E5FF]"
+                        />
+                        <div>
+                          <p className="text-white text-sm">{service.label}</p>
+                          <p className="text-slate-500 text-xs">{service.desc}</p>
+                        </div>
+                      </div>
+                      {offerData.included_services[service.key] && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-slate-400 text-sm">$</span>
+                          <Input
+                            type="number"
+                            value={offerData.service_prices[service.key]}
+                            onChange={(e) => setOfferData(p => ({
+                              ...p,
+                              service_prices: { ...p.service_prices, [service.key]: e.target.value }
+                            }))}
+                            placeholder="0"
+                            className="w-24 bg-[#15191E] border-[#27272A] text-right h-8"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Total from services */}
+                {Object.values(offerData.included_services).some(v => v) && (
+                  <div className="flex justify-between items-center mt-2 p-2 bg-[#00E5FF]/10 rounded">
+                    <span className="text-slate-300 text-sm">Итого за выбранные услуги:</span>
+                    <span className="text-[#00E5FF] font-bold">
+                      ${Object.entries(offerData.service_prices)
+                        .filter(([k]) => offerData.included_services[k])
+                        .reduce((sum, [, v]) => sum + (parseFloat(v) || 0), 0)
+                        .toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Pricing */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-slate-300">💵 Общая цена (USD) *</Label>
                   <Input
                     type="number"
                     value={offerData.price_usd}
                     onChange={(e) => setOfferData(p => ({ ...p, price_usd: e.target.value }))}
-                    placeholder="35000"
+                    placeholder="Авто + услуги"
                     className="mt-1 bg-[#0B0F14] border-[#27272A]"
                   />
+                  <p className="text-slate-500 text-xs mt-1">Полная стоимость с доставкой</p>
                 </div>
                 <div>
-                  <Label className="text-slate-300">Цена (CNY)</Label>
+                  <Label className="text-slate-300">💴 Цена авто (CNY)</Label>
                   <Input
                     type="number"
                     value={offerData.price_cny}
                     onChange={(e) => setOfferData(p => ({ ...p, price_cny: e.target.value }))}
-                    placeholder="250000"
+                    placeholder="В юанях"
                     className="mt-1 bg-[#0B0F14] border-[#27272A]"
                   />
                 </div>
@@ -536,7 +648,7 @@ const ContractorDashboard = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-slate-300">Срок доставки (дней)</Label>
+                  <Label className="text-slate-300">📅 Срок доставки (дней)</Label>
                   <Input
                     type="number"
                     value={offerData.delivery_days}
@@ -546,34 +658,23 @@ const ContractorDashboard = () => {
                   />
                 </div>
                 <div>
-                  <Label className="text-slate-300">Стоимость доставки ($)</Label>
+                  <Label className="text-slate-300">🚚 Отдельно доставка ($)</Label>
                   <Input
                     type="number"
                     value={offerData.delivery_cost}
                     onChange={(e) => setOfferData(p => ({ ...p, delivery_cost: e.target.value }))}
-                    placeholder="2000"
+                    placeholder="0 если включена"
                     className="mt-1 bg-[#0B0F14] border-[#27272A]"
                   />
                 </div>
               </div>
 
               <div>
-                <Label className="text-slate-300">Детали автомобиля</Label>
-                <textarea
-                  value={offerData.car_details}
-                  onChange={(e) => setOfferData(p => ({ ...p, car_details: e.target.value }))}
-                  placeholder="VIN, год, комплектация, пробег..."
-                  rows={2}
-                  className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500"
-                />
-              </div>
-
-              <div>
-                <Label className="text-slate-300">Примечания</Label>
+                <Label className="text-slate-300">📝 Примечания</Label>
                 <textarea
                   value={offerData.notes}
                   onChange={(e) => setOfferData(p => ({ ...p, notes: e.target.value }))}
-                  placeholder="Дополнительная информация..."
+                  placeholder="Дополнительная информация, условия..."
                   rows={2}
                   className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500"
                 />
