@@ -2557,15 +2557,22 @@ async def pay_deal_invoice(deal_id: str, data: dict, current_user: dict = Depend
 
 @api_router.post("/deals/{deal_id}/complete")
 async def complete_deal(deal_id: str, current_user: dict = Depends(get_current_user)):
-    """Complete the deal"""
+    """Complete the deal and process affiliate commission"""
     deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
     if not deal:
         raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # Check if already completed
+    if deal.get("status") == "completed":
+        raise HTTPException(status_code=400, detail="Сделка уже завершена")
     
     # Check if export stage is completed (minimum requirement)
     export_stage = deal.get("stages", {}).get("export", {})
     if not export_stage.get("completed") and not export_stage.get("paid"):
         raise HTTPException(status_code=400, detail="Для завершения сделки необходимо завершить этап 'Экспорт'")
+    
+    total_paid = deal.get("total_paid", 0)
+    completed_at = datetime.now(timezone.utc).isoformat()
     
     await db.deals.update_one(
         {"id": deal_id},
@@ -2574,8 +2581,8 @@ async def complete_deal(deal_id: str, current_user: dict = Depends(get_current_u
                 "status": "completed",
                 "stages.completion.completed": True,
                 "current_stage": "completed",
-                "completed_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat()
+                "completed_at": completed_at,
+                "updated_at": completed_at
             }
         }
     )
@@ -2586,7 +2593,72 @@ async def complete_deal(deal_id: str, current_user: dict = Depends(get_current_u
         {"$set": {"status": "delivered"}}
     )
     
-    return {"message": "Сделка успешно завершена!"}
+    # Process affiliate commission if user is a referral
+    user = await db.users.find_one({"id": current_user["id"]})
+    affiliate_commission = 0
+    if user and user.get("referred_by"):
+        affiliate_id = user["referred_by"]
+        
+        # Calculate commission (20% of 3% platform commission)
+        platform_commission = total_paid * COMMISSION_RATE
+        affiliate_commission = platform_commission * AFFILIATE_SHARE
+        
+        # Update referral stats
+        await db.referrals.update_one(
+            {"referral_id": current_user["id"]},
+            {
+                "$inc": {
+                    "completed_deals": 1,
+                    "total_commission": affiliate_commission
+                }
+            }
+        )
+        
+        # Update affiliate stats and balance
+        update_result = await db.affiliates.find_one_and_update(
+            {"user_id": affiliate_id},
+            {
+                "$inc": {
+                    "completed_deals": 1,
+                    "total_earnings": affiliate_commission,
+                    "available_balance": affiliate_commission
+                }
+            },
+            return_document=True
+        )
+        
+        # Check if affiliate should become partner (3+ completed deals)
+        if update_result and update_result.get("completed_deals", 0) >= PARTNER_THRESHOLD and not update_result.get("is_partner"):
+            await db.affiliates.update_one(
+                {"user_id": affiliate_id},
+                {"$set": {"is_partner": True, "partner_since": completed_at}}
+            )
+        
+        # Also credit the affiliate's main account balance
+        await db.accounts.update_one(
+            {"user_id": affiliate_id},
+            {"$inc": {"balance": affiliate_commission}},
+            upsert=True
+        )
+        
+        # Record transaction
+        transaction_doc = {
+            "id": str(uuid.uuid4()),
+            "affiliate_id": affiliate_id,
+            "type": "commission",
+            "amount": affiliate_commission,
+            "deal_id": deal_id,
+            "referral_id": current_user["id"],
+            "referral_name": user.get("name", ""),
+            "description": f"Комиссия со сделки реферала: ${total_paid:,.2f}",
+            "created_at": completed_at
+        }
+        await db.affiliate_transactions.insert_one(transaction_doc)
+    
+    return {
+        "message": "Сделка успешно завершена!",
+        "affiliate_commission_paid": affiliate_commission
+    }
 
 # ==================== END NEW DEAL STAGES ENDPOINTS ====================
 
