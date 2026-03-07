@@ -423,19 +423,38 @@ const ContractorCard = ({ contractor, onDelete, isAuthenticated }) => {
           <div className="mb-3 p-2 bg-[#0B0F14] rounded-sm">
             <p className="text-slate-500 text-xs mb-2">Стоимость услуг:</p>
             <div className="space-y-1">
-              {Object.entries(contractor.service_prices).map(([service, price]) => (
-                <div key={service} className="flex justify-between items-center text-sm">
-                  <span className="text-slate-400 capitalize">
-                    {service === 'inspection' ? 'Проверка' :
-                     service === 'export' ? 'Экспорт' :
-                     service === 'logistics' ? 'Логистика' :
-                     service === 'purchase' ? 'Покупка' :
-                     service === 'leasing' ? 'Лизинг' :
-                     service === 'customs' ? 'Таможня' : service}
-                  </span>
-                  <span className="text-[#00E5FF] font-medium">${price}</span>
-                </div>
-              ))}
+              {Object.entries(contractor.service_prices).map(([service, price]) => {
+                const serviceNames = {
+                  inspection: 'Инспекция',
+                  export: 'Выкуп и экспорт',
+                  logistics: 'Логистика',
+                  logistics_china: 'Доставка (Китай)',
+                  delivery_rb: 'Доставка в РБ',
+                  insurance: 'Страхование',
+                  purchase: 'Покупка',
+                  leasing: 'Лизинг',
+                  customs: 'Растаможка'
+                };
+                
+                // Handle leasing object {rate, currency}
+                let priceDisplay;
+                if (service === 'leasing' && typeof price === 'object' && price !== null) {
+                  priceDisplay = `${price.rate}% (${price.currency || 'USD'})`;
+                } else if (typeof price === 'number') {
+                  priceDisplay = `$${price}`;
+                } else {
+                  priceDisplay = String(price);
+                }
+                
+                return (
+                  <div key={service} className="flex justify-between items-center text-sm">
+                    <span className="text-slate-400">
+                      {serviceNames[service] || service}
+                    </span>
+                    <span className="text-[#00E5FF] font-medium">{priceDisplay}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
