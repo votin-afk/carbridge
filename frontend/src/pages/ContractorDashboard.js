@@ -131,15 +131,36 @@ const ContractorDashboard = () => {
   const submitOffer = async () => {
     if (!selectedTender) return;
     
+    // Validate at least one service is selected
+    const hasServices = Object.values(offerData.included_services).some(v => v);
+    if (!hasServices) {
+      toast.error('Выберите хотя бы одну услугу');
+      return;
+    }
+    
     setSubmitting(true);
     try {
+      // Calculate total from individual service prices
+      let calculatedTotal = 0;
+      Object.entries(offerData.included_services).forEach(([service, included]) => {
+        if (included && offerData.service_prices[service]) {
+          calculatedTotal += parseFloat(offerData.service_prices[service]) || 0;
+        }
+      });
+      
       await axios.post(`${API}/contractor-offers`, {
         tender_id: selectedTender.id,
-        ...offerData,
-        price_usd: parseFloat(offerData.price_usd) || null,
+        price_usd: parseFloat(offerData.price_usd) || calculatedTotal,
         price_cny: parseFloat(offerData.price_cny) || null,
         delivery_days: parseInt(offerData.delivery_days) || null,
-        delivery_cost: parseFloat(offerData.delivery_cost) || null
+        delivery_cost: parseFloat(offerData.delivery_cost) || null,
+        car_details: offerData.car_details,
+        car_link: offerData.car_link,
+        car_photos: offerData.car_photos,
+        car_videos: offerData.car_videos,
+        notes: offerData.notes,
+        included_services: offerData.included_services,
+        service_prices: offerData.service_prices
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -147,40 +168,42 @@ const ContractorDashboard = () => {
       toast.success('Предложение отправлено');
       setOfferDialog(false);
       setSelectedTender(null);
-      setOfferData({
-        price_usd: '',
-        price_cny: '',
-        delivery_days: '',
-        delivery_cost: '',
-        car_details: '',
-        car_link: '',
-        car_photos: [],
-        car_videos: [],
-        notes: '',
-        valid_until: '',
-        // Services included in offer
-        included_services: {
-          inspection: false,
-          export: false,
-          logistics_china: false,
-          delivery_rb: false,
-          insurance: false
-        },
-        // Service prices breakdown
-        service_prices: {
-          inspection: '',
-          export: '',
-          logistics_china: '',
-          delivery_rb: '',
-          insurance: ''
-        }
-      });
+      resetOfferData();
       fetchDashboard();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Ошибка отправки');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const resetOfferData = () => {
+    setOfferData({
+      price_usd: '',
+      price_cny: '',
+      delivery_days: '',
+      delivery_cost: '',
+      car_details: '',
+      car_link: '',
+      car_photos: [],
+      car_videos: [],
+      notes: '',
+      valid_until: '',
+      included_services: {
+        inspection: false,
+        export: false,
+        logistics_china: false,
+        delivery_rb: false,
+        insurance: false
+      },
+      service_prices: {
+        inspection: '',
+        export: '',
+        logistics_china: '',
+        delivery_rb: '',
+        insurance: ''
+      }
+    });
   };
 
   if (loading) {
