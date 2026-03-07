@@ -199,6 +199,25 @@ CONSULTANT_FEE = 200    # $200 за помощь консультанта/мен
 
 ---
 
+## Исправленные баги
+
+### ✅ Баг: Подрядчик не мог отправить предложение на тендер - ИСПРАВЛЕНО
+**Дата**: 07.03.2026
+
+**Проблема**: При попытке отправить предложение на тендер появлялась ошибка "Неверный токен" (invalid token), несмотря на успешный вход в систему.
+
+**Корневая причина**: В `ContractorDashboard.js` переменная `token` инициализировалась один раз при загрузке компонента через `localStorage.getItem('contractor_token')`. После входа в систему токен сохранялся в localStorage, но React-компонент продолжал использовать старое значение (NULL), так как это была обычная переменная, а не state.
+
+**Решение**:
+1. Преобразовали `token` из обычной переменной в React state: `const [token, setToken] = useState(() => localStorage.getItem('contractor_token'))`
+2. Обновили `ContractorLogin` чтобы передавать новый токен в `onSuccess(newToken)`
+3. Обновили `fetchDashboard(currentToken)` чтобы принимать токен как параметр
+4. Добавили обновление `setToken(null)` при logout и ошибке 401
+
+**Файлы изменены**: `/app/frontend/src/pages/ContractorDashboard.js`
+
+---
+
 ## Тестовые данные
 
 - **Admin User**: test@test.com / test
