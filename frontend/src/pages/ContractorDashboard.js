@@ -65,8 +65,27 @@ const ContractorDashboard = () => {
     delivery_days: '',
     delivery_cost: '',
     car_details: '',
+    car_link: '',
+    car_photos: [],
+    car_videos: [],
     notes: '',
-    valid_until: ''
+    valid_until: '',
+    // Services included in offer
+    included_services: {
+      inspection: false,
+      export: false,
+      logistics_china: false,
+      delivery_rb: false,
+      insurance: false
+    },
+    // Service prices breakdown
+    service_prices: {
+      inspection: '',
+      export: '',
+      logistics_china: '',
+      delivery_rb: '',
+      insurance: ''
+    }
   });
 
   const token = localStorage.getItem('contractor_token');
