@@ -653,6 +653,86 @@ const DashboardOverview = () => {
           </div>
         </div>
       )}
+
+      {/* Legal Help Dialog */}
+      <Dialog open={legalHelpDialog} onOpenChange={setLegalHelpDialog}>
+        <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Scale className="text-amber-400" />
+              Юридическая помощь
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            <p className="text-slate-400 text-sm">
+              Выберите страну, где вам требуется юридическая помощь. Наши партнёры-юристы свяжутся с вами в ближайшее время.
+            </p>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Belarus */}
+              <button
+                onClick={() => setSelectedCountry('belarus')}
+                className={`p-4 rounded-sm border-2 transition-all ${
+                  selectedCountry === 'belarus'
+                    ? 'border-amber-500 bg-amber-500/10'
+                    : 'border-[#27272A] hover:border-amber-500/50'
+                }`}
+              >
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-12 h-8 flex items-center justify-center text-2xl">🇧🇾</div>
+                  <span className="text-white font-medium">Беларусь</span>
+                  <span className="text-slate-500 text-xs">Таможня, регистрация</span>
+                </div>
+              </button>
+
+              {/* China */}
+              <button
+                onClick={() => setSelectedCountry('china')}
+                className={`p-4 rounded-sm border-2 transition-all ${
+                  selectedCountry === 'china'
+                    ? 'border-amber-500 bg-amber-500/10'
+                    : 'border-[#27272A] hover:border-amber-500/50'
+                }`}
+              >
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-12 h-8 flex items-center justify-center text-2xl">🇨🇳</div>
+                  <span className="text-white font-medium">Китай</span>
+                  <span className="text-slate-500 text-xs">Экспорт, договоры</span>
+                </div>
+              </button>
+            </div>
+
+            {selectedCountry && (
+              <div className="p-3 bg-[#0B0F14] rounded-sm">
+                <p className="text-slate-300 text-sm">
+                  {selectedCountry === 'belarus' 
+                    ? '🏛️ Помощь по таможенному оформлению, регистрации ТС, спорам с продавцами.'
+                    : '📋 Помощь по оформлению экспорта, проверке документов, заключению договоров.'
+                  }
+                </p>
+              </div>
+            )}
+
+            <Button
+              onClick={handleRequestLegalHelp}
+              disabled={!selectedCountry || requestingLegalHelp}
+              className="w-full bg-amber-500 hover:bg-amber-600 text-black"
+            >
+              {requestingLegalHelp ? (
+                <Loader2 size={16} className="mr-2 animate-spin" />
+              ) : (
+                <Scale size={16} className="mr-2" />
+              )}
+              Запросить консультацию
+            </Button>
+
+            <p className="text-slate-500 text-xs text-center">
+              Первичная консультация бесплатна. Стоимость услуг обсуждается индивидуально.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
