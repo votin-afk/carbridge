@@ -460,6 +460,16 @@ const DashboardOverview = () => {
               )}
               Помощь консультанта — $200
             </Button>
+
+            {/* Legal Help Button */}
+            <Button 
+              variant="outline"
+              onClick={() => setLegalHelpDialog(true)}
+              className="w-full justify-start gap-3 border-amber-500/50 text-amber-400 hover:border-amber-400 hover:bg-amber-500/10"
+            >
+              <Scale size={18} />
+              Юридическая помощь
+            </Button>
           </div>
         </div>
 
