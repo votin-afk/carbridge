@@ -2662,6 +2662,23 @@ async def complete_deal(deal_id: str, current_user: dict = Depends(get_current_u
 
 # ==================== END NEW DEAL STAGES ENDPOINTS ====================
 
+@api_router.get("/deals/completed")
+async def get_completed_deals(current_user: dict = Depends(get_current_user)):
+    """Get all completed deals (purchased cars) for user"""
+    completed_deals = await db.deals.find(
+        {"user_id": current_user["id"], "status": "completed"},
+        {"_id": 0}
+    ).sort("completed_at", -1).to_list(100)
+    
+    # Enrich with car info
+    for deal in completed_deals:
+        if deal.get("car_id"):
+            car = await db.garage.find_one({"id": deal["car_id"]}, {"_id": 0})
+            if car:
+                deal["car_details"] = car
+    
+    return completed_deals
+
 @api_router.delete("/deals/{deal_id}")
 async def cancel_deal(deal_id: str, current_user: dict = Depends(get_current_user)):
     """Cancel a deal and return car to garage"""
