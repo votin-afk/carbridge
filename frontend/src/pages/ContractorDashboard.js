@@ -170,7 +170,7 @@ const ContractorDashboard = () => {
       setOfferDialog(false);
       setSelectedTender(null);
       resetOfferData();
-      fetchDashboard();
+      fetchDashboard(token);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Ошибка отправки');
     } finally {
