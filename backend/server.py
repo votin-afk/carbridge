@@ -3116,15 +3116,33 @@ async def register_as_affiliate(data: AffiliateRegister, current_user: dict = De
     
     return AffiliateResponse(**affiliate_doc)
 
-@api_router.get("/affiliate/status", response_model=AffiliateResponse)
+@api_router.get("/affiliate/status")
 async def get_affiliate_status(current_user: dict = Depends(get_current_user)):
-    """Get current user's affiliate status"""
+    """Get current user's affiliate status with detailed stats"""
     affiliate = await db.affiliates.find_one({"user_id": current_user["id"]}, {"_id": 0})
     if not affiliate:
         raise HTTPException(status_code=404, detail="Вы не зарегистрированы в партнёрской программе")
     
+    # Get referrals with their deal stats
+    referrals = await db.referrals.find(
+        {"affiliate_id": current_user["id"]}, 
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Calculate stats
+    total_referrals = len(referrals)
+    total_completed_deals = sum(r.get("completed_deals", 0) for r in referrals)
+    total_commission_earned = sum(r.get("total_commission", 0) for r in referrals)
+    
     affiliate["referral_link"] = f"https://carbridge.by/?ref={affiliate['referral_code']}"
-    return AffiliateResponse(**affiliate)
+    affiliate["stats"] = {
+        "total_referrals": total_referrals,
+        "completed_referral_deals": total_completed_deals,
+        "total_commission_earned": total_commission_earned,
+        "commission_rate": f"{AFFILIATE_SHARE * 100:.0f}% от комиссии платформы ({COMMISSION_RATE * 100:.0f}%)"
+    }
+    
+    return affiliate
 
 @api_router.get("/affiliate/referrals")
 async def get_referrals(current_user: dict = Depends(get_current_user)):
