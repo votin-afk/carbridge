@@ -709,9 +709,10 @@ const ContractorLogin = ({ onSuccess }) => {
     
     try {
       const response = await axios.post(`${API}/contractors/login`, { email, password });
-      localStorage.setItem('contractor_token', response.data.access_token);
+      const newToken = response.data.access_token;
+      localStorage.setItem('contractor_token', newToken);
       toast.success('Вход выполнен');
-      onSuccess();
+      onSuccess(newToken);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Ошибка входа');
     } finally {
