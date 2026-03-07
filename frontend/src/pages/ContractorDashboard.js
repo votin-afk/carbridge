@@ -42,7 +42,15 @@ import {
   Eye,
   BadgeCheck,
   Users,
-  Package
+  Package,
+  Phone,
+  Mail,
+  MapPin,
+  Fuel,
+  Settings,
+  Palette,
+  User,
+  Info
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
