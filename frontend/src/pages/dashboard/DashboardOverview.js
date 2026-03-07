@@ -142,6 +142,30 @@ const DashboardOverview = () => {
     }
   };
 
+  const handleRequestLegalHelp = async () => {
+    if (!selectedCountry) {
+      toast.error('Выберите страну');
+      return;
+    }
+    
+    setRequestingLegalHelp(true);
+    try {
+      await axios.post(`${API}/legal-help/request`, {
+        country: selectedCountry,
+        user_id: user?.id,
+        user_email: user?.email,
+        user_name: user?.name
+      }, { headers });
+      toast.success(`Запрос на юридическую помощь в ${selectedCountry === 'belarus' ? 'Беларуси' : 'Китае'} отправлен! С вами свяжутся в ближайшее время.`);
+      setLegalHelpDialog(false);
+      setSelectedCountry(null);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка при отправке запроса');
+    } finally {
+      setRequestingLegalHelp(false);
+    }
+  };
+
   const statCards = [
     { 
       title: 'В гараже', 
