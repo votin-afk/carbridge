@@ -78,6 +78,7 @@ class UserCreate(BaseModel):
     name: str
     phone: Optional[str] = None
     user_type: Literal["individual", "legal"] = "individual"
+    referral_code: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: EmailStr
