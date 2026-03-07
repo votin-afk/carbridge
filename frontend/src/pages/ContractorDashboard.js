@@ -913,8 +913,113 @@ const engineLabels = {
 
 const paymentLabels = {
   full: 'Полная оплата',
+  full_prepay: 'Полная предоплата',
   leasing: 'Лизинг',
-  credit: 'Кредит'
+  credit: 'Кредит',
+  partial: 'Частичная оплата'
+};
+
+const bodyLabels = {
+  sedan: 'Седан',
+  suv: 'Кроссовер/SUV',
+  hatchback: 'Хэтчбек',
+  wagon: 'Универсал',
+  coupe: 'Купе',
+  minivan: 'Минивэн',
+  pickup: 'Пикап',
+  any: 'Любой'
+};
+
+const driveLabels = {
+  fwd: 'Передний',
+  rwd: 'Задний',
+  awd: '4WD/AWD',
+  any: 'Любой'
+};
+
+const mileageLabels = {
+  lt20: 'до 20 000 км',
+  lt50: 'до 50 000 км',
+  lt80: 'до 80 000 км',
+  lt100: 'до 100 000 км',
+  lt150: 'до 150 000 км',
+  any: 'Любой'
+};
+
+const colorLabels = {
+  white: 'Белый',
+  black: 'Чёрный',
+  silver: 'Серебристый',
+  gray: 'Серый',
+  blue: 'Синий',
+  red: 'Красный',
+  brown: 'Коричневый',
+  green: 'Зелёный',
+  beige: 'Бежевый',
+  any: 'Любой'
+};
+
+const timelineLabels = {
+  asap: 'Как можно скорее',
+  '1month': 'В течение месяца',
+  '2_3months': '2-3 месяца',
+  '3_6months': '3-6 месяцев',
+  'no_rush': 'Не тороплюсь'
+};
+
+const conditionLabels = {
+  new: 'Новый',
+  used: 'С пробегом',
+  any: 'Любой'
+};
+
+const optionLabels = {
+  // Comfort
+  heated_seats: 'Подогрев сидений',
+  ventilated_seats: 'Вентиляция сидений',
+  heated_wheel: 'Подогрев руля',
+  panoramic_roof: 'Панорамная крыша',
+  sunroof: 'Люк',
+  climate_control: 'Климат-контроль',
+  rear_climate: 'Задний климат',
+  seat_memory: 'Память сидений',
+  massage_seats: 'Массаж сидений',
+  // Electronic
+  cruise_control: 'Круиз-контроль',
+  adaptive_cruise: 'Адаптивный круиз',
+  lane_assist: 'Ассистент полосы',
+  parking_sensors: 'Парктроники',
+  camera_360: 'Камера 360°',
+  rear_camera: 'Задняя камера',
+  blind_spot: 'Мониторинг слепых зон',
+  head_up: 'Проекция на лобовое',
+  keyless: 'Бесключевой доступ',
+  remote_start: 'Дистанционный запуск',
+  // Exterior
+  led_lights: 'LED фары',
+  matrix_lights: 'Матричные фары',
+  wheels_r18: 'Диски R18+',
+  wheels_r19: 'Диски R19+',
+  wheels_r20: 'Диски R20+',
+  tinted_windows: 'Тонировка',
+  // Other
+  spare_wheel: 'Запасное колесо',
+  first_aid: 'Аптечка',
+  fire_extinguisher: 'Огнетушитель'
+};
+
+const clientTypeLabels = {
+  individual: 'Физ. лицо',
+  company: 'Юр. лицо',
+  ip: 'ИП'
+};
+
+const priorityLabels = {
+  1: 'Не важно',
+  2: 'Мало важно',
+  3: 'Средне',
+  4: 'Важно',
+  5: 'Очень важно'
 };
 
 export default ContractorDashboard;
