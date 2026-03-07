@@ -21,13 +21,23 @@ import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Services matching deal stages
 const serviceOptions = [
+  { value: 'leasing', label: 'Лизинг', description: 'Лизинговые услуги для покупки авто', isLeasing: true },
   { value: 'inspection', label: 'Инспекция авто', description: 'Техническая проверка автомобилей' },
-  { value: 'purchase', label: 'Выкуп/Покупка', description: 'Выкуп автомобилей на аукционах' },
-  { value: 'export', label: 'Экспорт', description: 'Таможенное оформление в КНР' },
-  { value: 'logistics', label: 'Логистика', description: 'Доставка авто в Беларусь' },
-  { value: 'leasing', label: 'Лизинг', description: 'Лизинговые услуги' },
-  { value: 'customs', label: 'Растаможка в РБ', description: 'Таможенное оформление в Беларуси' }
+  { value: 'export', label: 'Выкуп и экспорт', description: 'Выкуп автомобиля и таможенное оформление в КНР' },
+  { value: 'logistics_china', label: 'Доставка до порта (Китай)', description: 'Логистика до порта отправления' },
+  { value: 'insurance', label: 'Страхование авто', description: 'Страхование на время транспортировки' },
+  { value: 'delivery_rb', label: 'Доставка в Беларусь', description: 'Морская/ж/д доставка из Китая в РБ' },
+  { value: 'customs', label: 'Таможенное оформление', description: 'Растаможка и оформление в Беларуси' }
+];
+
+// Leasing currency options
+const leasingCurrencies = [
+  { value: 'USD', label: 'USD ($)' },
+  { value: 'EUR', label: 'EUR (€)' },
+  { value: 'CNY', label: 'CNY (¥)' },
+  { value: 'BYN', label: 'BYN (Br)' }
 ];
 
 const contractorTypes = {
