@@ -217,9 +217,9 @@ const ContractorDashboard = () => {
 
   // Login form if not authenticated
   if (!contractor) {
-    return <ContractorLogin onSuccess={() => {
+    return <ContractorLogin onSuccess={(newToken) => {
+      setToken(newToken);
       setLoading(true);
-      fetchDashboard();
     }} />;
   }
 
