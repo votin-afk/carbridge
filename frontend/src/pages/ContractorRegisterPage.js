@@ -29,7 +29,9 @@ const serviceOptions = [
   { value: 'logistics_china', label: 'Доставка до порта (Китай)', description: 'Логистика до порта отправления' },
   { value: 'insurance', label: 'Страхование авто', description: 'Страхование на время транспортировки' },
   { value: 'delivery_rb', label: 'Доставка в Беларусь', description: 'Морская/ж/д доставка из Китая в РБ' },
-  { value: 'customs', label: 'Таможенное оформление', description: 'Растаможка и оформление в Беларуси' }
+  { value: 'customs', label: 'Таможенное оформление', description: 'Растаможка и оформление в Беларуси' },
+  { value: 'legal_belarus', label: 'Юридические услуги (Беларусь)', description: 'Юридическая помощь в Беларуси' },
+  { value: 'legal_china', label: 'Юридические услуги (Китай)', description: 'Юридическая помощь в Китае' }
 ];
 
 // Leasing currency options
