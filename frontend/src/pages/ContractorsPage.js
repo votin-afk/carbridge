@@ -102,6 +102,24 @@ const serviceStages = [
     bgColor: 'bg-rose-500/10', 
     borderColor: 'border-rose-500/30',
     description: 'Растаможка в Беларуси'
+  },
+  { 
+    key: 'legal_belarus', 
+    label: 'Юристы (Беларусь)', 
+    icon: Building2, 
+    color: 'text-amber-400', 
+    bgColor: 'bg-amber-500/10', 
+    borderColor: 'border-amber-500/30',
+    description: 'Юридическая помощь в Беларуси'
+  },
+  { 
+    key: 'legal_china', 
+    label: 'Юристы (Китай)', 
+    icon: Building2, 
+    color: 'text-red-400', 
+    bgColor: 'bg-red-500/10', 
+    borderColor: 'border-red-500/30',
+    description: 'Юридическая помощь в Китае'
   }
 ];
 
