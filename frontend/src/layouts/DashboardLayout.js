@@ -16,7 +16,8 @@ import {
   ChevronRight,
   Shield,
   ClipboardList,
-  ShoppingCart
+  ShoppingCart,
+  Trophy
 } from 'lucide-react';
 
 const DashboardLayout = () => {
