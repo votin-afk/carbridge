@@ -133,29 +133,6 @@ const TelegramIcon = ({ className }) => (
 );
 
 const ContractorsPage = () => {
-    label: 'Экспорт',
-    icon: Package,
-    color: 'text-amber-400',
-    bgColor: 'bg-amber-500/10',
-    borderColor: 'border-amber-500/30'
-  },
-  logistics: {
-    label: 'Логистика',
-    icon: Truck,
-    color: 'text-emerald-400',
-    bgColor: 'bg-emerald-500/10',
-    borderColor: 'border-emerald-500/30'
-  },
-  leasing: {
-    label: 'Лизинг',
-    icon: CreditCard,
-    color: 'text-purple-400',
-    bgColor: 'bg-purple-500/10',
-    borderColor: 'border-purple-500/30'
-  }
-};
-
-const ContractorsPage = () => {
   const { token, user } = useAuth();
   const [contractors, setContractors] = useState([]);
   const [loading, setLoading] = useState(true);
