@@ -147,10 +147,16 @@ const ContractorRegisterPage = () => {
       return;
     }
     if (step === 4) {
-      // Validate prices for selected services
-      const missingPrices = formData.services.filter(s => !formData.service_prices[s] || parseFloat(formData.service_prices[s]) <= 0);
+      // Validate prices for selected services (excluding leasing which has special fields)
+      const nonLeasingServices = formData.services.filter(s => s !== 'leasing');
+      const missingPrices = nonLeasingServices.filter(s => !formData.service_prices[s] || parseFloat(formData.service_prices[s]) <= 0);
       if (missingPrices.length > 0) {
         toast.error('Укажите стоимость для всех выбранных услуг');
+        return;
+      }
+      // Validate leasing if selected
+      if (formData.services.includes('leasing') && (!formData.leasing_rate || parseFloat(formData.leasing_rate) <= 0)) {
+        toast.error('Укажите процентную ставку по лизингу');
         return;
       }
     }
@@ -167,7 +173,13 @@ const ContractorRegisterPage = () => {
       // Prepare service prices - only for selected services
       const prices = {};
       formData.services.forEach(service => {
-        if (formData.service_prices[service]) {
+        if (service === 'leasing') {
+          // For leasing, store rate and currency
+          prices.leasing = {
+            rate: parseFloat(formData.leasing_rate),
+            currency: formData.leasing_currency
+          };
+        } else if (formData.service_prices[service]) {
           prices[service] = parseFloat(formData.service_prices[service]);
         }
       });
