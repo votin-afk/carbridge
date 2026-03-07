@@ -66,6 +66,9 @@ const DashboardOverview = () => {
   const [copied, setCopied] = useState(false);
   const [accountSummary, setAccountSummary] = useState(null);
   const [requestingHelp, setRequestingHelp] = useState(false);
+  const [legalHelpDialog, setLegalHelpDialog] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState(null);
+  const [requestingLegalHelp, setRequestingLegalHelp] = useState(false);
 
   const headers = { Authorization: `Bearer ${token}` };
 
