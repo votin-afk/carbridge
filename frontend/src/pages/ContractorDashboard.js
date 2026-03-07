@@ -788,6 +788,363 @@ const ContractorDashboard = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Application Details Dialog */}
+      <Dialog open={detailsDialog} onOpenChange={setDetailsDialog}>
+        <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText size={20} className="text-[#00E5FF]" />
+              Полная информация о заявке
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedApplication && (
+            <div className="space-y-4 mt-4">
+              {/* Header */}
+              <div className="p-4 bg-[#0B0F14] rounded-lg">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-xl font-bold text-white">
+                      {selectedApplication.brand?.toUpperCase() || 'Любой'} {selectedApplication.model || ''}
+                    </h3>
+                    <p className="text-slate-400">
+                      Заявка {selectedApplication.application_number}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-[#00E5FF]">
+                      ${selectedApplication.budget_total?.toLocaleString() || selectedApplication.budget_max?.toLocaleString() || '—'}
+                    </p>
+                    <p className="text-slate-500 text-sm">общий бюджет</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Client Info */}
+              <div className="p-4 bg-[#0B0F14] rounded-lg">
+                <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                  <User size={16} className="text-[#00E5FF]" />
+                  Информация о клиенте
+                </h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-slate-500">Имя</p>
+                    <p className="text-white">{selectedApplication.full_name || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Тип клиента</p>
+                    <p className="text-white">{clientTypeLabels[selectedApplication.client_type] || selectedApplication.client_type || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Телефон</p>
+                    <p className="text-white flex items-center gap-1">
+                      <Phone size={14} className="text-slate-500" />
+                      {selectedApplication.phone || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Email</p>
+                    <p className="text-white flex items-center gap-1">
+                      <Mail size={14} className="text-slate-500" />
+                      {selectedApplication.email || '—'}
+                    </p>
+                  </div>
+                  {selectedApplication.delivery_city && (
+                    <div className="col-span-2">
+                      <p className="text-slate-500">Город доставки</p>
+                      <p className="text-white flex items-center gap-1">
+                        <MapPin size={14} className="text-slate-500" />
+                        {selectedApplication.delivery_city}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Car Requirements */}
+              <div className="p-4 bg-[#0B0F14] rounded-lg">
+                <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                  <Car size={16} className="text-[#00E5FF]" />
+                  Требования к автомобилю
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-slate-500">Марка</p>
+                    <p className="text-white font-medium">{selectedApplication.brand?.toUpperCase() || 'Любая'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Модель</p>
+                    <p className="text-white">{selectedApplication.model || 'Любая'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Год выпуска</p>
+                    <p className="text-white">{selectedApplication.year_from || '—'} - {selectedApplication.year_to || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Тип кузова</p>
+                    <p className="text-white">{bodyLabels[selectedApplication.body_type] || selectedApplication.body_type || 'Любой'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Тип двигателя</p>
+                    <p className="text-white">{engineLabels[selectedApplication.engine_type] || selectedApplication.engine_type || 'Любой'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Объём двигателя</p>
+                    <p className="text-white">{selectedApplication.engine_volume || 'Любой'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Мощность</p>
+                    <p className="text-white">
+                      {selectedApplication.power_from || selectedApplication.power_to 
+                        ? `${selectedApplication.power_from || '—'} - ${selectedApplication.power_to || '—'} л.с.`
+                        : 'Любая'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">КПП</p>
+                    <p className="text-white">{selectedApplication.transmission === 'any' ? 'Любая' : selectedApplication.transmission || 'Любая'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Привод</p>
+                    <p className="text-white">{driveLabels[selectedApplication.drive_type] || selectedApplication.drive_type || 'Любой'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Пробег</p>
+                    <p className="text-white">{mileageLabels[selectedApplication.mileage_max] || selectedApplication.mileage_max || 'Любой'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Состояние</p>
+                    <p className="text-white">{conditionLabels[selectedApplication.car_condition] || selectedApplication.car_condition || 'Любое'}</p>
+                  </div>
+                  {selectedApplication.allow_damage && (
+                    <div>
+                      <p className="text-slate-500">Допустимы повреждения</p>
+                      <p className="text-amber-400">Да, уровень: {selectedApplication.damage_level || '—'}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Color Preferences */}
+              <div className="p-4 bg-[#0B0F14] rounded-lg">
+                <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                  <Palette size={16} className="text-[#00E5FF]" />
+                  Цвет
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-slate-500">Цвет кузова</p>
+                    <p className="text-white">{colorLabels[selectedApplication.body_color] || selectedApplication.body_color || 'Любой'}</p>
+                  </div>
+                  {selectedApplication.exact_color && (
+                    <div>
+                      <p className="text-slate-500">Точный цвет</p>
+                      <p className="text-white">{selectedApplication.exact_color}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-slate-500">Важность цвета</p>
+                    <p className="text-white">
+                      {selectedApplication.color_importance === 'important' ? 'Важно' : 
+                       selectedApplication.color_importance === 'not_important' ? 'Не важно' : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Цвет салона</p>
+                    <p className="text-white">{colorLabels[selectedApplication.interior_color] || selectedApplication.interior_color || 'Любой'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Материал салона</p>
+                    <p className="text-white">{selectedApplication.interior_material === 'any' ? 'Любой' : selectedApplication.interior_material || 'Любой'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Budget */}
+              <div className="p-4 bg-[#0B0F14] rounded-lg">
+                <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                  <DollarSign size={16} className="text-[#00E5FF]" />
+                  Бюджет и оплата
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-slate-500">Бюджет в Китае</p>
+                    <p className="text-[#00E5FF] font-medium">
+                      ${selectedApplication.budget_china_from?.toLocaleString() || '—'} - ${selectedApplication.budget_china_to?.toLocaleString() || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Общий бюджет</p>
+                    <p className="text-emerald-400 font-medium">${selectedApplication.budget_total?.toLocaleString() || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Способ оплаты</p>
+                    <p className="text-white">{paymentLabels[selectedApplication.payment_method] || selectedApplication.payment_method || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Сроки покупки</p>
+                    <p className="text-white">{timelineLabels[selectedApplication.purchase_timeline] || selectedApplication.purchase_timeline || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Назначение авто</p>
+                    <p className="text-white">{selectedApplication.car_purpose === 'personal' ? 'Личное использование' : selectedApplication.car_purpose || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Растаможка</p>
+                    <p className="text-white">{selectedApplication.customs_clearance === 'carbridge' ? 'Через CarBridge' : selectedApplication.customs_clearance || '—'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Priorities */}
+              {(selectedApplication.priority_price || selectedApplication.priority_reliability) && (
+                <div className="p-4 bg-[#0B0F14] rounded-lg">
+                  <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                    <TrendingUp size={16} className="text-[#00E5FF]" />
+                    Приоритеты клиента (1-5)
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                    <div className="text-center">
+                      <p className="text-slate-500 text-xs">Цена</p>
+                      <div className="text-xl font-bold text-[#00E5FF]">{selectedApplication.priority_price || '—'}</div>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-slate-500 text-xs">Надёжность</p>
+                      <div className="text-xl font-bold text-emerald-400">{selectedApplication.priority_reliability || '—'}</div>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-slate-500 text-xs">Технологии</p>
+                      <div className="text-xl font-bold text-blue-400">{selectedApplication.priority_technology || '—'}</div>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-slate-500 text-xs">Престиж</p>
+                      <div className="text-xl font-bold text-purple-400">{selectedApplication.priority_prestige || '—'}</div>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-slate-500 text-xs">Экономия топлива</p>
+                      <div className="text-xl font-bold text-amber-400">{selectedApplication.priority_fuel || '—'}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Options */}
+              {(selectedApplication.options_comfort?.length > 0 || 
+                selectedApplication.options_electronic?.length > 0 || 
+                selectedApplication.options_exterior?.length > 0 ||
+                selectedApplication.options_other?.length > 0) && (
+                <div className="p-4 bg-[#0B0F14] rounded-lg">
+                  <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                    <Settings size={16} className="text-[#00E5FF]" />
+                    Желаемые опции
+                  </h4>
+                  <div className="space-y-3">
+                    {selectedApplication.options_comfort?.length > 0 && (
+                      <div>
+                        <p className="text-slate-500 text-xs mb-1">Комфорт</p>
+                        <div className="flex flex-wrap gap-1">
+                          {selectedApplication.options_comfort.map(opt => (
+                            <span key={opt} className="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded">
+                              {optionLabels[opt] || opt}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {selectedApplication.options_electronic?.length > 0 && (
+                      <div>
+                        <p className="text-slate-500 text-xs mb-1">Электроника</p>
+                        <div className="flex flex-wrap gap-1">
+                          {selectedApplication.options_electronic.map(opt => (
+                            <span key={opt} className="px-2 py-1 bg-blue-500/10 text-blue-400 text-xs rounded">
+                              {optionLabels[opt] || opt}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {selectedApplication.options_exterior?.length > 0 && (
+                      <div>
+                        <p className="text-slate-500 text-xs mb-1">Экстерьер</p>
+                        <div className="flex flex-wrap gap-1">
+                          {selectedApplication.options_exterior.map(opt => (
+                            <span key={opt} className="px-2 py-1 bg-purple-500/10 text-purple-400 text-xs rounded">
+                              {optionLabels[opt] || opt}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {selectedApplication.options_other?.length > 0 && (
+                      <div>
+                        <p className="text-slate-500 text-xs mb-1">Прочее</p>
+                        <div className="flex flex-wrap gap-1">
+                          {selectedApplication.options_other.map(opt => (
+                            <span key={opt} className="px-2 py-1 bg-slate-500/10 text-slate-400 text-xs rounded">
+                              {optionLabels[opt] || opt}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Additional Info */}
+              {(selectedApplication.additional_requirements || selectedApplication.required_options || selectedApplication.preferred_options) && (
+                <div className="p-4 bg-[#0B0F14] rounded-lg">
+                  <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                    <Info size={16} className="text-[#00E5FF]" />
+                    Дополнительная информация
+                  </h4>
+                  {selectedApplication.required_options && (
+                    <div className="mb-3">
+                      <p className="text-slate-500 text-xs mb-1">Обязательные опции</p>
+                      <p className="text-white text-sm">{selectedApplication.required_options}</p>
+                    </div>
+                  )}
+                  {selectedApplication.preferred_options && (
+                    <div className="mb-3">
+                      <p className="text-slate-500 text-xs mb-1">Желательные опции</p>
+                      <p className="text-white text-sm">{selectedApplication.preferred_options}</p>
+                    </div>
+                  )}
+                  {selectedApplication.additional_requirements && (
+                    <div>
+                      <p className="text-slate-500 text-xs mb-1">Дополнительные требования</p>
+                      <p className="text-white text-sm">{selectedApplication.additional_requirements}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setDetailsDialog(false)}
+                  className="flex-1 border-[#27272A] hover:bg-[#27272A]"
+                >
+                  Закрыть
+                </Button>
+                <Button
+                  onClick={() => {
+                    setDetailsDialog(false);
+                    setSelectedTender({ id: selectedApplication.id, type: 'application', ...selectedApplication });
+                    setOfferDialog(true);
+                  }}
+                  className="flex-1 bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
+                >
+                  <Send size={16} className="mr-2" />
+                  Откликнуться
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
