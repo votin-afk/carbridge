@@ -320,55 +320,45 @@ const ContractorsPage = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <TabsList className="bg-[#15191E] p-1 rounded-sm flex-wrap">
-              <TabsTrigger 
-                value="inspection"
-                className="data-[state=active]:bg-blue-500 data-[state=active]:text-white rounded-sm flex items-center gap-2 px-4"
-              >
-                <ClipboardCheck size={16} />
-                Проверка
-              </TabsTrigger>
-              <TabsTrigger 
-                value="export"
-                className="data-[state=active]:bg-amber-500 data-[state=active]:text-white rounded-sm flex items-center gap-2 px-4"
-              >
-                <Package size={16} />
-                Экспорт
-              </TabsTrigger>
-              <TabsTrigger 
-                value="logistics"
-                className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white rounded-sm flex items-center gap-2 px-4"
-              >
-                <Truck size={16} />
-                Логистика
-              </TabsTrigger>
-              <TabsTrigger 
-                value="leasing"
-                className="data-[state=active]:bg-purple-500 data-[state=active]:text-white rounded-sm flex items-center gap-2 px-4"
-              >
-                <CreditCard size={16} />
-                Лизинг
-              </TabsTrigger>
+          <div className="flex flex-col gap-4">
+            <TabsList className="bg-[#15191E] p-1 rounded-sm flex flex-wrap gap-1 h-auto">
+              {serviceStages.map(stage => (
+                <TabsTrigger 
+                  key={stage.key}
+                  value={stage.key}
+                  className={`data-[state=active]:${stage.bgColor} data-[state=active]:text-white rounded-sm flex items-center gap-2 px-3 py-2 text-sm`}
+                >
+                  <stage.icon size={14} />
+                  <span className="hidden sm:inline">{stage.label}</span>
+                  <span className="sm:hidden">{stage.label.split(' ')[0]}</span>
+                </TabsTrigger>
+              ))}
             </TabsList>
 
-            <div className="flex gap-3 w-full sm:w-auto">
+            <div className="flex gap-3">
               {/* Search */}
-              <div className="relative flex-1 sm:w-64">
+              <div className="relative flex-1 max-w-md">
                 <SearchIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Поиск..."
+                  placeholder="Поиск подрядчика..."
                   className="pl-9 bg-[#15191E] border-[#27272A] text-white"
                 />
               </div>
             </div>
+
+            {/* Current stage description */}
+            <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-4">
+              <p className="text-slate-400 text-sm">
+                {serviceStages.find(s => s.key === activeTab)?.description || 'Подрядчики для данного этапа'}
+              </p>
+            </div>
           </div>
 
           {/* Content */}
-          {['inspection', 'export', 'logistics', 'leasing'].map(type => (
-            <TabsContent key={type} value={type} className="mt-0">
+          {serviceStages.map(stage => (
+            <TabsContent key={stage.key} value={stage.key} className="mt-0">
               {loading ? (
                 <div className="flex items-center justify-center h-64">
                   <Loader2 size={32} className="text-[#00E5FF] animate-spin" />
