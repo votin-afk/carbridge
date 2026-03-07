@@ -2759,6 +2759,43 @@ async def request_consultant_help(data: dict, current_user: dict = Depends(get_c
         "fee_charged": CONSULTANT_FEE
     }
 
+@api_router.post("/legal-help/request")
+async def request_legal_help(data: dict, current_user: dict = Depends(get_current_user)):
+    """Request legal assistance in Belarus or China"""
+    country = data.get("country")
+    if country not in ["belarus", "china"]:
+        raise HTTPException(status_code=400, detail="Выберите страну: belarus или china")
+    
+    request_id = str(uuid.uuid4())
+    
+    legal_request = {
+        "id": request_id,
+        "user_id": current_user["id"],
+        "user_email": current_user.get("email"),
+        "user_name": current_user.get("name"),
+        "country": country,
+        "country_name": "Беларусь" if country == "belarus" else "Китай",
+        "status": "pending",  # pending, in_progress, completed
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.legal_requests.insert_one(legal_request)
+    
+    return {
+        "message": f"Запрос на юридическую помощь в {'Беларуси' if country == 'belarus' else 'Китае'} отправлен",
+        "request_id": request_id
+    }
+
+@api_router.get("/legal-help/requests")
+async def get_legal_help_requests(current_user: dict = Depends(get_current_user)):
+    """Get user's legal help requests"""
+    requests = await db.legal_requests.find(
+        {"user_id": current_user["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    return requests
+
 @api_router.get("/account/summary")
 async def get_account_summary(current_user: dict = Depends(get_current_user)):
     """Get account summary for dashboard"""
