@@ -36,6 +36,7 @@ const DashboardLayout = () => {
     { to: '/dashboard/applications', icon: ClipboardList, label: 'Заявки' },
     { to: '/dashboard/tenders', icon: FileStack, label: 'Тендеры' },
     { to: '/dashboard/deals', icon: ShoppingCart, label: 'Авто для сделки' },
+    { to: '/dashboard/purchased', icon: Trophy, label: 'Приобретённые авто' },
     { to: '/dashboard/verification', icon: Shield, label: 'Верификация' },
     { to: '/dashboard/documents', icon: FileText, label: 'Документы' },
     { to: '/dashboard/tracking', icon: MapPin, label: 'Отследить авто' },
