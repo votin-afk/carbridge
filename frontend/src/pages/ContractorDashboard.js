@@ -114,6 +114,7 @@ const ContractorDashboard = () => {
       console.error('Error fetching dashboard:', error);
       if (error.response?.status === 401) {
         localStorage.removeItem('contractor_token');
+        setToken(null);
         setContractor(null);
       }
     } finally {
