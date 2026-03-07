@@ -1590,6 +1590,15 @@ async def register(user: UserCreate):
     # Determine role - admin emails get admin role automatically
     role = "admin" if user.email in ADMIN_EMAILS else "user"
     
+    # Check referral code if provided
+    referred_by = None
+    referral_code_used = None
+    if user.referral_code:
+        affiliate = await db.affiliates.find_one({"referral_code": user.referral_code})
+        if affiliate:
+            referred_by = affiliate["user_id"]
+            referral_code_used = user.referral_code
+    
     user_id = str(uuid.uuid4())
     user_doc = {
         "id": user_id,
@@ -1599,9 +1608,31 @@ async def register(user: UserCreate):
         "phone": user.phone,
         "user_type": user.user_type,
         "role": role,
+        "referred_by": referred_by,
+        "referral_code_used": referral_code_used,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.users.insert_one(user_doc)
+    
+    # If referral code was valid, create referral record
+    if referred_by:
+        referral_doc = {
+            "id": str(uuid.uuid4()),
+            "affiliate_id": referred_by,
+            "referral_id": user_id,
+            "referral_email": user.email,
+            "referral_name": user.name,
+            "completed_deals": 0,
+            "total_commission": 0.0,
+            "registered_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.referrals.insert_one(referral_doc)
+        
+        # Update affiliate stats
+        await db.affiliates.update_one(
+            {"user_id": referred_by},
+            {"$inc": {"total_referrals": 1, "active_referrals": 1}}
+        )
     
     token = create_token(user_id, user.email)
     user_response = UserResponse(
