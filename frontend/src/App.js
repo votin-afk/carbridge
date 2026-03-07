@@ -11,6 +11,7 @@ import Documents from "./pages/dashboard/Documents";
 import Verification from "./pages/dashboard/Verification";
 import Applications from "./pages/dashboard/Applications";
 import DealCars from "./pages/dashboard/DealCars";
+import PurchasedCars from "./pages/dashboard/PurchasedCars";
 import Tracking from "./pages/dashboard/Tracking";
 import Calculator from "./pages/Calculator";
 import CatalogPage from "./pages/CatalogPage";
