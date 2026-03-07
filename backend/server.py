@@ -6821,6 +6821,7 @@ async def submit_contractor_offer(data: dict, contractor: dict = Depends(get_cur
         "id": offer_id,
         "contractor_id": contractor["id"],
         "contractor_name": contractor["company_name"],
+        "contractor_rating": contractor.get("rating", 5.0),
         "tender_id": tender_id,
         "application_id": application_id,
         "price_usd": data.get("price_usd"),
@@ -6828,8 +6829,13 @@ async def submit_contractor_offer(data: dict, contractor: dict = Depends(get_cur
         "delivery_days": data.get("delivery_days"),
         "delivery_cost": data.get("delivery_cost"),
         "car_details": data.get("car_details"),
+        "car_link": data.get("car_link"),
+        "car_photos": data.get("car_photos", []),
+        "car_videos": data.get("car_videos", []),
         "notes": data.get("notes"),
         "valid_until": data.get("valid_until"),
+        "included_services": data.get("included_services", {}),
+        "service_prices": data.get("service_prices", {}),
         "status": "pending",  # pending, accepted, rejected
         "created_at": datetime.now(timezone.utc).isoformat()
     }
