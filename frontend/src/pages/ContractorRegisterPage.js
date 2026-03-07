@@ -573,20 +573,60 @@ const ContractorRegisterPage = () => {
             <div className="space-y-6">
               <h2 className="text-lg font-semibold text-white mb-4">Стоимость услуг</h2>
               <p className="text-slate-400 text-sm mb-4">
-                Укажите стоимость ваших услуг в USD. Эта сумма будет списываться со счёта клиента при выборе вас в качестве подрядчика.
+                Укажите стоимость ваших услуг. Эта сумма будет отображаться клиентам при выборе подрядчика.
               </p>
               
               <div className="space-y-4">
                 {formData.services.map(service => {
                   const serviceLabels = {
+                    leasing: { name: '📋 Лизинг', desc: 'Укажите процентную ставку и валюту', isLeasing: true },
                     inspection: { name: '🔍 Инспекция авто', desc: 'Проверка технического состояния автомобиля' },
-                    purchase: { name: '💰 Выкуп авто', desc: 'Покупка автомобиля у продавца' },
-                    export: { name: '📦 Экспорт', desc: 'Оформление экспорта из Китая' },
-                    logistics: { name: '🚚 Логистика', desc: 'Доставка автомобиля в Беларусь' },
-                    leasing: { name: '📋 Лизинг', desc: 'Оформление лизинга' },
-                    customs: { name: '🏛️ Растаможка', desc: 'Таможенное оформление' }
+                    export: { name: '📦 Выкуп и экспорт', desc: 'Выкуп автомобиля и оформление экспорта из Китая' },
+                    logistics_china: { name: '🚛 Доставка до порта (Китай)', desc: 'Логистика до порта отправления' },
+                    insurance: { name: '🛡️ Страхование авто', desc: 'Страхование на время транспортировки' },
+                    delivery_rb: { name: '🚢 Доставка в Беларусь', desc: 'Морская/ж/д доставка из Китая' },
+                    customs: { name: '🏛️ Таможенное оформление', desc: 'Растаможка и оформление в Беларуси' }
                   };
                   const label = serviceLabels[service] || { name: service, desc: '' };
+                  
+                  // Special handling for leasing
+                  if (service === 'leasing') {
+                    return (
+                      <div key={service} className="bg-[#0B0F14] border border-[#27272A] rounded-sm p-4">
+                        <div className="mb-3">
+                          <p className="text-white font-medium">{label.name}</p>
+                          <p className="text-slate-500 text-sm">{label.desc}</p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <Label className="text-slate-400">Ставка:</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.1"
+                              value={formData.leasing_rate}
+                              onChange={(e) => setFormData(prev => ({ ...prev, leasing_rate: e.target.value }))}
+                              placeholder="12.5"
+                              className="w-24 bg-[#15191E] border-[#27272A] text-right"
+                            />
+                            <span className="text-slate-400">% годовых</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Label className="text-slate-400">Валюта:</Label>
+                            <select
+                              value={formData.leasing_currency}
+                              onChange={(e) => setFormData(prev => ({ ...prev, leasing_currency: e.target.value }))}
+                              className="bg-[#15191E] border border-[#27272A] rounded-sm px-3 py-2 text-white"
+                            >
+                              {leasingCurrencies.map(curr => (
+                                <option key={curr.value} value={curr.value}>{curr.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
                   
                   return (
                     <div key={service} className="bg-[#0B0F14] border border-[#27272A] rounded-sm p-4">
