@@ -139,6 +139,28 @@ const AuthPage = () => {
                     </label>
                   </div>
                 </div>
+
+                {/* Referral Code Field */}
+                <div>
+                  <Label htmlFor="referral_code" className="text-slate-300 flex items-center gap-2">
+                    <Gift size={14} className="text-[#00E5FF]" />
+                    Реферальный код (опционально)
+                  </Label>
+                  <Input
+                    data-testid="auth-referral-input"
+                    id="referral_code"
+                    name="referral_code"
+                    value={formData.referral_code}
+                    onChange={handleChange}
+                    placeholder="Введите код, если вас пригласили"
+                    className="mt-1 bg-[#0B0F14] border-[#27272A] text-white placeholder:text-slate-500"
+                  />
+                  {formData.referral_code && (
+                    <p className="text-xs text-emerald-400 mt-1">
+                      ✓ Код будет применён при регистрации
+                    </p>
+                  )}
+                </div>
               </>
             )}
 
