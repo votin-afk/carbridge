@@ -91,12 +91,15 @@ const ContractorRegisterPage = () => {
     // Step 4 - Service Prices
     service_prices: {
       inspection: '',
-      purchase: '',
       export: '',
-      logistics: '',
-      leasing: '',
+      logistics_china: '',
+      insurance: '',
+      delivery_rb: '',
       customs: ''
     },
+    // Leasing specific fields
+    leasing_rate: '', // Percentage
+    leasing_currency: 'USD',
     
     // Step 5 - Documents
     license_info: '',
