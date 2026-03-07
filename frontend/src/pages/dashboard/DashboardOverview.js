@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
 import { 
   Car, 
   FileStack, 
@@ -26,7 +32,9 @@ import {
   ClipboardList,
   Search,
   Truck,
-  Package
+  Package,
+  Scale,
+  MapPin
 } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
