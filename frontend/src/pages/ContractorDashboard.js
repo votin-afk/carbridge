@@ -406,8 +406,8 @@ const ContractorDashboard = () => {
                   <div key={app.id} className="bg-[#15191E] border border-[#27272A] rounded-sm p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <h4 className="text-white font-medium">
-                          {app.brand ? `${app.brand} ${app.model || ''}` : 'Любой автомобиль'}
+                        <h4 className="text-white font-medium text-lg">
+                          {app.brand ? `${app.brand.toUpperCase()} ${app.model || ''}` : 'Любой автомобиль'}
                         </h4>
                         <p className="text-slate-400 text-sm">
                           Заявка {app.application_number} • {new Date(app.created_at).toLocaleDateString('ru-RU')}
@@ -425,37 +425,122 @@ const ContractorDashboard = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-4 mb-4 text-sm">
-                      <div>
-                        <p className="text-slate-500">Бюджет</p>
+                    {/* Basic Info Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Бюджет в Китае</p>
                         <p className="text-[#00E5FF] font-medium">
-                          {app.budget_max ? `${app.budget_max.toLocaleString()} ${app.budget_currency}` : '—'}
+                          ${app.budget_china_from?.toLocaleString() || '—'} - ${app.budget_china_to?.toLocaleString() || '—'}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-slate-500">Тип двигателя</p>
-                        <p className="text-white">{engineLabels[app.engine_type] || 'Любой'}</p>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Общий бюджет</p>
+                        <p className="text-emerald-400 font-medium">
+                          ${app.budget_total?.toLocaleString() || app.budget_max?.toLocaleString() || '—'}
+                        </p>
                       </div>
-                      <div>
-                        <p className="text-slate-500">Год</p>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Год выпуска</p>
                         <p className="text-white">{app.year_from || '—'} - {app.year_to || '—'}</p>
                       </div>
-                      <div>
-                        <p className="text-slate-500">Оплата</p>
-                        <p className="text-white">{paymentLabels[app.payment_method] || app.payment_method}</p>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Тип двигателя</p>
+                        <p className="text-white">{engineLabels[app.engine_type] || app.engine_type || 'Любой'}</p>
                       </div>
                     </div>
 
-                    <Button
-                      onClick={() => {
-                        setSelectedTender({ id: app.id, type: 'application', ...app });
-                        setOfferDialog(true);
-                      }}
-                      className="w-full bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
-                    >
-                      <Send size={16} className="mr-2" />
-                      Откликнуться
-                    </Button>
+                    {/* Extended Info Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Кузов</p>
+                        <p className="text-white">{bodyLabels[app.body_type] || app.body_type || 'Любой'}</p>
+                      </div>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Привод</p>
+                        <p className="text-white">{driveLabels[app.drive_type] || app.drive_type || 'Любой'}</p>
+                      </div>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Пробег</p>
+                        <p className="text-white">{mileageLabels[app.mileage_max] || app.mileage_max || 'Любой'}</p>
+                      </div>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Оплата</p>
+                        <p className="text-white">{paymentLabels[app.payment_method] || app.payment_method || '—'}</p>
+                      </div>
+                    </div>
+
+                    {/* Color and timeline */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 text-sm">
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Цвет кузова</p>
+                        <p className="text-white">{colorLabels[app.body_color] || app.body_color || 'Любой'}</p>
+                      </div>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Сроки покупки</p>
+                        <p className="text-white">{timelineLabels[app.purchase_timeline] || app.purchase_timeline || '—'}</p>
+                      </div>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Клиент</p>
+                        <p className="text-white">{app.full_name || '—'}</p>
+                      </div>
+                    </div>
+
+                    {/* Additional requirements */}
+                    {app.additional_requirements && (
+                      <div className="mb-3 p-2 bg-[#0B0F14] rounded">
+                        <p className="text-slate-500 text-xs mb-1">Дополнительные требования</p>
+                        <p className="text-slate-300 text-sm">{app.additional_requirements}</p>
+                      </div>
+                    )}
+
+                    {/* Options if any */}
+                    {(app.options_comfort?.length > 0 || app.options_electronic?.length > 0 || app.options_exterior?.length > 0) && (
+                      <div className="mb-3 p-2 bg-[#0B0F14] rounded">
+                        <p className="text-slate-500 text-xs mb-2">Желаемые опции</p>
+                        <div className="flex flex-wrap gap-1">
+                          {app.options_comfort?.map(opt => (
+                            <span key={opt} className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-xs rounded">
+                              {optionLabels[opt] || opt}
+                            </span>
+                          ))}
+                          {app.options_electronic?.map(opt => (
+                            <span key={opt} className="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-xs rounded">
+                              {optionLabels[opt] || opt}
+                            </span>
+                          ))}
+                          {app.options_exterior?.map(opt => (
+                            <span key={opt} className="px-2 py-0.5 bg-purple-500/10 text-purple-400 text-xs rounded">
+                              {optionLabels[opt] || opt}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Buttons */}
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedApplication(app);
+                          setDetailsDialog(true);
+                        }}
+                        className="flex-1 border-[#27272A] hover:bg-[#27272A]"
+                      >
+                        <Eye size={16} className="mr-2" />
+                        Все детали
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setSelectedTender({ id: app.id, type: 'application', ...app });
+                          setOfferDialog(true);
+                        }}
+                        className="flex-1 bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
+                      >
+                        <Send size={16} className="mr-2" />
+                        Откликнуться
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
