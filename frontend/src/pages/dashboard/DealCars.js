@@ -65,11 +65,11 @@ const PLATFORM_PAYMENT_FEE = 0.01; // +1% if paid through platform
 // New stages structure
 const STAGES = [
   { key: 'leasing', label: 'Лизинг', icon: CreditCard, optional: true, hasCalculator: true },
-  { key: 'inspection', label: 'Проверка', icon: Search, optional: true },
-  { key: 'export', label: 'Экспорт', icon: FileCheck, optional: false, hasInvoice: true },
-  { key: 'logistics_china', label: 'Логистика до порта', icon: Truck, optional: true },
-  { key: 'insurance', label: 'Страхование', icon: Shield, optional: true },
-  { key: 'delivery_rb', label: 'Доставка в РБ', icon: Ship, optional: true },
+  { key: 'inspection', label: 'Инспекция авто', icon: Search, optional: true },
+  { key: 'export', label: 'Выкуп и экспорт', icon: FileCheck, optional: false, hasInvoice: true },
+  { key: 'logistics_china', label: 'Доставка до порта (Китай)', icon: Truck, optional: true },
+  { key: 'insurance', label: 'Страхование авто', icon: Shield, optional: true },
+  { key: 'delivery_rb', label: 'Доставка в Беларусь', icon: Ship, optional: true },
   { key: 'customs', label: 'Таможенное оформление', icon: FileText, optional: true },
   { key: 'completion', label: 'Завершение сделки', icon: CheckCheck, optional: false }
 ];
