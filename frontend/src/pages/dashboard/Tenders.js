@@ -12,12 +12,30 @@ import {
   ChevronDown,
   ChevronUp,
   ShoppingCart,
-  Loader2
+  Loader2,
+  ExternalLink,
+  Image,
+  Video,
+  Search,
+  Package,
+  Ship,
+  Shield,
+  DollarSign,
+  User
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+// Service labels for display
+const serviceLabels = {
+  inspection: { label: 'Инспекция', icon: Search, color: 'text-blue-400' },
+  export: { label: 'Выкуп/экспорт', icon: Package, color: 'text-amber-400' },
+  logistics_china: { label: 'До порта', icon: Truck, color: 'text-emerald-400' },
+  delivery_rb: { label: 'В Беларусь', icon: Ship, color: 'text-indigo-400' },
+  insurance: { label: 'Страхование', icon: Shield, color: 'text-cyan-400' }
+};
 
 const Tenders = () => {
   const { token } = useAuth();
@@ -26,6 +44,7 @@ const Tenders = () => {
   const [loading, setLoading] = useState(true);
   const [expandedTender, setExpandedTender] = useState(null);
   const [addingToDeal, setAddingToDeal] = useState(null);
+  const [selectedOffer, setSelectedOffer] = useState(null);
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -68,7 +87,7 @@ const Tenders = () => {
         tender_offer_id: tender.selected_offer_id
       }, { headers });
       
-      toast.success('Авто добавлено в сделку! (Бесплатно из тендера)');
+      toast.success('Авто добавлено в сделку!');
       navigate('/dashboard/deals');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Ошибка при создании сделки');
@@ -98,14 +117,14 @@ const Tenders = () => {
   const renderStars = (rating) => {
     return (
       <div className="flex items-center gap-1">
-        {[...Array(5)].map((_, i) => (
-          <Star 
-            key={i} 
-            size={14} 
-            className={i < Math.floor(rating) ? 'text-amber-400 fill-amber-400' : 'text-slate-600'}
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            size={14}
+            className={star <= rating ? 'text-amber-400 fill-amber-400' : 'text-slate-600'}
           />
         ))}
-        <span className="text-slate-400 text-sm ml-1">{rating}</span>
+        <span className="text-slate-400 text-sm ml-1">{rating?.toFixed(1)}</span>
       </div>
     );
   };
@@ -113,7 +132,7 @@ const Tenders = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-[#00E5FF] border-t-transparent rounded-full animate-spin" />
+        <Loader2 size={32} className="text-[#00E5FF] animate-spin" />
       </div>
     );
   }
@@ -121,20 +140,24 @@ const Tenders = () => {
   return (
     <div className="space-y-6" data-testid="tenders-page">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white">Тендеры</h1>
-        <p className="text-slate-400 mt-1">
-          Предложения от подрядчиков по вашим запросам
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            <FileStack className="text-[#00E5FF]" />
+            Мои тендеры
+          </h1>
+          <p className="text-slate-400 mt-1">Предложения от подрядчиков на ваши автомобили</p>
+        </div>
       </div>
 
-      {/* Tenders List */}
+      {/* Tenders */}
       {tenders.length > 0 ? (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {tenders.map((tender) => (
-            <div 
+            <div
               key={tender.id}
               className="bg-[#15191E] border border-[#27272A] rounded-sm overflow-hidden"
+              data-testid={`tender-${tender.id}`}
             >
               {/* Tender Header */}
               <div 
@@ -143,11 +166,16 @@ const Tenders = () => {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-[#1C2128] rounded-sm flex items-center justify-center">
-                      <Car size={24} className="text-slate-500" />
+                    <div className="w-16 h-16 bg-[#0B0F14] rounded-sm overflow-hidden flex-shrink-0">
+                      <img 
+                        src={tender.car_info?.image_url || 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=200'} 
+                        alt={tender.car_info?.brand}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=200'; }}
+                      />
                     </div>
                     <div>
-                      <h3 className="text-white font-semibold">
+                      <h3 className="text-white font-medium">
                         {tender.car_info?.brand} {tender.car_info?.model}
                       </h3>
                       <p className="text-slate-400 text-sm">
@@ -156,12 +184,11 @@ const Tenders = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <p className="text-white font-semibold">
-                        {tender.offers?.length || 0} предложений
-                      </p>
-                      {getStatusBadge(tender.status)}
+                    <div className="text-right hidden sm:block">
+                      <p className="text-slate-400 text-xs">Предложений</p>
+                      <p className="text-[#00E5FF] text-lg font-bold">{tender.offers?.length || 0}</p>
                     </div>
+                    {getStatusBadge(tender.status)}
                     {expandedTender === tender.id ? (
                       <ChevronUp className="text-slate-400" />
                     ) : (
@@ -172,131 +199,36 @@ const Tenders = () => {
               </div>
 
               {/* Offers */}
-              {expandedTender === tender.id && tender.offers && (
+              {expandedTender === tender.id && (
                 <div className="border-t border-[#27272A]">
-                  {/* Best Offer */}
-                  {tender.offers.length > 0 && (
-                    <div className="p-4 bg-[#00E5FF]/5 border-b border-[#27272A]">
-                      <div className="inline-flex items-center gap-2 px-2 py-1 bg-[#00E5FF]/20 rounded text-[#00E5FF] text-xs font-medium mb-3">
-                        <CheckCircle2 size={12} />
-                        Лучшее предложение
+                  {tender.offers && tender.offers.length > 0 ? (
+                    <div className="p-4 space-y-4">
+                      <p className="text-slate-400 text-sm">Предложения от подрядчиков:</p>
+                      
+                      {/* Offer Cards */}
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {tender.offers.map((offer, index) => (
+                          <OfferCard
+                            key={offer.id}
+                            offer={offer}
+                            isFirst={index === 0}
+                            isSelected={tender.selected_offer_id === offer.id}
+                            tenderStatus={tender.status}
+                            onSelect={() => handleSelectOffer(tender.id, offer.id)}
+                            onAddToDeal={() => handleAddToDeal(tender)}
+                            addingToDeal={addingToDeal === tender.id}
+                            dealCreated={tender.deal_created}
+                          />
+                        ))}
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 items-center">
-                        <div>
-                          <p className="text-slate-400 text-xs mb-1">Цена (USD)</p>
-                          <p className="text-white text-xl font-bold">
-                            ${tender.offers[0].price_usd?.toLocaleString()}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-slate-400 text-xs mb-1">Рейтинг</p>
-                          {renderStars(tender.offers[0].contractor_rating)}
-                        </div>
-                        <div>
-                          <p className="text-slate-400 text-xs mb-1">Срок</p>
-                          <p className="text-white">{tender.offers[0].delivery_days} дней</p>
-                        </div>
-                        <div>
-                          <p className="text-slate-400 text-xs mb-1">Доставка</p>
-                          <p className="text-white">
-                            {tender.offers[0].delivery_cost === 0 
-                              ? 'Бесплатно' 
-                              : `$${tender.offers[0].delivery_cost}`}
-                          </p>
-                        </div>
-                        <div>
-                          {tender.status === 'active' ? (
-                            <Button
-                              data-testid={`select-offer-${tender.offers[0].id}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSelectOffer(tender.id, tender.offers[0].id);
-                              }}
-                              className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black w-full"
-                            >
-                              Выбрать
-                            </Button>
-                          ) : tender.selected_offer_id === tender.offers[0].id ? (
-                            <div className="space-y-2">
-                              <span className="text-emerald-400 text-sm flex items-center gap-1">
-                                <CheckCircle2 size={16} /> Выбрано
-                              </span>
-                              {!tender.deal_created && (
-                                <Button
-                                  data-testid={`add-to-deal-${tender.id}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAddToDeal(tender);
-                                  }}
-                                  disabled={addingToDeal === tender.id}
-                                  size="sm"
-                                  className="bg-emerald-500 hover:bg-emerald-600 text-white w-full"
-                                >
-                                  {addingToDeal === tender.id ? (
-                                    <Loader2 size={14} className="mr-1 animate-spin" />
-                                  ) : (
-                                    <ShoppingCart size={14} className="mr-1" />
-                                  )}
-                                  В сделку
-                                </Button>
-                              )}
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                      <p className="text-slate-500 text-sm mt-2">
-                        {tender.offers[0].contractor_name}
-                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-8 text-center">
+                      <Clock size={32} className="mx-auto mb-2 text-slate-600" />
+                      <p className="text-slate-400">Пока нет предложений</p>
+                      <p className="text-slate-500 text-sm">Подрядчики скоро откликнутся на ваш тендер</p>
                     </div>
                   )}
-
-                  {/* Other Offers */}
-                  {tender.offers.slice(1).map((offer) => (
-                    <div 
-                      key={offer.id}
-                      className="p-4 border-b border-[#27272A] last:border-b-0 hover:bg-[#1C2128]/50"
-                    >
-                      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 items-center">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-8 bg-[#27272A] rounded flex items-center justify-center">
-                            <Car size={16} className="text-slate-500" />
-                          </div>
-                          <p className="text-white font-semibold">
-                            ${offer.price_usd?.toLocaleString()}
-                          </p>
-                        </div>
-                        <div>{renderStars(offer.contractor_rating)}</div>
-                        <div className="text-white text-sm">{offer.delivery_days} дней</div>
-                        <div className="text-white text-sm">
-                          {offer.delivery_cost === 0 ? 'Бесплатно' : `$${offer.delivery_cost}`}
-                        </div>
-                        <div className="text-slate-400 text-sm">{offer.payment_method}</div>
-                        <div>
-                          {tender.status === 'active' ? (
-                            <Button
-                              data-testid={`select-offer-${offer.id}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSelectOffer(tender.id, offer.id);
-                              }}
-                              variant="outline"
-                              size="sm"
-                              className="border-[#27272A] text-slate-300 hover:border-[#00E5FF] hover:text-[#00E5FF]"
-                            >
-                              Выбрать
-                            </Button>
-                          ) : tender.selected_offer_id === offer.id ? (
-                            <span className="text-emerald-400 text-sm flex items-center gap-1">
-                              <CheckCircle2 size={14} /> Выбрано
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                      <p className="text-slate-500 text-sm mt-2">
-                        {offer.contractor_name}
-                      </p>
-                    </div>
-                  ))}
                 </div>
               )}
             </div>
@@ -304,13 +236,182 @@ const Tenders = () => {
         </div>
       ) : (
         <div className="text-center py-16 bg-[#15191E] border border-[#27272A] rounded-sm">
-          <FileStack size={64} className="mx-auto mb-4 text-slate-600" />
-          <h3 className="text-xl font-semibold text-white mb-2">Нет активных тендеров</h3>
-          <p className="text-slate-400 mb-6 max-w-md mx-auto">
-            Добавьте автомобиль в гараж и запустите тендер, чтобы получить предложения от подрядчиков
-          </p>
+          <FileStack size={48} className="mx-auto mb-4 text-slate-600" />
+          <p className="text-white font-medium mb-2">Нет активных тендеров</p>
+          <p className="text-slate-400 text-sm mb-4">Создайте тендер, добавив автомобиль из гаража</p>
+          <Button 
+            onClick={() => navigate('/dashboard/garage')}
+            className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
+          >
+            Перейти в гараж
+          </Button>
         </div>
       )}
+    </div>
+  );
+};
+
+// Offer Card Component
+const OfferCard = ({ offer, isFirst, isSelected, tenderStatus, onSelect, onAddToDeal, addingToDeal, dealCreated }) => {
+  const [showDetails, setShowDetails] = useState(false);
+  
+  return (
+    <div className={`bg-[#0B0F14] border rounded-sm overflow-hidden ${
+      isFirst ? 'border-[#00E5FF]/50' : 'border-[#27272A]'
+    } ${isSelected ? 'ring-2 ring-emerald-500/50' : ''}`}>
+      
+      {/* Badge */}
+      {isFirst && !isSelected && (
+        <div className="bg-[#00E5FF]/10 px-3 py-1.5 border-b border-[#00E5FF]/20">
+          <span className="text-[#00E5FF] text-xs font-medium flex items-center gap-1">
+            <CheckCircle2 size={12} /> Лучшее предложение
+          </span>
+        </div>
+      )}
+      {isSelected && (
+        <div className="bg-emerald-500/10 px-3 py-1.5 border-b border-emerald-500/20">
+          <span className="text-emerald-400 text-xs font-medium flex items-center gap-1">
+            <CheckCircle2 size={12} /> Выбранное предложение
+          </span>
+        </div>
+      )}
+
+      <div className="p-4">
+        {/* Contractor & Price */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-[#15191E] rounded-full flex items-center justify-center">
+              <User size={14} className="text-slate-400" />
+            </div>
+            <div>
+              <p className="text-white text-sm font-medium">{offer.contractor_name || 'Подрядчик'}</p>
+              <div className="flex items-center gap-1">
+                {[1,2,3,4,5].map(s => (
+                  <Star key={s} size={10} className={s <= (offer.contractor_rating || 5) ? 'text-amber-400 fill-amber-400' : 'text-slate-600'} />
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-[#00E5FF] text-xl font-bold">${offer.price_usd?.toLocaleString()}</p>
+            {offer.price_cny && (
+              <p className="text-slate-500 text-xs">¥{offer.price_cny.toLocaleString()}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Car Info from Offer */}
+        {offer.car_details && (
+          <div className="bg-[#15191E] rounded p-2 mb-3">
+            <p className="text-slate-300 text-sm">{offer.car_details}</p>
+          </div>
+        )}
+
+        {/* Car Link */}
+        {offer.car_link && (
+          <a 
+            href={offer.car_link} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-[#00E5FF] text-sm hover:underline mb-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExternalLink size={14} />
+            Ссылка на авто
+          </a>
+        )}
+
+        {/* Photos/Videos indicators */}
+        <div className="flex items-center gap-3 mb-3">
+          {offer.car_photos?.length > 0 && (
+            <span className="flex items-center gap-1 text-slate-400 text-xs">
+              <Image size={12} /> {offer.car_photos.length} фото
+            </span>
+          )}
+          {offer.car_videos?.length > 0 && (
+            <span className="flex items-center gap-1 text-slate-400 text-xs">
+              <Video size={12} /> {offer.car_videos.length} видео
+            </span>
+          )}
+        </div>
+
+        {/* Included Services */}
+        {offer.included_services && Object.values(offer.included_services).some(v => v) && (
+          <div className="mb-3">
+            <p className="text-slate-500 text-xs mb-2">Этапы в цене:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(offer.included_services).map(([key, included]) => {
+                if (!included) return null;
+                const service = serviceLabels[key];
+                if (!service) return null;
+                const ServiceIcon = service.icon;
+                const price = offer.service_prices?.[key];
+                return (
+                  <div 
+                    key={key} 
+                    className="flex items-center gap-1 px-2 py-1 bg-[#15191E] rounded text-xs"
+                    title={price ? `$${price}` : ''}
+                  >
+                    <ServiceIcon size={10} className={service.color} />
+                    <span className="text-slate-300">{service.label}</span>
+                    {price && <span className="text-slate-500">${price}</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Delivery Info */}
+        <div className="flex items-center gap-4 text-sm mb-3">
+          {offer.delivery_days && (
+            <div className="flex items-center gap-1 text-slate-400">
+              <Clock size={12} />
+              <span>{offer.delivery_days} дней</span>
+            </div>
+          )}
+          {offer.delivery_cost !== undefined && (
+            <div className="flex items-center gap-1 text-slate-400">
+              <Truck size={12} />
+              <span>{offer.delivery_cost === 0 ? 'Бесплатно' : `$${offer.delivery_cost}`}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Notes */}
+        {offer.notes && (
+          <p className="text-slate-500 text-xs mb-3 italic">"{offer.notes}"</p>
+        )}
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          {tenderStatus === 'active' && (
+            <Button
+              onClick={(e) => { e.stopPropagation(); onSelect(); }}
+              className="flex-1 bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
+              size="sm"
+            >
+              Выбрать
+            </Button>
+          )}
+          {isSelected && !dealCreated && (
+            <Button
+              onClick={(e) => { e.stopPropagation(); onAddToDeal(); }}
+              disabled={addingToDeal}
+              className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white"
+              size="sm"
+            >
+              {addingToDeal ? <Loader2 size={14} className="mr-1 animate-spin" /> : <ShoppingCart size={14} className="mr-1" />}
+              В сделку
+            </Button>
+          )}
+          {isSelected && dealCreated && (
+            <span className="flex-1 text-center text-emerald-400 text-sm py-2">
+              ✓ Сделка создана
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
