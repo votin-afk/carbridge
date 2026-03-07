@@ -123,6 +123,7 @@ const ContractorDashboard = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('contractor_token');
+    setToken(null);
     setContractor(null);
     navigate('/contractor-register');
   };
