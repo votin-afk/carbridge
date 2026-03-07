@@ -58,6 +58,7 @@ const ContractorDashboard = () => {
   const [selectedTender, setSelectedTender] = useState(null);
   const [offerDialog, setOfferDialog] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [token, setToken] = useState(() => localStorage.getItem('contractor_token'));
   
   const [offerData, setOfferData] = useState({
     price_usd: '',
@@ -87,8 +88,6 @@ const ContractorDashboard = () => {
       insurance: ''
     }
   });
-
-  const token = localStorage.getItem('contractor_token');
 
   useEffect(() => {
     if (token) {
