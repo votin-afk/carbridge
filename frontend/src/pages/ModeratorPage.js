@@ -125,8 +125,19 @@ const ModeratorPage = () => {
   useEffect(() => {
     if (isModerator) {
       fetchData();
+      // Always fetch pending stages count for badge
+      fetchPendingStagesCount();
     }
   }, [activeTab, isModerator]);
+
+  const fetchPendingStagesCount = async () => {
+    try {
+      const response = await axios.get(`${API}/moderator/deals/pending-stages`, { headers });
+      setPendingStages(response.data);
+    } catch (error) {
+      console.error('Error fetching pending stages:', error);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
