@@ -2208,12 +2208,80 @@ async def add_car_to_deal(data: dict, current_user: dict = Depends(get_current_u
     # Create deal
     deal_id = str(uuid.uuid4())
     
+    # Default stages structure
+    stages = {
+        "leasing": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "contractor_name": None, "price": None, "locked": False, "moderator_confirmed": False},
+        "inspection": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "contractor_name": None, "price": None, "locked": False, "moderator_confirmed": False},
+        "export": {"status": "pending", "completed": False, "contractor_id": None, "contractor_name": None, "price": None, "locked": False, "moderator_confirmed": False},
+        "logistics_china": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "contractor_name": None, "price": None, "locked": False, "moderator_confirmed": False},
+        "insurance": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "contractor_name": None, "price": None, "locked": False, "moderator_confirmed": False},
+        "delivery_rb": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "contractor_name": None, "price": None, "locked": False, "moderator_confirmed": False},
+        "customs": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "contractor_name": None, "price": None, "locked": False, "moderator_confirmed": False},
+        "completion": {"status": "pending", "completed": False, "moderator_confirmed": False}
+    }
+    
+    contractor_info = {}
+    
+    # If from tender with selected offer, pre-fill stages from offer
+    if from_tender and tender_offer_id:
+        offer = await db.contractor_offers.find_one({"id": tender_offer_id})
+        if offer:
+            contractor = await db.contractors.find_one({"id": offer.get("contractor_id")})
+            contractor_name = contractor.get("company_name") if contractor else "Подрядчик"
+            contractor_id = offer.get("contractor_id")
+            
+            contractor_info = {
+                "id": contractor_id,
+                "name": contractor_name
+            }
+            
+            # Get services from offer
+            included_services = offer.get("included_services", {})
+            service_prices = offer.get("service_prices", {})
+            services_list = offer.get("services", [])  # New format with array of services
+            
+            # Process services from offer and lock those stages
+            if services_list:
+                # New format: array of {stage, price} objects
+                for svc in services_list:
+                    stage_key = svc.get("stage")
+                    if stage_key and stage_key in stages:
+                        stages[stage_key]["contractor_id"] = contractor_id
+                        stages[stage_key]["contractor_name"] = contractor_name
+                        stages[stage_key]["price"] = float(svc.get("price", 0)) if svc.get("price") else None
+                        stages[stage_key]["locked"] = True  # Cannot change contractor
+                        stages[stage_key]["status"] = "assigned"
+            else:
+                # Old format: included_services dict
+                for svc_key, is_included in included_services.items():
+                    if is_included and svc_key in stages:
+                        stages[svc_key]["contractor_id"] = contractor_id
+                        stages[svc_key]["contractor_name"] = contractor_name
+                        stages[svc_key]["price"] = float(service_prices.get(svc_key, 0)) if service_prices.get(svc_key) else None
+                        stages[svc_key]["locked"] = True  # Cannot change contractor
+                        stages[svc_key]["status"] = "assigned"
+            
+            # Create document exchange card for this deal
+            doc_card = {
+                "id": str(uuid.uuid4()),
+                "deal_id": deal_id,
+                "user_id": current_user["id"],
+                "contractor_id": contractor_id,
+                "type": "deal_documents",
+                "title": f"Документы: {car.get('brand', '')} {car.get('model', '')}",
+                "files": [],
+                "messages": [],
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.deal_documents.insert_one(doc_card)
+    
     deal_doc = {
         "id": deal_id,
         "user_id": current_user["id"],
         "car_id": car_id,
         "tender_offer_id": tender_offer_id,
         "from_tender": from_tender,
+        "contractor": contractor_info,
         "car_info": {
             "brand": car.get("brand"),
             "model": car.get("model"),
@@ -2224,16 +2292,7 @@ async def add_car_to_deal(data: dict, current_user: dict = Depends(get_current_u
         },
         "status": "active",
         "current_stage": "leasing",
-        "stages": {
-            "leasing": {"status": "pending", "completed": False, "skipped": False},
-            "inspection": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "price": None},
-            "export": {"status": "pending", "completed": False, "contractor_id": None, "price": None},
-            "logistics_china": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "price": None},
-            "insurance": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "price": None},
-            "delivery_rb": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "price": None},
-            "customs": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "price": None},
-            "completion": {"status": "pending", "completed": False}
-        },
+        "stages": stages,
         "contractors": {},
         "payments": [],
         "total_paid": 0,
