@@ -169,17 +169,22 @@ const Tenders = () => {
                     <div className="w-16 h-16 bg-[#0B0F14] rounded-sm overflow-hidden flex-shrink-0">
                       <img 
                         src={tender.car_info?.image_url || 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=200'} 
-                        alt={tender.car_info?.brand}
+                        alt={tender.car_info?.brand || tender.car_request?.brand}
                         className="w-full h-full object-cover"
                         onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=200'; }}
                       />
                     </div>
                     <div>
                       <h3 className="text-white font-medium">
-                        {tender.car_info?.brand} {tender.car_info?.model}
+                        {(tender.car_info?.brand || tender.car_request?.brand || 'Любая марка').toUpperCase()} {tender.car_info?.model || tender.car_request?.model || ''}
                       </h3>
                       <p className="text-slate-400 text-sm">
-                        {tender.car_info?.year} • ¥{tender.car_info?.price_cny?.toLocaleString()}
+                        {tender.car_info?.year 
+                          ? `${tender.car_info.year} • ¥${tender.car_info?.price_cny?.toLocaleString() || '—'}`
+                          : tender.car_request?.year_from 
+                            ? `${tender.car_request.year_from}${tender.car_request.year_to ? '-' + tender.car_request.year_to : ''} год`
+                            : 'Заявка на подбор'
+                        }
                       </p>
                     </div>
                   </div>
