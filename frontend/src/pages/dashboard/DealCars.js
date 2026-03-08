@@ -1289,6 +1289,8 @@ const DealCard = ({
           const stageData = deal.stages?.[stage.key];
           const Icon = stage.icon;
           const isCurrent = isCurrentStage(stage.key);
+          const isLocked = stageData?.locked;
+          const moderatorConfirmed = stageData?.moderator_confirmed;
 
           return (
             <div
@@ -1297,6 +1299,7 @@ const DealCard = ({
                 isCurrent ? 'border-[#00E5FF] bg-[#00E5FF]/5' :
                 status === 'completed' || status === 'paid' ? 'border-emerald-500/30 bg-emerald-500/5' :
                 status === 'skipped' ? 'border-slate-600/30 bg-slate-800/20' :
+                isLocked ? 'border-purple-500/30 bg-purple-500/5' :
                 'border-[#27272A] bg-[#0B0F14]'
               }`}
             >
@@ -1306,6 +1309,7 @@ const DealCard = ({
                     status === 'completed' || status === 'paid' ? 'bg-emerald-500/20' :
                     status === 'skipped' ? 'bg-slate-600/20' :
                     isCurrent ? 'bg-[#00E5FF]/20' :
+                    isLocked ? 'bg-purple-500/20' :
                     'bg-[#27272A]'
                   }`}>
                     {status === 'completed' || status === 'paid' ? (
@@ -1313,7 +1317,7 @@ const DealCard = ({
                     ) : status === 'skipped' ? (
                       <SkipForward size={20} className="text-slate-500" />
                     ) : (
-                      <Icon size={20} className={isCurrent ? 'text-[#00E5FF]' : 'text-slate-500'} />
+                      <Icon size={20} className={isCurrent ? 'text-[#00E5FF]' : isLocked ? 'text-purple-400' : 'text-slate-500'} />
                     )}
                   </div>
                   <div>
@@ -1321,14 +1325,25 @@ const DealCard = ({
                       status === 'completed' || status === 'paid' ? 'text-emerald-400' :
                       status === 'skipped' ? 'text-slate-500' :
                       isCurrent ? 'text-white' :
+                      isLocked ? 'text-purple-300' :
                       'text-slate-400'
                     }`}>
                       {stage.label}
-                      {stage.optional && <span className="text-slate-500 text-xs ml-2">(можно пропустить)</span>}
+                      {stage.optional && !isLocked && <span className="text-slate-500 text-xs ml-2">(можно пропустить)</span>}
+                      {isLocked && <span className="text-purple-400 text-xs ml-2">(из предложения)</span>}
                     </p>
                     
                     {/* Stage status info */}
-                    {status === 'contractor_selected' && stageData?.price && (
+                    {isLocked && stageData?.contractor_name && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Building2 size={14} className="text-purple-400" />
+                        <span className="text-purple-300">{stageData.contractor_name}</span>
+                        {stageData.price && (
+                          <span className="text-slate-400">• ${stageData.price}</span>
+                        )}
+                      </div>
+                    )}
+                    {status === 'contractor_selected' && stageData?.price && !isLocked && (
                       <p className="text-amber-400 text-sm">Подрядчик выбран • ${stageData.price}</p>
                     )}
                     {status === 'invoice' && (
@@ -1343,11 +1358,28 @@ const DealCard = ({
                     {status === 'skipped' && (
                       <p className="text-slate-500 text-sm">Пропущен</p>
                     )}
+                    
+                    {/* Moderator confirmation status */}
+                    {isLocked && status !== 'paid' && status !== 'completed' && (
+                      <div className="flex items-center gap-1 mt-1">
+                        {moderatorConfirmed ? (
+                          <span className="flex items-center gap-1 text-emerald-400 text-xs">
+                            <BadgeCheck size={12} />
+                            Подтверждён модератором
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-amber-400 text-xs">
+                            <Clock size={12} />
+                            Ожидает проверки модератора
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Stage Actions */}
-                {isCurrent && status === 'pending' && (
+                {isCurrent && status === 'pending' && !isLocked && (
                   <div className="flex gap-2">
                     {/* Leasing stage */}
                     {stage.key === 'leasing' && (
