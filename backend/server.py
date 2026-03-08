@@ -6637,6 +6637,116 @@ async def start_tender_from_application(application_id: str, current_user: dict 
     
     return {"message": "Тендер запущен", "tender_id": tender_id}
 
+@api_router.post("/applications/{application_id}/select-contractor")
+async def select_contractor_directly(application_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Select a contractor directly for application (without tender)"""
+    contractor_id = data.get("contractor_id")
+    if not contractor_id:
+        raise HTTPException(status_code=400, detail="contractor_id required")
+    
+    # Check application
+    app = await db.applications.find_one({"id": application_id, "user_id": current_user["id"]})
+    if not app:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+    
+    if app.get("tender_started"):
+        raise HTTPException(status_code=400, detail="Тендер уже запущен, используйте раздел Тендеры")
+    
+    # Check contractor
+    contractor = await db.contractors.find_one({"id": contractor_id, "status": "approved"})
+    if not contractor:
+        raise HTTPException(status_code=404, detail="Подрядчик не найден")
+    
+    # Create a deal directly
+    deal_id = str(uuid.uuid4())
+    
+    # Get all contractor's services as default stages
+    contractor_services = contractor.get("services", [])
+    if isinstance(contractor_services, str):
+        contractor_services = [s.strip() for s in contractor_services.split(",") if s.strip()]
+    
+    # Standard stages mapping
+    stage_mapping = {
+        "leasing": "Лизинг",
+        "inspection": "Инспекция авто",
+        "export": "Выкуп и экспорт",
+        "logistics_china": "Доставка до порта(Китай)",
+        "insurance": "Страхование авто",
+        "delivery_rb": "Доставка в Беларусь",
+        "customs": "Таможенное оформление",
+        "completion": "Завершение сделки"
+    }
+    
+    # Create deal stages based on contractor services
+    deal_stages = []
+    for svc in contractor_services:
+        if svc in stage_mapping:
+            deal_stages.append({
+                "name": stage_mapping[svc],
+                "key": svc,
+                "contractor_id": contractor_id,
+                "contractor_name": contractor["company_name"],
+                "price": contractor.get("service_prices", {}).get(svc, 0),
+                "status": "pending",  # pending, confirmed_by_moderator, paid, completed
+                "locked": True,  # Cannot change contractor for pre-selected stages
+                "documents": [],
+                "messages": []
+            })
+    
+    deal = {
+        "id": deal_id,
+        "user_id": current_user["id"],
+        "application_id": application_id,
+        "contractor_id": contractor_id,
+        "contractor_name": contractor["company_name"],
+        "car_info": {
+            "brand": app.get("brand"),
+            "model": app.get("model"),
+            "year_from": app.get("year_from"),
+            "year_to": app.get("year_to")
+        },
+        "stages": deal_stages,
+        "current_stage_index": 0,
+        "status": "active",
+        "total_amount": sum(s.get("price", 0) for s in deal_stages),
+        "paid_amount": 0,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.deals.insert_one(deal)
+    
+    # Update application
+    await db.applications.update_one(
+        {"id": application_id},
+        {"$set": {
+            "status": "in_deal",
+            "deal_id": deal_id,
+            "selected_contractor_id": contractor_id,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Create initial document exchange card
+    doc_card = {
+        "id": str(uuid.uuid4()),
+        "deal_id": deal_id,
+        "user_id": current_user["id"],
+        "contractor_id": contractor_id,
+        "type": "deal_documents",
+        "title": f"Документы по сделке: {app.get('brand', '')} {app.get('model', '')}",
+        "files": [],
+        "messages": [],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.deal_documents.insert_one(doc_card)
+    
+    return {
+        "message": "Подрядчик выбран, сделка создана",
+        "deal_id": deal_id,
+        "contractor_name": contractor["company_name"]
+    }
+
 @api_router.post("/deals/request-assistance")
 async def request_deal_assistance(current_user: dict = Depends(get_current_user)):
     """Request consultant assistance ($200 fee)"""
