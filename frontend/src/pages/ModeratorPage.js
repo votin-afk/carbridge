@@ -367,16 +367,6 @@ const ModeratorPage = () => {
   const handleDeleteDeal = (dealId) => showDeleteDialog('deal', dealId, 'Отменить сделку?');
   const handleDeleteCarApplication = (appId) => showDeleteDialog('application', appId, 'Удалить заявку на подбор авто?');
 
-  const handleConfirmStage = async (dealId, stage) => {
-    try {
-      await axios.post(`${API}/moderator/deals/${dealId}/confirm-stage`, { stage }, { headers });
-      toast.success(`Этап "${dealStages[stage]?.label}" подтвержден`);
-      fetchData();
-    } catch (error) {
-      toast.error('Ошибка при подтверждении');
-    }
-  };
-
   const handleApproveVerification = async (verificationId) => {
     try {
       await axios.post(`${API}/moderator/verifications/${verificationId}/review`, {
