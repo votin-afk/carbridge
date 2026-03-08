@@ -501,6 +501,15 @@ const ModeratorPage = () => {
               <FileCheck size={16} className="mr-2" />
               Сделки
             </TabsTrigger>
+            <TabsTrigger value="stage-moderation" className="data-[state=active]:bg-purple-500 data-[state=active]:text-white">
+              <Shield size={16} className="mr-2" />
+              Модерация этапов
+              {pendingStages.length > 0 && (
+                <span className="ml-2 px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full">
+                  {pendingStages.length}
+                </span>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="tenders" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black">
               <Gavel size={16} className="mr-2" />
               Тендеры
