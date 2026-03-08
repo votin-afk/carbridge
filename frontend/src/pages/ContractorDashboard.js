@@ -707,6 +707,239 @@ const ContractorDashboard = () => {
             )}
           </TabsContent>
 
+          {/* My Deals Tab */}
+          <TabsContent value="deals">
+            <div className="grid lg:grid-cols-3 gap-6">
+              {/* Deals List */}
+              <div className="lg:col-span-1 space-y-3">
+                <h3 className="text-white font-medium">Мои сделки</h3>
+                
+                {myDeals.length === 0 ? (
+                  <div className="bg-[#15191E] border border-[#27272A] rounded-lg p-6 text-center">
+                    <Car size={48} className="mx-auto mb-3 text-slate-600" />
+                    <p className="text-slate-400">Нет активных сделок</p>
+                  </div>
+                ) : (
+                  myDeals.map(deal => (
+                    <div
+                      key={deal.id}
+                      onClick={() => setSelectedDeal(deal)}
+                      className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                        selectedDeal?.id === deal.id
+                          ? 'bg-emerald-500/10 border-emerald-500'
+                          : 'bg-[#15191E] border-[#27272A] hover:border-emerald-500/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {deal.car_info?.image_url ? (
+                          <img src={deal.car_info.image_url} alt="" className="w-12 h-9 object-cover rounded" />
+                        ) : (
+                          <div className="w-12 h-9 bg-[#0B0F14] rounded flex items-center justify-center">
+                            <Car size={18} className="text-slate-600" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-medium truncate">
+                            {deal.car_info?.brand} {deal.car_info?.model}
+                          </p>
+                          <p className="text-slate-500 text-xs">
+                            Клиент: {deal.client?.name || deal.client?.email || '—'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Deal Content */}
+              <div className="lg:col-span-2">
+                {!selectedDeal ? (
+                  <div className="bg-[#15191E] border border-[#27272A] rounded-lg p-12 text-center">
+                    <MessageSquare size={64} className="mx-auto mb-4 text-slate-600" />
+                    <p className="text-slate-400">Выберите сделку для просмотра чата и документов</p>
+                  </div>
+                ) : (
+                  <div className="bg-[#15191E] border border-[#27272A] rounded-lg overflow-hidden">
+                    {/* Deal Header */}
+                    <div className="p-4 border-b border-[#27272A]">
+                      <h3 className="text-white font-semibold">
+                        {selectedDeal.car_info?.brand} {selectedDeal.car_info?.model}
+                      </h3>
+                      <p className="text-slate-400 text-sm">
+                        Клиент: {selectedDeal.client?.name || selectedDeal.client?.email}
+                      </p>
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="flex border-b border-[#27272A]">
+                      <button
+                        onClick={() => setDealActiveTab('chat')}
+                        className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                          dealActiveTab === 'chat'
+                            ? 'text-emerald-400 border-b-2 border-emerald-500'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <MessageSquare size={16} className="inline mr-2" />
+                        Чат ({dealMessages.length})
+                      </button>
+                      <button
+                        onClick={() => setDealActiveTab('files')}
+                        className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                          dealActiveTab === 'files'
+                            ? 'text-emerald-400 border-b-2 border-emerald-500'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <Folder size={16} className="inline mr-2" />
+                        Файлы ({dealFiles.length})
+                      </button>
+                    </div>
+
+                    {/* Tab Content */}
+                    {dealActiveTab === 'chat' ? (
+                      <div className="flex flex-col h-[400px]">
+                        {/* Messages */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                          {dealMessages.length === 0 ? (
+                            <div className="text-center py-8">
+                              <MessageSquare size={48} className="mx-auto mb-3 text-slate-600" />
+                              <p className="text-slate-400">Нет сообщений</p>
+                            </div>
+                          ) : (
+                            dealMessages.map(msg => (
+                              <div
+                                key={msg.id}
+                                className={`flex ${msg.sender_type === 'contractor' ? 'justify-end' : 'justify-start'}`}
+                              >
+                                <div className={`max-w-[70%] ${
+                                  msg.sender_type === 'contractor'
+                                    ? 'bg-emerald-500/10 border border-emerald-500/30'
+                                    : 'bg-[#27272A]'
+                                } rounded-lg p-3`}>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    {msg.sender_type === 'contractor' ? (
+                                      <Building2 size={12} className="text-emerald-400" />
+                                    ) : (
+                                      <User size={12} className="text-[#00E5FF]" />
+                                    )}
+                                    <span className={`text-xs font-medium ${
+                                      msg.sender_type === 'contractor' ? 'text-emerald-400' : 'text-[#00E5FF]'
+                                    }`}>
+                                      {msg.sender_name}
+                                    </span>
+                                    <span className="text-xs text-slate-500">
+                                      {new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
+                                  <p className="text-white text-sm whitespace-pre-wrap">{msg.content}</p>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                        {/* Message Input */}
+                        <div className="p-4 border-t border-[#27272A]">
+                          <div className="flex gap-2">
+                            <Input
+                              value={newMessage}
+                              onChange={(e) => setNewMessage(e.target.value)}
+                              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendDealMessage()}
+                              placeholder="Напишите сообщение..."
+                              className="flex-1 bg-[#0B0F14] border-[#27272A]"
+                            />
+                            <input
+                              type="file"
+                              id="contractor-file-upload"
+                              onChange={handleDealFileUpload}
+                              className="hidden"
+                            />
+                            <Button
+                              onClick={() => document.getElementById('contractor-file-upload')?.click()}
+                              variant="outline"
+                              className="border-[#27272A]"
+                              disabled={uploadingFile}
+                            >
+                              {uploadingFile ? <Loader2 size={16} className="animate-spin" /> : <Paperclip size={16} />}
+                            </Button>
+                            <Button
+                              onClick={sendDealMessage}
+                              disabled={sendingMessage || !newMessage.trim()}
+                              className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                            >
+                              {sendingMessage ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-4">
+                        {/* Upload Button */}
+                        <div className="mb-4">
+                          <input
+                            type="file"
+                            id="contractor-file-upload-2"
+                            onChange={handleDealFileUpload}
+                            className="hidden"
+                          />
+                          <Button
+                            onClick={() => document.getElementById('contractor-file-upload-2')?.click()}
+                            disabled={uploadingFile}
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                          >
+                            {uploadingFile ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Upload size={16} className="mr-2" />}
+                            Загрузить файл
+                          </Button>
+                        </div>
+
+                        {/* Files List */}
+                        {dealFiles.length === 0 ? (
+                          <div className="text-center py-8">
+                            <Folder size={48} className="mx-auto mb-3 text-slate-600" />
+                            <p className="text-slate-400">Нет файлов</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {dealFiles.map(file => (
+                              <div
+                                key={file.id}
+                                className="flex items-center gap-3 p-3 bg-[#0B0F14] rounded-lg"
+                              >
+                                <div className="w-10 h-10 bg-[#27272A] rounded-lg flex items-center justify-center">
+                                  {getFileIcon(file.category)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-white text-sm truncate">{file.original_name}</p>
+                                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                                    <span>{formatFileSize(file.size)}</span>
+                                    <span>•</span>
+                                    <span className={file.uploader_type === 'contractor' ? 'text-emerald-400' : 'text-[#00E5FF]'}>
+                                      {file.uploader_name}
+                                    </span>
+                                  </div>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => downloadDealFile(file.id, file.original_name)}
+                                  className="h-8 w-8 p-0 text-slate-400 hover:text-white"
+                                >
+                                  <Download size={16} />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
           {/* My Offers Tab */}
           <TabsContent value="offers">
             {dashboardData?.recent_offers?.length > 0 ? (
