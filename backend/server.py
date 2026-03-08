@@ -4112,6 +4112,19 @@ def generate_mock_offers(tender_id: str, car: dict) -> List[dict]:
 @api_router.get("/tenders", response_model=List[TenderResponse])
 async def get_tenders(current_user: dict = Depends(get_current_user)):
     tenders = await db.tenders.find({"user_id": current_user["id"]}, {"_id": 0}).to_list(100)
+    
+    # Enrich each tender with real contractor offers from tender_offers collection
+    for tender in tenders:
+        real_offers = await db.tender_offers.find(
+            {"tender_id": tender["id"]},
+            {"_id": 0}
+        ).to_list(50)
+        
+        # Merge mock offers with real offers (real offers take priority)
+        existing_offers = tender.get("offers", [])
+        tender["offers"] = real_offers + existing_offers
+        tender["offers_count"] = len(tender["offers"])
+    
     return [TenderResponse(**t) for t in tenders]
 
 @api_router.get("/tenders/{tender_id}", response_model=TenderResponse)
@@ -4119,6 +4132,18 @@ async def get_tender(tender_id: str, current_user: dict = Depends(get_current_us
     tender = await db.tenders.find_one({"id": tender_id, "user_id": current_user["id"]}, {"_id": 0})
     if not tender:
         raise HTTPException(status_code=404, detail="Tender not found")
+    
+    # Get real contractor offers from tender_offers collection
+    real_offers = await db.tender_offers.find(
+        {"tender_id": tender_id},
+        {"_id": 0}
+    ).to_list(50)
+    
+    # Merge mock offers with real offers (real offers first)
+    existing_offers = tender.get("offers", [])
+    tender["offers"] = real_offers + existing_offers
+    tender["offers_count"] = len(tender["offers"])
+    
     return TenderResponse(**tender)
 
 @api_router.post("/tenders/{tender_id}/select/{offer_id}")
@@ -4127,7 +4152,15 @@ async def select_offer(tender_id: str, offer_id: str, current_user: dict = Depen
     if not tender:
         raise HTTPException(status_code=404, detail="Tender not found")
     
+    # Check in mock offers first
     offer_exists = any(o["id"] == offer_id for o in tender.get("offers", []))
+    
+    # Also check in real contractor offers
+    real_offer = None
+    if not offer_exists:
+        real_offer = await db.tender_offers.find_one({"id": offer_id, "tender_id": tender_id}, {"_id": 0})
+        offer_exists = real_offer is not None
+    
     if not offer_exists:
         raise HTTPException(status_code=404, detail="Offer not found")
     
@@ -4136,11 +4169,19 @@ async def select_offer(tender_id: str, offer_id: str, current_user: dict = Depen
         {"$set": {"selected_offer_id": offer_id, "status": "selected"}}
     )
     
+    # Update the offer status to accepted
+    if real_offer:
+        await db.tender_offers.update_one(
+            {"id": offer_id},
+            {"$set": {"status": "accepted"}}
+        )
+    
     # Update car status
-    await db.garage.update_one(
-        {"id": tender["car_id"]},
-        {"$set": {"status": "in_progress"}}
-    )
+    if tender.get("car_id"):
+        await db.garage.update_one(
+            {"id": tender["car_id"]},
+            {"$set": {"status": "in_progress"}}
+        )
     
     return {"message": "Offer selected successfully"}
 
