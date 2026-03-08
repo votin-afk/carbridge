@@ -1812,6 +1812,23 @@ const Applications = () => {
                       Запустить тендер
                     </Button>
                   )}
+                  
+                  {/* Select Contractor Directly */}
+                  {!selectedApp.tender_started && (
+                    <Button
+                      data-testid="select-contractor-btn"
+                      onClick={() => {
+                        fetchContractors();
+                        setSelectContractorDialog(true);
+                      }}
+                      variant="outline"
+                      className="w-full border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10"
+                    >
+                      <Users size={16} className="mr-2" />
+                      Выбрать подрядчика напрямую
+                    </Button>
+                  )}
+                  
                   {!accountSummary?.contract_signed && !selectedApp.tender_started && (
                     <p className="text-amber-400 text-xs text-center">
                       Для запуска тендера необходимо подписать договор в разделе "Верификация"
