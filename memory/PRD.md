@@ -106,20 +106,39 @@
 - **Framework**: FastAPI
 - **Database**: MongoDB
 - **Auth**: JWT токены (отдельные для пользователей и подрядчиков)
-- **File**: `/app/backend/server.py` (~6000+ строк)
+- **File**: `/app/backend/server.py` (~7700+ строк) - **РЕФАКТОРИНГ В ПРОЦЕССЕ**
 
 ### Frontend
 - **Framework**: React
 - **Styling**: Tailwind CSS + Shadcn UI
 - **State**: React Context (AuthContext)
 
-### Структура проекта
+### Структура проекта (После рефакторинга 08.12.2025)
 ```
 /app
 ├── backend/
-│   ├── server.py          # Основной API
+│   ├── config.py              # ✅ НОВЫЙ: Конфигурация приложения
+│   ├── database.py            # ✅ НОВЫЙ: MongoDB подключение
+│   ├── server.py              # Основной API (7700+ строк) - рефакторинг в процессе
 │   ├── requirements.txt
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── schemas.py         # ✅ НОВЫЙ: Pydantic модели
+│   ├── routes/
+│   │   ├── __init__.py
+│   │   ├── auth.py            # ✅ НОВЫЙ: Роуты аутентификации
+│   │   ├── affiliate.py       # ✅ НОВЫЙ: Роуты партнёрской программы
+│   │   ├── user.py            # ✅ НОВЫЙ: Роуты пользователя
+│   │   └── leasing.py         # ✅ НОВЫЙ: Роуты лизинга
+│   ├── services/
+│   │   ├── __init__.py
+│   │   └── calculator.py      # ✅ НОВЫЙ: Сервис калькулятора
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   ├── auth.py            # ✅ НОВЫЙ: Утилиты аутентификации
+│   │   └── cache.py           # ✅ НОВЫЙ: Утилиты кэширования
 │   └── tests/
+│       └── test_refactoring_validation.py  # ✅ НОВЫЙ: Тесты рефакторинга
 ├── frontend/
 │   ├── src/
 │   │   ├── pages/
