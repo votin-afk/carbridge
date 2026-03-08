@@ -994,7 +994,7 @@ const ContractorDashboard = () => {
               {/* Tender Info */}
               <div className="p-3 bg-[#0B0F14] rounded-sm">
                 <p className="text-white font-medium">
-                  {selectedTender.car_info?.brand || selectedTender.brand || 'Автомобиль'} {selectedTender.car_info?.model || selectedTender.model || ''}
+                  {(selectedTender.car_info?.brand || selectedTender.car_request?.brand || selectedTender.brand || 'Любая марка').toUpperCase()} {selectedTender.car_info?.model || selectedTender.car_request?.model || selectedTender.model || ''}
                 </p>
                 <p className="text-slate-400 text-sm">
                   {selectedTender.type === 'application' ? `Заявка ${selectedTender.application_number}` : `Тендер #${selectedTender.id.slice(0, 8)}`}
