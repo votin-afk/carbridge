@@ -151,6 +151,10 @@ const ModeratorPage = () => {
         // Fetch CONTRACTOR applications (not approved contractors)
         const response = await axios.get(`${API}/moderator/contractor-applications`, { headers });
         setContractorApplications(response.data);
+      } else if (activeTab === 'stage-moderation') {
+        // Fetch pending stage confirmations
+        const response = await axios.get(`${API}/moderator/deals/pending-stages`, { headers });
+        setPendingStages(response.data);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
