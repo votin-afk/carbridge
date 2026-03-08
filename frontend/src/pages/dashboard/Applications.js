@@ -501,19 +501,54 @@ const Applications = () => {
         power_to: formData.power_to ? parseInt(formData.power_to) : null,
         budget_china_from: formData.budget_china_from ? parseFloat(formData.budget_china_from) : null,
         budget_china_to: formData.budget_china_to ? parseFloat(formData.budget_china_to) : null,
-        budget_total: formData.budget_total ? parseFloat(formData.budget_total) : null
+        budget_total: formData.budget_total ? parseFloat(formData.budget_total) : null,
+        // Link to garage car if from garage
+        garage_car_id: prefillCar?.id || null
       };
       
-      await axios.post(`${API}/applications/create`, payload, { headers });
+      const response = await axios.post(`${API}/applications/create`, payload, { headers });
+      const newAppId = response.data.application_id;
+      
       toast.success('Заявка успешно создана!');
       setShowForm(false);
       setCurrentStep(1);
-      resetForm();
+      
+      // If from garage, show action selection dialog
+      if (prefillCar) {
+        const newApp = { 
+          id: newAppId, 
+          ...payload,
+          application_number: response.data.application_number,
+          status: 'new'
+        };
+        setSelectedApp(newApp);
+        setPrefillCar(null);
+        toast.info('Выберите действие: запустить тендер или выбрать подрядчика');
+      } else {
+        resetForm();
+      }
+      
       fetchApplications();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Ошибка создания заявки');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Select contractor directly for application
+  const selectContractorForApp = async (appId, contractorId) => {
+    try {
+      await axios.post(`${API}/applications/${appId}/select-contractor`, 
+        { contractor_id: contractorId }, 
+        { headers }
+      );
+      toast.success('Подрядчик выбран! Заявка перенесена в "Авто для сделки"');
+      setSelectContractorDialog(false);
+      setSelectedApp(null);
+      navigate('/dashboard/deals');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка выбора подрядчика');
     }
   };
 
