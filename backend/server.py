@@ -21,6 +21,15 @@ import asyncio
 from io import BytesIO
 import shutil
 
+# Add backend to path for imports
+import sys
+sys.path.insert(0, str(Path(__file__).parent))
+
+# Import modular routes
+from routes import auth as auth_routes
+from routes import affiliate as affiliate_routes
+from routes import user as user_routes
+
 # Uploads directory
 UPLOADS_DIR = Path(__file__).parent / "uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)
