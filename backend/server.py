@@ -4478,6 +4478,33 @@ async def get_contractors(contractor_type: Optional[str] = None):
     
     return all_contractors
 
+@api_router.get("/contractors/approved", response_model=List[ContractorResponse])
+async def get_approved_contractors():
+    """Get all approved and verified contractors for direct selection"""
+    # Get verified contractors from database
+    query = {"status": "approved", "verified": True}
+    
+    db_contractors = await db.contractors.find(query, {"_id": 0, "password_hash": 0}).to_list(100)
+    
+    # Add name field from company_name if missing
+    for c in db_contractors:
+        c["name"] = c.get("name") or c.get("company_name")
+        services = c.get("services", [])
+        if isinstance(services, list):
+            c["services"] = ", ".join(services)
+    
+    # Add demo contractors
+    demo_ids = {c["id"] for c in db_contractors}
+    demo_emails = {c.get("email") for c in db_contractors if c.get("email")}
+    demo_filtered = [c for c in DEMO_CONTRACTORS if c["id"] not in demo_ids and c.get("email") not in demo_emails]
+    
+    all_contractors = db_contractors + demo_filtered
+    
+    # Sort by verified status, rating and deals count
+    all_contractors.sort(key=lambda x: (-x.get("verified", False), -x.get("is_verified", False), -x.get("rating", 0), -x.get("deals_count", 0)))
+    
+    return all_contractors
+
 @api_router.get("/contractors/{contractor_id}", response_model=ContractorResponse)
 async def get_contractor(contractor_id: str):
     """Get contractor by ID"""
