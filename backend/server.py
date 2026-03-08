@@ -7311,12 +7311,20 @@ async def select_contractor_directly(application_id: str, data: dict, current_us
     deal_stages = []
     for svc in contractor_services:
         if svc in stage_mapping:
+            # Get price - handle both numeric and dict formats (for leasing)
+            price_data = contractor.get("service_prices", {}).get(svc, 0)
+            if isinstance(price_data, dict):
+                # For leasing, price might be a rate object
+                price = price_data.get("rate", 0)
+            else:
+                price = price_data if isinstance(price_data, (int, float)) else 0
+            
             deal_stages.append({
                 "name": stage_mapping[svc],
                 "key": svc,
                 "contractor_id": contractor_id,
                 "contractor_name": contractor["company_name"],
-                "price": contractor.get("service_prices", {}).get(svc, 0),
+                "price": price,
                 "status": "pending",  # pending, confirmed_by_moderator, paid, completed
                 "locked": True,  # Cannot change contractor for pre-selected stages
                 "documents": [],
