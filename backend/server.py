@@ -765,8 +765,8 @@ class Che168API:
                 "url": f"https://www.che168.com/china/{brand_name.lower()}/"
             })
         
-        # Sort by name
-        brands.sort(key=lambda x: x["name"])
+        # Sort by count descending (most popular first)
+        brands.sort(key=lambda x: x["count"], reverse=True)
         return brands
     
     @staticmethod
