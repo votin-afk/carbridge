@@ -510,7 +510,7 @@ const ContractorDashboard = () => {
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <h4 className="text-white font-medium">
-                          {tender.car_info?.brand} {tender.car_info?.model || 'Автомобиль'}
+                          {(tender.car_info?.brand || tender.car_request?.brand || 'Любая марка').toUpperCase()} {tender.car_info?.model || tender.car_request?.model || ''}
                         </h4>
                         <p className="text-slate-400 text-sm">
                           Тендер #{tender.id.slice(0, 8)} • {new Date(tender.created_at).toLocaleDateString('ru-RU')}
@@ -526,7 +526,9 @@ const ContractorDashboard = () => {
                     <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
                       <div>
                         <p className="text-slate-500">Бюджет</p>
-                        <p className="text-[#00E5FF] font-medium">${tender.budget?.toLocaleString() || '—'}</p>
+                        <p className="text-[#00E5FF] font-medium">
+                          ${tender.budget?.toLocaleString() || tender.car_request?.budget_max?.toLocaleString() || '—'}
+                        </p>
                       </div>
                       <div>
                         <p className="text-slate-500">Предложений</p>
