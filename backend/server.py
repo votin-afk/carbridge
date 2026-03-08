@@ -237,9 +237,8 @@ class ContractorResponse(BaseModel):
     verified: Optional[bool] = False
     country: Optional[str] = None
     contact_person: Optional[str] = None
-    is_verified: bool
     logo_url: Optional[str] = None
-    created_at: str
+    created_at: Optional[str] = None
 
 class ContractorAssignment(BaseModel):
     car_id: str
