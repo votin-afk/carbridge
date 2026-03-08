@@ -50,7 +50,16 @@ import {
   Settings,
   Palette,
   User,
-  Info
+  Info,
+  Folder,
+  MessageSquare,
+  Paperclip,
+  Upload,
+  Download,
+  Image,
+  Video,
+  File,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
