@@ -354,12 +354,17 @@ const MyGarage = () => {
       return;
     }
 
-    try {
-      await axios.post(`${API}/tenders`, { car_id: carId }, { headers });
-      toast.success('Тендер запущен! Проверьте раздел "Тендеры"');
-      fetchCars();
-    } catch (error) {
-      toast.error('Ошибка при запуске тендера');
+    // Find the car data to pass to application form
+    const car = cars.find(c => c.id === carId);
+    if (car) {
+      // Navigate to applications with car data for pre-filling
+      navigate('/dashboard/applications', { 
+        state: { 
+          prefillCar: car,
+          fromGarage: true 
+        } 
+      });
+      toast.info('Заполните заявку для запуска тендера');
     }
   };
 
