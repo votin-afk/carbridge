@@ -6,9 +6,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # JWT
-JWT_SECRET = os.environ.get("JWT_SECRET", "carbridge-secret-key-2024")
+JWT_SECRET = os.environ.get("JWT_SECRET", os.environ.get("JWT_SECRET_KEY", "carbridge_secret_key"))
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_DAYS = 30
+JWT_EXPIRATION_HOURS = 24
 
 # MongoDB
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
