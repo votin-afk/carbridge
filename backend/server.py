@@ -7100,6 +7100,15 @@ async def get_my_applications(current_user: dict = Depends(get_current_user)):
         {"_id": 0}
     ).sort("created_at", -1).to_list(100)
     
+    # Enrich with contractor offers
+    for app in applications:
+        offers = await db.tender_offers.find(
+            {"application_id": app["id"]},
+            {"_id": 0}
+        ).to_list(50)
+        app["offers"] = offers
+        app["offers_count"] = len(offers)
+    
     return applications
 
 @api_router.get("/applications/{application_id}")
@@ -7112,6 +7121,14 @@ async def get_application(application_id: str, current_user: dict = Depends(get_
     
     if not application:
         raise HTTPException(status_code=404, detail="Заявка не найдена")
+    
+    # Get contractor offers for this application
+    offers = await db.tender_offers.find(
+        {"application_id": application_id},
+        {"_id": 0}
+    ).to_list(50)
+    application["offers"] = offers
+    application["offers_count"] = len(offers)
     
     return application
 
