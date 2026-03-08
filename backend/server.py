@@ -4693,32 +4693,6 @@ async def get_all_deals(current_user: dict = Depends(require_role(["admin", "mod
     
     return result
 
-@api_router.get("/moderator/deals/pending-stages")
-async def get_deals_pending_moderation(current_user: dict = Depends(require_role(["admin", "moderator"]))):
-    """Get all deals with stages awaiting moderator confirmation"""
-    # Find all deals with locked stages that are not yet confirmed
-    deals = await db.deals.find({"status": "active"}, {"_id": 0}).to_list(100)
-    
-    pending = []
-    for deal in deals:
-        stages = deal.get("stages", {})
-        user = await db.users.find_one({"id": deal.get("user_id")}, {"_id": 0, "name": 1, "email": 1})
-        
-        # Check each stage
-        for stage_key, stage_data in stages.items():
-            if stage_data.get("locked") and not stage_data.get("moderator_confirmed") and not stage_data.get("paid"):
-                pending.append({
-                    "deal_id": deal["id"],
-                    "car_info": deal.get("car_info", {}),
-                    "user": user,
-                    "stage_key": stage_key,
-                    "contractor_name": stage_data.get("contractor_name"),
-                    "price": stage_data.get("price"),
-                    "created_at": deal.get("created_at")
-                })
-    
-    return pending
-
 @api_router.post("/moderator/deals/{deal_id}/confirm-stage")
 async def confirm_deal_stage(deal_id: str, stage: dict, current_user: dict = Depends(require_role(["admin", "moderator"]))):
     """Confirm a stage of a deal - enables client to pay"""
