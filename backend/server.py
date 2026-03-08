@@ -2772,6 +2772,435 @@ async def complete_deal(deal_id: str, current_user: dict = Depends(get_current_u
 
 # ==================== END NEW DEAL STAGES ENDPOINTS ====================
 
+# ==================== DEAL MESSAGES & FILES API ====================
+
+@api_router.get("/deals/{deal_id}/messages")
+async def get_deal_messages(deal_id: str, current_user: dict = Depends(get_current_user)):
+    """Get all messages for a deal"""
+    # Check if user has access to this deal
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # User can be the deal owner
+    if deal.get("user_id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
+    
+    messages = await db.deal_messages.find(
+        {"deal_id": deal_id},
+        {"_id": 0}
+    ).sort("created_at", 1).to_list(500)
+    
+    return messages
+
+@api_router.post("/deals/{deal_id}/messages")
+async def send_deal_message(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Send a message in a deal chat"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    if deal.get("user_id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
+    
+    message_id = str(uuid.uuid4())
+    message = {
+        "id": message_id,
+        "deal_id": deal_id,
+        "sender_id": current_user["id"],
+        "sender_name": current_user.get("name", current_user.get("email", "Пользователь")),
+        "sender_type": "client",
+        "content": data.get("content", ""),
+        "file_ids": data.get("file_ids", []),
+        "stage_key": data.get("stage_key"),
+        "read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.deal_messages.insert_one(message)
+    
+    return {"message": "Сообщение отправлено", "id": message_id}
+
+@api_router.get("/deals/{deal_id}/files")
+async def get_deal_files(deal_id: str, current_user: dict = Depends(get_current_user)):
+    """Get all files for a deal"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    if deal.get("user_id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
+    
+    files = await db.deal_files.find(
+        {"deal_id": deal_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return files
+
+@api_router.post("/deals/{deal_id}/files")
+async def upload_deal_file(
+    deal_id: str,
+    file: UploadFile = File(...),
+    stage_key: str = Form(None),
+    file_type: str = Form("document"),
+    description: str = Form(""),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload a file for a deal"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    if deal.get("user_id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
+    
+    # Validate file size
+    file_content = await file.read()
+    if len(file_content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="Файл слишком большой (макс. 50MB)")
+    
+    # Generate unique filename
+    file_id = str(uuid.uuid4())
+    file_ext = Path(file.filename).suffix.lower() if file.filename else ""
+    safe_filename = f"{file_id}{file_ext}"
+    
+    # Create deal directory
+    deal_dir = UPLOADS_DIR / deal_id
+    deal_dir.mkdir(exist_ok=True)
+    
+    # Save file
+    file_path = deal_dir / safe_filename
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+    
+    # Determine file category
+    image_exts = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
+    video_exts = [".mp4", ".mov", ".avi", ".webm"]
+    doc_exts = [".pdf", ".doc", ".docx", ".xls", ".xlsx"]
+    
+    if file_ext in image_exts:
+        category = "photo"
+    elif file_ext in video_exts:
+        category = "video"
+    elif file_ext in doc_exts:
+        category = "document"
+    else:
+        category = "other"
+    
+    # Save file info to database
+    file_doc = {
+        "id": file_id,
+        "deal_id": deal_id,
+        "uploader_id": current_user["id"],
+        "uploader_name": current_user.get("name", current_user.get("email", "Пользователь")),
+        "uploader_type": "client",
+        "original_name": file.filename,
+        "saved_name": safe_filename,
+        "file_type": file_type,
+        "category": category,
+        "stage_key": stage_key,
+        "description": description,
+        "size": len(file_content),
+        "mime_type": file.content_type,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.deal_files.insert_one(file_doc)
+    
+    return {
+        "message": "Файл загружен",
+        "file_id": file_id,
+        "filename": file.filename,
+        "size": len(file_content)
+    }
+
+@api_router.get("/deals/{deal_id}/files/{file_id}/download")
+async def download_deal_file(deal_id: str, file_id: str, current_user: dict = Depends(get_current_user)):
+    """Download a file from a deal"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    if deal.get("user_id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
+    
+    file_doc = await db.deal_files.find_one({"id": file_id, "deal_id": deal_id})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+    
+    file_path = UPLOADS_DIR / deal_id / file_doc["saved_name"]
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Файл не найден на сервере")
+    
+    return FileResponse(
+        path=str(file_path),
+        filename=file_doc["original_name"],
+        media_type=file_doc.get("mime_type", "application/octet-stream")
+    )
+
+@api_router.delete("/deals/{deal_id}/files/{file_id}")
+async def delete_deal_file(deal_id: str, file_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a file from a deal"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    if deal.get("user_id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
+    
+    file_doc = await db.deal_files.find_one({"id": file_id, "deal_id": deal_id, "uploader_id": current_user["id"]})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="Файл не найден или вы не можете его удалить")
+    
+    # Delete file from disk
+    file_path = UPLOADS_DIR / deal_id / file_doc["saved_name"]
+    if file_path.exists():
+        file_path.unlink()
+    
+    # Delete from database
+    await db.deal_files.delete_one({"id": file_id})
+    
+    return {"message": "Файл удалён"}
+
+# ==================== CONTRACTOR DEAL MESSAGES & FILES ====================
+
+@api_router.get("/contractor/deals/{deal_id}/messages")
+async def get_contractor_deal_messages(deal_id: str, current_user: dict = Depends(get_current_contractor)):
+    """Get messages for a deal (contractor view)"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # Check if contractor has access (is assigned to any stage)
+    has_access = False
+    stages = deal.get("stages", {})
+    for stage_data in stages.values():
+        if stage_data.get("contractor_id") == current_user["id"]:
+            has_access = True
+            break
+    
+    if not has_access and deal.get("contractor", {}).get("id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
+    
+    messages = await db.deal_messages.find(
+        {"deal_id": deal_id},
+        {"_id": 0}
+    ).sort("created_at", 1).to_list(500)
+    
+    return messages
+
+@api_router.post("/contractor/deals/{deal_id}/messages")
+async def send_contractor_deal_message(deal_id: str, data: dict, current_user: dict = Depends(get_current_contractor)):
+    """Send a message in a deal chat (contractor)"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # Check access
+    has_access = False
+    stages = deal.get("stages", {})
+    for stage_data in stages.values():
+        if stage_data.get("contractor_id") == current_user["id"]:
+            has_access = True
+            break
+    
+    if not has_access and deal.get("contractor", {}).get("id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
+    
+    message_id = str(uuid.uuid4())
+    message = {
+        "id": message_id,
+        "deal_id": deal_id,
+        "sender_id": current_user["id"],
+        "sender_name": current_user.get("company_name", "Подрядчик"),
+        "sender_type": "contractor",
+        "content": data.get("content", ""),
+        "file_ids": data.get("file_ids", []),
+        "stage_key": data.get("stage_key"),
+        "read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.deal_messages.insert_one(message)
+    
+    return {"message": "Сообщение отправлено", "id": message_id}
+
+@api_router.get("/contractor/deals/{deal_id}/files")
+async def get_contractor_deal_files(deal_id: str, current_user: dict = Depends(get_current_contractor)):
+    """Get all files for a deal (contractor view)"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # Check access
+    has_access = False
+    stages = deal.get("stages", {})
+    for stage_data in stages.values():
+        if stage_data.get("contractor_id") == current_user["id"]:
+            has_access = True
+            break
+    
+    if not has_access and deal.get("contractor", {}).get("id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
+    
+    files = await db.deal_files.find(
+        {"deal_id": deal_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return files
+
+@api_router.post("/contractor/deals/{deal_id}/files")
+async def upload_contractor_deal_file(
+    deal_id: str,
+    file: UploadFile = File(...),
+    stage_key: str = Form(None),
+    file_type: str = Form("document"),
+    description: str = Form(""),
+    current_user: dict = Depends(get_current_contractor)
+):
+    """Upload a file for a deal (contractor)"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # Check access
+    has_access = False
+    stages = deal.get("stages", {})
+    for stage_data in stages.values():
+        if stage_data.get("contractor_id") == current_user["id"]:
+            has_access = True
+            break
+    
+    if not has_access and deal.get("contractor", {}).get("id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
+    
+    # Validate file size
+    file_content = await file.read()
+    if len(file_content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="Файл слишком большой (макс. 50MB)")
+    
+    # Generate unique filename
+    file_id = str(uuid.uuid4())
+    file_ext = Path(file.filename).suffix.lower() if file.filename else ""
+    safe_filename = f"{file_id}{file_ext}"
+    
+    # Create deal directory
+    deal_dir = UPLOADS_DIR / deal_id
+    deal_dir.mkdir(exist_ok=True)
+    
+    # Save file
+    file_path = deal_dir / safe_filename
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+    
+    # Determine file category
+    image_exts = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
+    video_exts = [".mp4", ".mov", ".avi", ".webm"]
+    doc_exts = [".pdf", ".doc", ".docx", ".xls", ".xlsx"]
+    
+    if file_ext in image_exts:
+        category = "photo"
+    elif file_ext in video_exts:
+        category = "video"
+    elif file_ext in doc_exts:
+        category = "document"
+    else:
+        category = "other"
+    
+    # Save file info to database
+    file_doc = {
+        "id": file_id,
+        "deal_id": deal_id,
+        "uploader_id": current_user["id"],
+        "uploader_name": current_user.get("company_name", "Подрядчик"),
+        "uploader_type": "contractor",
+        "original_name": file.filename,
+        "saved_name": safe_filename,
+        "file_type": file_type,
+        "category": category,
+        "stage_key": stage_key,
+        "description": description,
+        "size": len(file_content),
+        "mime_type": file.content_type,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.deal_files.insert_one(file_doc)
+    
+    return {
+        "message": "Файл загружен",
+        "file_id": file_id,
+        "filename": file.filename,
+        "size": len(file_content)
+    }
+
+@api_router.get("/contractor/deals/{deal_id}/files/{file_id}/download")
+async def download_contractor_deal_file(deal_id: str, file_id: str, current_user: dict = Depends(get_current_contractor)):
+    """Download a file from a deal (contractor)"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # Check access
+    has_access = False
+    stages = deal.get("stages", {})
+    for stage_data in stages.values():
+        if stage_data.get("contractor_id") == current_user["id"]:
+            has_access = True
+            break
+    
+    if not has_access and deal.get("contractor", {}).get("id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
+    
+    file_doc = await db.deal_files.find_one({"id": file_id, "deal_id": deal_id})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+    
+    file_path = UPLOADS_DIR / deal_id / file_doc["saved_name"]
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Файл не найден на сервере")
+    
+    return FileResponse(
+        path=str(file_path),
+        filename=file_doc["original_name"],
+        media_type=file_doc.get("mime_type", "application/octet-stream")
+    )
+
+@api_router.get("/contractor/deals")
+async def get_contractor_deals(current_user: dict = Depends(get_current_contractor)):
+    """Get all deals where contractor is assigned"""
+    contractor_id = current_user["id"]
+    
+    # Find deals where this contractor is assigned to any stage or is the main contractor
+    all_deals = await db.deals.find({"status": "active"}, {"_id": 0}).to_list(100)
+    
+    my_deals = []
+    for deal in all_deals:
+        is_my_deal = False
+        
+        # Check if contractor is main contractor
+        if deal.get("contractor", {}).get("id") == contractor_id:
+            is_my_deal = True
+        
+        # Check if contractor is assigned to any stage
+        stages = deal.get("stages", {})
+        for stage_data in stages.values():
+            if stage_data.get("contractor_id") == contractor_id:
+                is_my_deal = True
+                break
+        
+        if is_my_deal:
+            # Get client info
+            client = await db.users.find_one({"id": deal.get("user_id")}, {"_id": 0, "name": 1, "email": 1})
+            deal["client"] = client
+            my_deals.append(deal)
+    
+    return my_deals
+
+# ==================== END DEAL MESSAGES & FILES API ====================
+
 @api_router.delete("/deals/{deal_id}")
 async def cancel_deal(deal_id: str, current_user: dict = Depends(get_current_user)):
     """Cancel a deal and return car to garage"""
