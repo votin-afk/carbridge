@@ -320,6 +320,99 @@ const Applications = () => {
     fetchAccountSummary();
   }, []);
 
+  // Handle prefill from garage navigation
+  useEffect(() => {
+    if (location.state?.prefillCar && location.state?.fromGarage) {
+      const car = location.state.prefillCar;
+      setPrefillCar(car);
+      
+      // Auto-fill form with car data
+      setFormData(prev => ({
+        ...prev,
+        brand: car.brand || '',
+        model: car.model || '',
+        year_from: car.year ? String(car.year) : '',
+        year_to: car.year ? String(car.year) : '',
+        engine_type: mapEngineType(car.engine_type) || '',
+        engine_volume: mapEngineVolume(car.engine_volume) || 'any',
+        budget_china_from: car.price_cny ? String(Math.floor(car.price_cny * 0.9)) : '',
+        budget_china_to: car.price_cny ? String(Math.ceil(car.price_cny * 1.1)) : '',
+        mileage_max: mapMileage(car.mileage) || 'any',
+        body_color: car.color ? mapColor(car.color) : 'any'
+      }));
+      
+      // Open form automatically
+      setShowForm(true);
+      toast.info(`Заполните заявку для "${car.brand} ${car.model}"`);
+      
+      // Clear navigation state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
+  // Map engine type from garage format to application format
+  const mapEngineType = (type) => {
+    const mapping = {
+      'ice': 'petrol',
+      'hybrid': 'hybrid',
+      'electric': 'electric'
+    };
+    return mapping[type] || '';
+  };
+
+  // Map engine volume to range
+  const mapEngineVolume = (volume) => {
+    if (!volume) return 'any';
+    const v = parseFloat(volume);
+    if (v < 1) return 'lt1';
+    if (v < 1.5) return '1_15';
+    if (v < 2) return '15_2';
+    if (v < 2.5) return '2_25';
+    if (v < 3) return '25_3';
+    return 'gt3';
+  };
+
+  // Map mileage to range
+  const mapMileage = (mileage) => {
+    if (!mileage) return 'any';
+    const m = parseInt(mileage);
+    if (m < 20000) return 'lt20';
+    if (m < 50000) return 'lt50';
+    if (m < 80000) return 'lt80';
+    if (m < 100000) return 'lt100';
+    if (m < 150000) return 'lt150';
+    return 'any';
+  };
+
+  // Map color
+  const mapColor = (color) => {
+    const colorMap = {
+      'white': 'white', 'белый': 'white',
+      'black': 'black', 'черный': 'black', 'чёрный': 'black',
+      'silver': 'silver', 'серебристый': 'silver',
+      'gray': 'gray', 'grey': 'gray', 'серый': 'gray',
+      'blue': 'blue', 'синий': 'blue',
+      'red': 'red', 'красный': 'red',
+      'brown': 'brown', 'коричневый': 'brown',
+      'green': 'green', 'зелёный': 'green', 'зеленый': 'green',
+      'beige': 'beige', 'бежевый': 'beige'
+    };
+    const lowerColor = (color || '').toLowerCase();
+    return colorMap[lowerColor] || 'any';
+  };
+
+  const fetchContractors = async () => {
+    setLoadingContractors(true);
+    try {
+      const response = await axios.get(`${API}/contractors/approved`);
+      setContractors(response.data);
+    } catch (error) {
+      console.error('Error fetching contractors:', error);
+    } finally {
+      setLoadingContractors(false);
+    }
+  };
+
   const fetchAccountSummary = async () => {
     try {
       const response = await axios.get(`${API}/account/summary`, { headers });
