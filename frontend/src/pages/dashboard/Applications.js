@@ -233,6 +233,8 @@ const otherOptions = [
 
 const Applications = () => {
   const { token, user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [applications, setApplications] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -243,6 +245,10 @@ const Applications = () => {
   const [startingTender, setStartingTender] = useState(false);
   const [accountSummary, setAccountSummary] = useState(null);
   const [cancellingApp, setCancellingApp] = useState(false);
+  const [prefillCar, setPrefillCar] = useState(null);
+  const [selectContractorDialog, setSelectContractorDialog] = useState(false);
+  const [contractors, setContractors] = useState([]);
+  const [loadingContractors, setLoadingContractors] = useState(false);
 
   const [formData, setFormData] = useState({
     // Раздел 1: Данные клиента
