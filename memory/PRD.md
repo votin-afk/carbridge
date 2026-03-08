@@ -309,10 +309,12 @@
    - Заменить httpx на более надёжное решение
    - Рассмотреть scraping API или Playwright
 
-2. **Рефакторинг кода**
-   - Разбить server.py на модули (routes, models, services)
-   - Разбить DealCars.js на компоненты
-   - Текущий размер server.py: ~6000+ строк
+2. **Рефакторинг кода** ✅ ПЕРВЫЙ ЭТАП ЗАВЕРШЁН
+   - ✅ Создана модульная структура (routes, models, services, utils)
+   - ✅ Созданы роутеры: auth.py, affiliate.py, user.py, leasing.py
+   - ✅ Создан сервис калькулятора
+   - 🔄 В процессе: создание остальных роутеров (deals, contractors, catalog, moderator)
+   - Текущий размер server.py: ~7700 строк
 
 ### P3 - Низкий приоритет / Backlog
 
