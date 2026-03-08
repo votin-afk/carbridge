@@ -1465,8 +1465,32 @@ const DealCard = ({
                   </div>
                 )}
 
-                {/* Show invoice button if contractor selected */}
-                {status === 'contractor_selected' && stageData?.price && (
+                {/* Actions for LOCKED stages from tender offer */}
+                {isLocked && status !== 'paid' && status !== 'completed' && status !== 'skipped' && (
+                  <div className="flex gap-2 items-center">
+                    {moderatorConfirmed ? (
+                      <Button
+                        size="sm"
+                        onClick={() => onOpenInvoice(deal.id, stage.key, {
+                          service_price: stageData?.price || 0,
+                          car_price: stage.key === 'export' ? Math.round((deal.car_info?.price_cny || 0) / 7.2) : 0
+                        })}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                      >
+                        <DollarSign size={16} className="mr-1" />
+                        Оплатить этап
+                      </Button>
+                    ) : (
+                      <span className="text-amber-400 text-sm flex items-center gap-1">
+                        <AlertCircle size={14} />
+                        Ожидает модерации
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Show invoice button if contractor selected (not locked) */}
+                {!isLocked && status === 'contractor_selected' && stageData?.price && (
                   <Button
                     size="sm"
                     onClick={() => onOpenInvoice(deal.id, stage.key, {
