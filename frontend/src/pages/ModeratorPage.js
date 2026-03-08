@@ -100,6 +100,7 @@ const ModeratorPage = () => {
   const [users, setUsers] = useState([]);
   const [verifications, setVerifications] = useState([]);
   const [contractorApplications, setContractorApplications] = useState([]);
+  const [pendingStages, setPendingStages] = useState([]);
   
   // Dialog states
   const [selectedApplication, setSelectedApplication] = useState(null);
