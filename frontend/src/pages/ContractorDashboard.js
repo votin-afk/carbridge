@@ -293,6 +293,11 @@ const ContractorDashboard = () => {
               <span className="hidden sm:inline">Заявки клиентов</span>
               <span className="sm:hidden">Заявки</span>
             </TabsTrigger>
+            <TabsTrigger value="deals" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white text-xs sm:text-sm">
+              <Folder size={16} className="mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Мои сделки</span>
+              <span className="sm:hidden">Сделки</span>
+            </TabsTrigger>
             <TabsTrigger value="offers" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black text-xs sm:text-sm">
               <Package size={16} className="mr-1 sm:mr-2" />
               <span className="hidden sm:inline">Мои предложения</span>
