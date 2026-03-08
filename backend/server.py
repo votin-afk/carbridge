@@ -4668,34 +4668,57 @@ async def get_all_deals(current_user: dict = Depends(require_role(["admin", "mod
 
 @api_router.post("/moderator/deals/{deal_id}/confirm-stage")
 async def confirm_deal_stage(deal_id: str, stage: dict, current_user: dict = Depends(require_role(["admin", "moderator"]))):
-    """Confirm a stage of a deal"""
-    stage_name = stage.get("stage")
-    if not stage_name:
-        raise HTTPException(status_code=400, detail="Stage name required")
+    """Confirm a stage of a deal - enables client to pay"""
+    stage_key = stage.get("stage")
+    if not stage_key:
+        raise HTTPException(status_code=400, detail="Stage key required")
     
-    deal = await db.garage.find_one({"id": deal_id})
+    deal = await db.deals.find_one({"id": deal_id})
     if not deal:
         raise HTTPException(status_code=404, detail="Deal not found")
     
-    completed_stages = deal.get("completed_stages", [])
-    if stage_name not in completed_stages:
-        completed_stages.append(stage_name)
+    stages = deal.get("stages", {})
+    if stage_key not in stages:
+        raise HTTPException(status_code=400, detail=f"Stage {stage_key} not found in deal")
     
-    # Determine next stage
-    stages_order = ["inspection", "export", "logistics", "customs", "delivery"]
-    current_idx = stages_order.index(stage_name) if stage_name in stages_order else 0
-    next_stage = stages_order[current_idx + 1] if current_idx + 1 < len(stages_order) else "completed"
-    
-    await db.garage.update_one(
+    # Update stage to confirmed by moderator
+    await db.deals.update_one(
         {"id": deal_id},
         {"$set": {
-            "completed_stages": completed_stages,
-            "current_stage": next_stage,
-            "status": "completed" if next_stage == "completed" else "in_progress"
+            f"stages.{stage_key}.moderator_confirmed": True,
+            f"stages.{stage_key}.moderator_id": current_user["id"],
+            f"stages.{stage_key}.confirmed_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
         }}
     )
     
-    return {"message": f"Stage {stage_name} confirmed"}
+    return {"message": f"Этап '{stage_key}' подтверждён модератором"}
+
+@api_router.get("/moderator/deals/pending-stages")
+async def get_deals_pending_moderation(current_user: dict = Depends(require_role(["admin", "moderator"]))):
+    """Get all deals with stages awaiting moderator confirmation"""
+    # Find all deals with locked stages that are not yet confirmed
+    deals = await db.deals.find({"status": "active"}, {"_id": 0}).to_list(100)
+    
+    pending = []
+    for deal in deals:
+        stages = deal.get("stages", {})
+        user = await db.users.find_one({"id": deal.get("user_id")}, {"_id": 0, "name": 1, "email": 1})
+        
+        # Check each stage
+        for stage_key, stage_data in stages.items():
+            if stage_data.get("locked") and not stage_data.get("moderator_confirmed") and not stage_data.get("paid"):
+                pending.append({
+                    "deal_id": deal["id"],
+                    "car_info": deal.get("car_info", {}),
+                    "user": user,
+                    "stage_key": stage_key,
+                    "contractor_name": stage_data.get("contractor_name"),
+                    "price": stage_data.get("price"),
+                    "created_at": deal.get("created_at")
+                })
+    
+    return pending
 
 @api_router.get("/moderator/tenders")
 async def get_all_tenders_moderator(current_user: dict = Depends(require_role(["admin", "moderator"]))):
