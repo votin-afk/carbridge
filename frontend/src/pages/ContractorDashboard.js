@@ -158,6 +158,140 @@ const ContractorDashboard = () => {
     navigate('/contractor-register');
   };
 
+  // Fetch my deals when switching to deals tab
+  useEffect(() => {
+    if (activeTab === 'deals' && token) {
+      fetchMyDeals();
+    }
+  }, [activeTab, token]);
+
+  // Polling for deal messages
+  useEffect(() => {
+    if (selectedDeal && token) {
+      fetchDealData();
+      const interval = setInterval(fetchDealData, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [selectedDeal]);
+
+  const fetchMyDeals = async () => {
+    try {
+      const response = await axios.get(`${API}/contractor/deals`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMyDeals(response.data);
+    } catch (error) {
+      console.error('Error fetching deals:', error);
+    }
+  };
+
+  const fetchDealData = async () => {
+    if (!selectedDeal) return;
+    
+    try {
+      const [messagesRes, filesRes] = await Promise.all([
+        axios.get(`${API}/contractor/deals/${selectedDeal.id}/messages`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`${API}/contractor/deals/${selectedDeal.id}/files`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+      setDealMessages(messagesRes.data);
+      setDealFiles(filesRes.data);
+    } catch (error) {
+      console.error('Error fetching deal data:', error);
+    }
+  };
+
+  const sendDealMessage = async () => {
+    if (!newMessage.trim() || !selectedDeal) return;
+    
+    setSendingMessage(true);
+    try {
+      await axios.post(`${API}/contractor/deals/${selectedDeal.id}/messages`, {
+        content: newMessage
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setNewMessage('');
+      fetchDealData();
+    } catch (error) {
+      toast.error('Ошибка отправки сообщения');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  const handleDealFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedDeal) return;
+    
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('Файл слишком большой (максимум 50MB)');
+      return;
+    }
+    
+    setUploadingFile(true);
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('file_type', 'document');
+    formData.append('description', '');
+    
+    try {
+      await axios.post(`${API}/contractor/deals/${selectedDeal.id}/files`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      toast.success('Файл загружен');
+      fetchDealData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка загрузки файла');
+    } finally {
+      setUploadingFile(false);
+      e.target.value = '';
+    }
+  };
+
+  const downloadDealFile = async (fileId, filename) => {
+    try {
+      const response = await axios.get(
+        `${API}/contractor/deals/${selectedDeal.id}/files/${fileId}/download`,
+        { headers: { Authorization: `Bearer ${token}` }, responseType: 'blob' }
+      );
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      toast.error('Ошибка скачивания файла');
+    }
+  };
+
+  const getFileIcon = (category) => {
+    switch (category) {
+      case 'photo': return <Image size={16} className="text-emerald-400" />;
+      case 'video': return <Video size={16} className="text-purple-400" />;
+      case 'document': return <FileText size={16} className="text-blue-400" />;
+      default: return <File size={16} className="text-slate-400" />;
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
   const submitOffer = async () => {
     if (!selectedTender) return;
     
