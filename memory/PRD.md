@@ -47,15 +47,41 @@
 
 ## 🔴 В процессе реализации
 
-### Этап 4: Система сообщений
+### ✅ Этап 4: Система сообщений - РЕАЛИЗОВАНО
 - Чат между клиентом и подрядчиком
+- Polling для обновления сообщений (каждые 5 сек)
 - Прикрепление файлов к сообщениям
-- Polling для обновлений
 
-### Этап 5: Раздел "Документы" - обмен файлами
-- Карточка услуги для каждого этапа сделки
-- Upload/download файлов
-- Зеркальный раздел в кабинете подрядчика
+### ✅ Этап 5: Раздел "Документы" - обмен файлами - РЕАЛИЗОВАНО
+- Карточка услуги для каждой сделки
+- Upload/download файлов (до 50MB)
+- Привязка файлов к этапам сделки
+- Фильтрация по этапам
+
+### ✅ Зеркальный раздел в кабинете подрядчика - РЕАЛИЗОВАНО
+- Вкладка "Мои сделки" в ContractorDashboard
+- Чат с клиентом
+- Просмотр и загрузка файлов
+
+---
+
+## Backend API (сообщения и файлы)
+
+### Для клиента:
+- `GET /api/deals/{deal_id}/messages` - получить сообщения
+- `POST /api/deals/{deal_id}/messages` - отправить сообщение
+- `GET /api/deals/{deal_id}/files` - получить файлы
+- `POST /api/deals/{deal_id}/files` - загрузить файл
+- `GET /api/deals/{deal_id}/files/{file_id}/download` - скачать файл
+- `DELETE /api/deals/{deal_id}/files/{file_id}` - удалить файл
+
+### Для подрядчика:
+- `GET /api/contractor/deals` - получить мои сделки
+- `GET /api/contractor/deals/{deal_id}/messages` - получить сообщения
+- `POST /api/contractor/deals/{deal_id}/messages` - отправить сообщение
+- `GET /api/contractor/deals/{deal_id}/files` - получить файлы
+- `POST /api/contractor/deals/{deal_id}/files` - загрузить файл
+- `GET /api/contractor/deals/{deal_id}/files/{file_id}/download` - скачать файл
 
 ---
 
