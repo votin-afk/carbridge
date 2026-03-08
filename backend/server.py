@@ -161,6 +161,8 @@ class TenderResponse(BaseModel):
     user_id: str
     car_id: Optional[str] = None
     car_info: Optional[dict] = None
+    car_request: Optional[dict] = None
+    application_id: Optional[str] = None
     status: str
     offers: List[dict] = []
     selected_offer_id: Optional[str] = None
