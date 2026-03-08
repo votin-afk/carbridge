@@ -1879,6 +1879,85 @@ const Applications = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Select Contractor Dialog */}
+      <Dialog open={selectContractorDialog} onOpenChange={setSelectContractorDialog}>
+        <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users size={20} className="text-[#00E5FF]" />
+              Выбор подрядчика
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="mt-4">
+            <p className="text-slate-400 text-sm mb-4">
+              Выберите подрядчика для прямого сотрудничества без тендера
+            </p>
+
+            {loadingContractors ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 size={24} className="text-[#00E5FF] animate-spin" />
+              </div>
+            ) : contractors.length > 0 ? (
+              <div className="space-y-3">
+                {contractors.map(contractor => (
+                  <div 
+                    key={contractor.id}
+                    className="bg-[#0B0F14] border border-[#27272A] rounded-lg p-4 hover:border-[#00E5FF]/50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-[#00E5FF]/10 rounded-full flex items-center justify-center">
+                          <Building2 size={20} className="text-[#00E5FF]" />
+                        </div>
+                        <div>
+                          <h4 className="text-white font-medium">{contractor.company_name}</h4>
+                          <div className="flex items-center gap-2 text-xs text-slate-400">
+                            <Star size={12} className="text-amber-400" />
+                            <span>{contractor.rating?.toFixed(1) || '5.0'}</span>
+                            <span>•</span>
+                            <span>{contractor.deals_count || 0} сделок</span>
+                          </div>
+                        </div>
+                      </div>
+                      {contractor.verified && (
+                        <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded">
+                          Верифицирован
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Services */}
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {(Array.isArray(contractor.services) 
+                        ? contractor.services 
+                        : (contractor.services || '').split(',').map(s => s.trim()).filter(Boolean)
+                      ).map(service => (
+                        <span key={service} className="px-2 py-0.5 bg-slate-700 text-slate-300 text-xs rounded">
+                          {service}
+                        </span>
+                      ))}
+                    </div>
+
+                    <Button
+                      onClick={() => selectContractorForApp(selectedApp?.id, contractor.id)}
+                      className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
+                    >
+                      Выбрать подрядчика
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Users size={48} className="mx-auto mb-4 text-slate-600" />
+                <p className="text-slate-400">Нет доступных подрядчиков</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
