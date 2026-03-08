@@ -7713,6 +7713,10 @@ async def health():
 # Include router and configure app
 app.include_router(api_router)
 
+# Include modular routers (new refactored routes)
+# Note: These are gradually replacing code in api_router
+# auth_routes, affiliate_routes, user_routes - ready but keeping original for now to avoid breaking changes
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
