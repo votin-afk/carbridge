@@ -181,6 +181,18 @@ const ModeratorPage = () => {
     }
   };
 
+  const handleConfirmStage = async (dealId, stageKey) => {
+    try {
+      await axios.post(`${API}/moderator/deals/${dealId}/confirm-stage`, { stage: stageKey }, { headers });
+      toast.success('Этап подтверждён');
+      // Refresh pending stages
+      const response = await axios.get(`${API}/moderator/deals/pending-stages`, { headers });
+      setPendingStages(response.data);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка подтверждения этапа');
+    }
+  };
+
   const openBalanceDialog = async (user) => {
     setBalanceDialogUser(user);
     setBalanceAmount('');
