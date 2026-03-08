@@ -827,6 +827,101 @@ const ModeratorPage = () => {
             )}
           </TabsContent>
 
+          {/* Stage Moderation Tab */}
+          <TabsContent value="stage-moderation">
+            {loading ? (
+              <LoadingState />
+            ) : pendingStages.length > 0 ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg mb-4">
+                  <h3 className="text-purple-300 font-medium flex items-center gap-2">
+                    <Shield size={18} />
+                    Этапы сделок, требующие подтверждения
+                  </h3>
+                  <p className="text-slate-400 text-sm mt-1">
+                    После подтверждения этапа клиент сможет оплатить его
+                  </p>
+                </div>
+
+                {pendingStages.map((item, idx) => {
+                  const stageLabels = {
+                    leasing: 'Лизинг',
+                    inspection: 'Инспекция авто',
+                    export: 'Выкуп и экспорт',
+                    logistics_china: 'Доставка до порта (Китай)',
+                    insurance: 'Страхование авто',
+                    delivery_rb: 'Доставка в Беларусь',
+                    customs: 'Таможенное оформление',
+                    completion: 'Завершение сделки'
+                  };
+                  
+                  return (
+                    <div key={`${item.deal_id}-${item.stage_key}-${idx}`} className="bg-[#15191E] border border-[#27272A] rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center">
+                            <FileCheck size={24} className="text-purple-400" />
+                          </div>
+                          <div>
+                            <h4 className="text-white font-medium">
+                              {item.car_info?.brand} {item.car_info?.model}
+                            </h4>
+                            <p className="text-slate-400 text-sm">
+                              Сделка #{item.deal_id?.slice(0, 8)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="px-3 py-1 bg-purple-500/10 text-purple-400 rounded-full text-sm">
+                            {stageLabels[item.stage_key] || item.stage_key}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
+                        <div className="bg-[#0B0F14] p-3 rounded">
+                          <p className="text-slate-500 text-xs">Клиент</p>
+                          <p className="text-white">{item.user?.name || item.user?.email || '—'}</p>
+                        </div>
+                        <div className="bg-[#0B0F14] p-3 rounded">
+                          <p className="text-slate-500 text-xs">Подрядчик</p>
+                          <p className="text-purple-300">{item.contractor_name || '—'}</p>
+                        </div>
+                        <div className="bg-[#0B0F14] p-3 rounded">
+                          <p className="text-slate-500 text-xs">Цена этапа</p>
+                          <p className="text-[#00E5FF] font-medium">${item.price?.toLocaleString() || '0'}</p>
+                        </div>
+                        <div className="bg-[#0B0F14] p-3 rounded">
+                          <p className="text-slate-500 text-xs">Дата создания</p>
+                          <p className="text-slate-300">{item.created_at ? new Date(item.created_at).toLocaleDateString('ru-RU') : '—'}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => handleConfirmStage(item.deal_id, item.stage_key)}
+                          className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white"
+                        >
+                          <CheckCircle2 size={16} className="mr-2" />
+                          Подтвердить этап
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="border-slate-500 text-slate-400"
+                        >
+                          <Eye size={16} className="mr-2" />
+                          Подробнее
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <EmptyState text="Нет этапов для подтверждения" />
+            )}
+          </TabsContent>
+
           {/* Tenders Tab */}
           <TabsContent value="tenders">
             <div className="flex justify-end mb-4">
