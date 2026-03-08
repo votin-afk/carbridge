@@ -79,6 +79,16 @@ const ContractorDashboard = () => {
   const [detailsDialog, setDetailsDialog] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState(null);
   
+  // Deal chat states
+  const [myDeals, setMyDeals] = useState([]);
+  const [selectedDeal, setSelectedDeal] = useState(null);
+  const [dealMessages, setDealMessages] = useState([]);
+  const [dealFiles, setDealFiles] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [dealActiveTab, setDealActiveTab] = useState('chat');
+  
   const [offerData, setOfferData] = useState({
     price_usd: '',
     price_cny: '',
