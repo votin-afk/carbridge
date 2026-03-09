@@ -30,6 +30,9 @@ from routes import auth as auth_routes
 from routes import affiliate as affiliate_routes
 from routes import user as user_routes
 
+# Import Bitrix24 service
+from services.bitrix24 import init_bitrix24, get_bitrix24, Bitrix24Service
+
 # Uploads directory
 UPLOADS_DIR = Path(__file__).parent / "uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)
