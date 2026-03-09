@@ -34,7 +34,7 @@ const LegalHelp = () => {
 
   const fetchRequests = async () => {
     try {
-      const response = await axios.get(`${API}/legal-help/requests`, { headers });
+      const response = await axios.get(`${API}/api/legal-help/requests`, { headers });
       setRequests(response.data);
     } catch (error) {
       console.error('Error fetching legal requests:', error);
@@ -46,7 +46,7 @@ const LegalHelp = () => {
   const requestHelp = async (country) => {
     setSubmitting(country);
     try {
-      await axios.post(`${API}/legal-help/request`, { country }, { headers });
+      await axios.post(`${API}/api/legal-help/request`, { country }, { headers });
       toast.success(`Запрос на юридическую помощь в ${country === 'belarus' ? 'Беларуси' : 'Китае'} отправлен`);
       fetchRequests();
     } catch (error) {
