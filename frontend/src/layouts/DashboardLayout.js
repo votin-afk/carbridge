@@ -17,7 +17,10 @@ import {
   Shield,
   ClipboardList,
   ShoppingCart,
-  Trophy
+  Trophy,
+  Search,
+  Bot,
+  Scale
 } from 'lucide-react';
 
 const DashboardLayout = () => {
