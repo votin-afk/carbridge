@@ -52,7 +52,7 @@ const AIAssistant = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API}/chat`, {
+      const response = await axios.post(`${API}/api/chat`, {
         message: userMessage,
         context: 'dashboard_assistant'
       }, { headers });
