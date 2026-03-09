@@ -214,10 +214,10 @@ const DashboardCatalog = () => {
         <div className="flex flex-wrap gap-2">
           {brands.slice(0, 20).map(brand => (
             <button
-              key={brand.id}
+              key={brand.slug}
               onClick={() => handleBrandSelect(brand)}
               className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                selectedBrand?.id === brand.id
+                selectedBrand?.slug === brand.slug
                   ? 'bg-[#00E5FF] text-black'
                   : 'bg-[#0B0F14] text-slate-300 hover:bg-[#27272A]'
               }`}
