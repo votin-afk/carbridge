@@ -7155,6 +7155,26 @@ async def create_car_application(data: CarApplicationCreate, current_user: dict 
     
     await db.applications.insert_one(application_doc)
     
+    # Bitrix24: Create lead for new application
+    b24 = get_bitrix24()
+    if b24:
+        try:
+            asyncio.create_task(b24.create_lead(
+                title=f"Заявка на {data.brand or 'авто'} {data.model or ''} - {application_number}",
+                contact_name=data.full_name or current_user.get("name", ""),
+                email=data.email or current_user.get("email", ""),
+                phone=data.phone or current_user.get("phone"),
+                car_brand=data.brand,
+                car_model=data.model,
+                budget_min=data.budget_china_from or data.budget_min,
+                budget_max=data.budget_china_to or data.budget_max,
+                application_id=application_id,
+                comments=f"Год: {data.year_from}-{data.year_to}, Двигатель: {data.engine_type}, Город: {data.delivery_city}",
+                source="Заявка на авто - CarBridge"
+            ))
+        except Exception as e:
+            logger.error(f"Bitrix24 lead creation error: {e}")
+    
     return {
         "message": "Заявка успешно создана",
         "application_id": application_id,
