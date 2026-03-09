@@ -7844,6 +7844,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Initialize Bitrix24 integration
+BITRIX24_WEBHOOK_URL = os.environ.get("BITRIX24_WEBHOOK_URL")
+if BITRIX24_WEBHOOK_URL:
+    bitrix24 = init_bitrix24(BITRIX24_WEBHOOK_URL)
+    logger.info(f"Bitrix24 integration initialized")
+else:
+    bitrix24 = None
+    logger.warning("Bitrix24 webhook URL not configured")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
