@@ -29,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from routes import auth as auth_routes
 from routes import affiliate as affiliate_routes
 from routes import user as user_routes
+from routes import catalog as catalog_routes
 
 # Import Bitrix24 service
 from services.bitrix24 import init_bitrix24, get_bitrix24, Bitrix24Service
@@ -8017,8 +8018,7 @@ async def get_bitrix24_users(current_user: dict = Depends(require_role(["admin"]
 app.include_router(api_router)
 
 # Include modular routers (new refactored routes)
-# Note: These are gradually replacing code in api_router
-# auth_routes, affiliate_routes, user_routes - ready but keeping original for now to avoid breaking changes
+app.include_router(catalog_routes.router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,
