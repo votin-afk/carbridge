@@ -1675,6 +1675,22 @@ async def register(user: UserCreate):
         id=user_id, email=user.email, name=user.name,
         phone=user.phone, user_type=user.user_type, role=role, created_at=user_doc["created_at"]
     )
+    
+    # Bitrix24: Create contact for new user
+    b24 = get_bitrix24()
+    if b24:
+        try:
+            asyncio.create_task(b24.create_contact(
+                name=user.name,
+                email=user.email,
+                phone=user.phone,
+                user_type=user.user_type,
+                user_id=user_id,
+                comments=f"Регистрация на CarBridge. Реферал: {referral_code_used or 'Нет'}"
+            ))
+        except Exception as e:
+            logger.error(f"Bitrix24 contact creation error: {e}")
+    
     return TokenResponse(access_token=token, user=user_response)
 
 @api_router.post("/auth/login", response_model=TokenResponse)
