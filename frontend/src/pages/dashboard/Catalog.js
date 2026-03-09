@@ -111,8 +111,8 @@ const DashboardCatalog = () => {
 
   const handleBrandSelect = (brand) => {
     setSelectedBrand(brand);
-    fetchModels(brand.id);
-    searchCars();
+    fetchModels(brand.slug);
+    setTimeout(() => searchCars(), 100);
   };
 
   const engineTypes = [
