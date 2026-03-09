@@ -48,16 +48,16 @@ const DashboardCatalog = () => {
 
   const fetchBrands = async () => {
     try {
-      const response = await axios.get(`${API}/catalog/brands`);
+      const response = await axios.get(`${API}/api/catalog/brands`);
       setBrands(response.data);
     } catch (error) {
       console.error('Error fetching brands:', error);
     }
   };
 
-  const fetchModels = async (brandId) => {
+  const fetchModels = async (brandSlug) => {
     try {
-      const response = await axios.get(`${API}/catalog/brands/${brandId}/models`);
+      const response = await axios.get(`${API}/api/catalog/brands/${brandSlug}/models`);
       setModels(response.data);
     } catch (error) {
       console.error('Error fetching models:', error);
@@ -76,7 +76,7 @@ const DashboardCatalog = () => {
       if (filters.priceTo) params.append('price_to', filters.priceTo);
       if (filters.engineType) params.append('engine_type', filters.engineType);
 
-      const response = await axios.get(`${API}/catalog/search?${params.toString()}`);
+      const response = await axios.get(`${API}/api/catalog/search?${params.toString()}`);
       setCars(response.data.cars || []);
     } catch (error) {
       console.error('Error searching cars:', error);
