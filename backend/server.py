@@ -7930,6 +7930,89 @@ async def root():
 async def health():
     return {"status": "healthy"}
 
+# ==================== BITRIX24 ADMIN ENDPOINTS ====================
+
+@api_router.get("/admin/bitrix24/status")
+async def bitrix24_status(current_user: dict = Depends(require_role(["admin"]))):
+    """Check Bitrix24 connection status"""
+    b24 = get_bitrix24()
+    if not b24:
+        return {"connected": False, "error": "Bitrix24 not configured"}
+    
+    result = await b24.test_connection()
+    return {
+        "connected": result["success"],
+        "error": result.get("error") if not result["success"] else None,
+        "webhook_url": BITRIX24_WEBHOOK_URL[:50] + "..." if BITRIX24_WEBHOOK_URL else None
+    }
+
+@api_router.post("/admin/bitrix24/sync-user/{user_id}")
+async def sync_user_to_bitrix24(user_id: str, current_user: dict = Depends(require_role(["admin"]))):
+    """Manually sync user to Bitrix24 as contact"""
+    b24 = get_bitrix24()
+    if not b24:
+        raise HTTPException(status_code=503, detail="Bitrix24 not configured")
+    
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    result = await b24.create_contact(
+        name=user.get("name", ""),
+        email=user.get("email", ""),
+        phone=user.get("phone"),
+        user_type=user.get("user_type", "individual"),
+        user_id=user_id
+    )
+    
+    return result
+
+@api_router.post("/admin/bitrix24/create-deal")
+async def create_bitrix24_deal(data: dict, current_user: dict = Depends(require_role(["admin"]))):
+    """Manually create deal in Bitrix24"""
+    b24 = get_bitrix24()
+    if not b24:
+        raise HTTPException(status_code=503, detail="Bitrix24 not configured")
+    
+    result = await b24.create_deal(
+        title=data.get("title", "Новая сделка"),
+        contact_email=data.get("email"),
+        car_brand=data.get("brand"),
+        car_model=data.get("model"),
+        price_usd=data.get("price"),
+        stage=data.get("stage", "NEW"),
+        comments=data.get("comments")
+    )
+    
+    return result
+
+@api_router.post("/admin/bitrix24/create-task")
+async def create_bitrix24_task(data: dict, current_user: dict = Depends(require_role(["admin"]))):
+    """Manually create task in Bitrix24"""
+    b24 = get_bitrix24()
+    if not b24:
+        raise HTTPException(status_code=503, detail="Bitrix24 not configured")
+    
+    result = await b24.create_task(
+        title=data.get("title", "Новая задача"),
+        description=data.get("description", ""),
+        responsible_id=data.get("responsible_id", 1),
+        deadline_days=data.get("deadline_days", 3),
+        priority=data.get("priority", 1)
+    )
+    
+    return result
+
+@api_router.get("/admin/bitrix24/users")
+async def get_bitrix24_users(current_user: dict = Depends(require_role(["admin"]))):
+    """Get Bitrix24 users list"""
+    b24 = get_bitrix24()
+    if not b24:
+        raise HTTPException(status_code=503, detail="Bitrix24 not configured")
+    
+    result = await b24.get_user_list()
+    return result
+
 # Include router and configure app
 app.include_router(api_router)
 
