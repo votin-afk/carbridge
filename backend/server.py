@@ -6055,8 +6055,14 @@ async def search_catalog(
     model: Optional[str] = None,
     min_price: Optional[float] = None,
     max_price: Optional[float] = None,
+    price_from: Optional[float] = None,
+    price_to: Optional[float] = None,
     min_year: Optional[int] = None,
     max_year: Optional[int] = None,
+    year_from: Optional[int] = None,
+    year_to: Optional[int] = None,
+    mileage_from: Optional[int] = None,
+    mileage_to: Optional[int] = None,
     engine_type: Optional[str] = None,
     body_type: Optional[str] = None,
     query: Optional[str] = None,
@@ -6065,15 +6071,21 @@ async def search_catalog(
 ):
     """Search cars in catalog with filters - fetches live data from Che168 API"""
     
+    # Support both parameter naming conventions
+    actual_min_price = min_price or price_from
+    actual_max_price = max_price or price_to
+    actual_min_year = min_year or year_from
+    actual_max_year = max_year or year_to
+    
     # Try Che168 API first (primary source with real listings)
     try:
         che168_result = await Che168API.search_cars(
             mark=brand,
             model=model,
-            year_from=min_year,
-            year_to=max_year,
-            price_from=min_price,
-            price_to=max_price,
+            year_from=actual_min_year,
+            year_to=actual_max_year,
+            price_from=actual_min_price,
+            price_to=actual_max_price,
             engine_type=engine_type,
             body_type=body_type,
             page=page,
@@ -6090,6 +6102,18 @@ async def search_catalog(
                     query_lower in c["model"].lower() or
                     query_lower in c.get("description", "").lower()
                 ]
+            
+            # Apply mileage filter
+            if mileage_from is not None or mileage_to is not None:
+                filtered_cars = []
+                for c in cars:
+                    car_mileage = c.get("mileage", 0) or 0
+                    if mileage_from and car_mileage < mileage_from:
+                        continue
+                    if mileage_to and car_mileage > mileage_to:
+                        continue
+                    filtered_cars.append(c)
+                cars = filtered_cars
             
             # Generate search links
             search_links = generate_search_links(brand, model, query)
