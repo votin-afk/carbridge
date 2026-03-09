@@ -7469,6 +7469,44 @@ async def select_contractor_directly(application_id: str, data: dict, current_us
     }
     await db.deal_documents.insert_one(doc_card)
     
+    # Bitrix24: Create deal and task
+    b24 = get_bitrix24()
+    if b24:
+        try:
+            # Create deal in Bitrix24
+            asyncio.create_task(b24.create_deal(
+                title=f"Сделка: {app.get('brand', '')} {app.get('model', '')} - {contractor['company_name']}",
+                contact_email=current_user.get("email"),
+                car_brand=app.get("brand"),
+                car_model=app.get("model"),
+                price_usd=deal["total_amount"],
+                deal_id=deal_id,
+                contractor_name=contractor["company_name"],
+                stage="EXECUTING",
+                comments=f"Подрядчик выбран напрямую из заявки. Этапов: {len(deal_stages)}"
+            ))
+            # Create task for contractor follow-up
+            asyncio.create_task(b24.create_task(
+                title=f"Новая сделка: {app.get('brand', '')} {app.get('model', '')}",
+                description=f"Клиент: {current_user.get('name', current_user.get('email'))}\n"
+                           f"Подрядчик: {contractor['company_name']}\n"
+                           f"Сумма: ${deal['total_amount']}\n"
+                           f"ID сделки: {deal_id}",
+                deadline_days=2,
+                priority=2  # High
+            ))
+            # Notify in chat
+            asyncio.create_task(b24.send_notification(
+                user_id=1,  # Admin
+                message=f"🚗 Новая сделка на CarBridge!\n"
+                       f"Клиент: {current_user.get('name', current_user.get('email'))}\n"
+                       f"Авто: {app.get('brand', '')} {app.get('model', '')}\n"
+                       f"Подрядчик: {contractor['company_name']}\n"
+                       f"Сумма: ${deal['total_amount']}"
+            ))
+        except Exception as e:
+            logger.error(f"Bitrix24 deal creation error: {e}")
+    
     return {
         "message": "Подрядчик выбран, сделка создана",
         "deal_id": deal_id,
