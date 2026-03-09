@@ -54,6 +54,7 @@ function App() {
             </ProtectedRoute>
           }>
             <Route index element={<DashboardOverview />} />
+            <Route path="catalog" element={<DashboardCatalog />} />
             <Route path="garage" element={<MyGarage />} />
             <Route path="applications" element={<Applications />} />
             <Route path="deals" element={<DealCars />} />
@@ -62,6 +63,8 @@ function App() {
             <Route path="verification" element={<Verification />} />
             <Route path="documents" element={<Documents />} />
             <Route path="tracking" element={<Tracking />} />
+            <Route path="ai-assistant" element={<AIAssistant />} />
+            <Route path="legal-help" element={<LegalHelp />} />
           </Route>
           
           <Route path="*" element={<Navigate to="/" replace />} />
