@@ -89,7 +89,7 @@ const DashboardCatalog = () => {
   const addToGarage = async (car) => {
     setAddingToGarage(car.id);
     try {
-      await axios.post(`${API}/garage`, {
+      await axios.post(`${API}/api/garage`, {
         brand: car.brand,
         model: car.model,
         year: car.year,
