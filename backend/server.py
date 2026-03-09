@@ -4092,6 +4092,33 @@ async def create_tender(tender: TenderCreate, current_user: dict = Depends(get_c
     await db.tenders.update_one({"id": tender_id}, {"$set": {"offers": mock_offers}})
     tender_doc["offers"] = mock_offers
     
+    # Bitrix24: Create deal for new tender
+    b24 = get_bitrix24()
+    if b24:
+        try:
+            asyncio.create_task(b24.create_deal(
+                title=f"Тендер: {car.get('brand', '')} {car.get('model', '')} {car.get('year', '')}",
+                contact_email=current_user.get("email"),
+                car_brand=car.get("brand"),
+                car_model=car.get("model"),
+                car_year=car.get("year"),
+                price_usd=car.get("price_cny", 0) / 7.2 if car.get("price_cny") else None,
+                tender_id=tender_id,
+                stage="NEW",
+                comments=f"Тендер создан на CarBridge. Пробег: {car.get('mileage', 'N/A')} км"
+            ))
+            # Create task for manager
+            asyncio.create_task(b24.create_task(
+                title=f"Новый тендер: {car.get('brand', '')} {car.get('model', '')}",
+                description=f"Клиент: {current_user.get('name', current_user.get('email'))}\n"
+                           f"Авто: {car.get('brand', '')} {car.get('model', '')} {car.get('year', '')}\n"
+                           f"ID тендера: {tender_id}",
+                deadline_days=1,
+                priority=2  # High
+            ))
+        except Exception as e:
+            logger.error(f"Bitrix24 tender deal creation error: {e}")
+    
     return TenderResponse(**tender_doc)
 
 def generate_mock_offers(tender_id: str, car: dict) -> List[dict]:
