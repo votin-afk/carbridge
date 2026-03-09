@@ -65,7 +65,7 @@ const DashboardCatalog = () => {
   const fetchModels = async (brandSlug) => {
     setLoadingModels(true);
     try {
-      const response = await axios.get(`${API}/api/catalog/brands/${brandSlug}/models`);
+      const response = await axios.get(`${API}/api/catalog/models/${brandSlug}`);
       setModels(response.data);
     } catch (error) {
       console.error('Error fetching models:', error);
