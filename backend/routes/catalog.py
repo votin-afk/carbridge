@@ -609,10 +609,10 @@ async def add_catalog_car_to_garage(
     
     # Create garage entry
     garage_id = str(uuid.uuid4())
-    car_year = catalog_car.get("year_to") or catalog_car.get("year_from", 2023)
-    price_cny = catalog_car.get("price_from_cny", 0)
+    car_year = int(catalog_car.get("year_to") or catalog_car.get("year_from", 2023))
+    price_cny = float(catalog_car.get("price_from_cny", 0))
     engine_type = catalog_car.get("engine_type", "ice")
-    engine_volume = catalog_car.get("engine_volume") or 2000
+    engine_volume = int(catalog_car.get("engine_volume") or 2000)
     
     # Calculate Belarus price
     calculated_price_usd = None
