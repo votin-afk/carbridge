@@ -479,12 +479,37 @@ CONSULTANT_FEE = 200    # $200 за помощь консультанта/мен
 
 ---
 
+## Исправлено (11.03.2026)
+
+### ✅ Баг: Цена для Беларуси не рассчитывалась при добавлении авто в гараж
+**Проблема**: При добавлении авто в гараж поля `calculated_price_usd` и `calculated_price_byn` были пустыми.
+
+**Решение**: Проверено и подтверждено, что функция `calculate_customs()` корректно вызывается в эндпоинте `POST /api/garage`. Тестирование показало:
+- Электро авто: `calculated_price_usd: 35541.48`, `calculated_price_byn: 103894.84`
+- ДВС авто: `calculated_price_usd: 34215.71`, `calculated_price_byn: 100019.37`
+
+**Статус**: ✅ Работает (протестировано 13/13 тестов)
+
+### ✅ Баг: bcrypt warning в логах
+**Проблема**: `AttributeError: module 'bcrypt' has no attribute '__about__'` появлялась при каждой операции аутентификации.
+
+**Причина**: Несовместимость passlib 1.7.4 с bcrypt 4.x (passlib пытается получить версию через `bcrypt.__about__.__version__`, которого нет в bcrypt 4.x).
+
+**Решение**: Добавлено подавление предупреждения через:
+```python
+logging.getLogger("passlib.handlers.bcrypt").setLevel(logging.ERROR)
+```
+в файлах `/app/backend/server.py` и `/app/backend/utils/auth.py`.
+
+**Статус**: ✅ Исправлено (предупреждения больше не появляются)
+
+---
+
 ## Известные проблемы
 
 1. **AI чат** - периодически не отвечает (P1)
 2. **URL парсер** - блокируется анти-скрейпингом (P2)
 3. **Баланс** - пополнение не реализовано (placeholder)
-4. **bcrypt warning** - в логах backend'а появляется `AttributeError: module 'bcrypt' has no attribute '__about__'` (не критично, но указывает на конфликт зависимостей passlib/bcrypt)
 
 ---
 
