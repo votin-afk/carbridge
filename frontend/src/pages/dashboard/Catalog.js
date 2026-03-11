@@ -519,7 +519,7 @@ const DashboardCatalog = () => {
                   <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                     <div className="flex items-center gap-2 text-slate-400">
                       <Calendar size={14} />
-                      <span>{car.year} г.</span>
+                      <span>{car.year_from || car.year || '—'} г.</span>
                     </div>
                     <div className="flex items-center gap-2 text-slate-400">
                       <Gauge size={14} />
@@ -527,18 +527,18 @@ const DashboardCatalog = () => {
                     </div>
                     <div className="flex items-center gap-2 text-slate-400">
                       {getEngineIcon(car.engine_type)}
-                      <span>{car.engine_type || 'ДВС'}</span>
+                      <span>{car.engine_type === 'electric' ? 'Электро' : car.engine_type === 'hybrid' ? 'Гибрид' : 'ДВС'}</span>
                     </div>
-                    {car.engine_volume && (
+                    {car.engine_volume && car.engine_volume > 0 && (
                       <div className="flex items-center gap-2 text-slate-400">
-                        <span className="text-xs bg-[#27272A] px-1.5 py-0.5 rounded">{car.engine_volume}L</span>
+                        <span className="text-xs bg-[#27272A] px-1.5 py-0.5 rounded">{car.engine_volume >= 100 ? (car.engine_volume / 1000).toFixed(1) : car.engine_volume}L</span>
                       </div>
                     )}
                   </div>
 
                   <div className="mt-4 flex items-center justify-between">
                     <div>
-                      <div className="text-[#00E5FF] text-xl font-bold">{formatPrice(car.price)}</div>
+                      <div className="text-[#00E5FF] text-xl font-bold">{formatPrice(car.price_from_cny || car.price)}</div>
                       {car.price_usd && (
                         <div className="text-slate-400 text-sm">≈ ${car.price_usd?.toLocaleString()}</div>
                       )}
