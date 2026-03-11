@@ -932,15 +932,18 @@ const MyGarage = () => {
               <div className="h-40 bg-[#1C2128] relative">
                 {car.image_url ? (
                   <img 
-                    src={car.image_url} 
+                    src={getProxiedImageUrl(car.image_url)} 
                     alt={`${car.brand} ${car.model}`}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextElementSibling?.classList.remove('hidden');
+                    }}
                   />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Car size={48} className="text-slate-600" />
-                  </div>
-                )}
+                ) : null}
+                <div className={`w-full h-full flex items-center justify-center ${car.image_url ? 'hidden' : ''}`}>
+                  <Car size={48} className="text-slate-600" />
+                </div>
                 <div className="absolute top-3 right-3">
                   {getStatusBadge(car.status)}
                 </div>
