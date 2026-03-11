@@ -2090,6 +2090,60 @@ async def complete_deal_stage(deal_id: str, data: dict, current_user: dict = Dep
     
     return {"message": "Этап отмечен как выполненный, ожидает подтверждения модератора"}
 
+@api_router.post("/deals/{deal_id}/update-stage-price")
+async def update_stage_price(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Update price for a stage (before payment)"""
+    stage = data.get("stage")
+    new_price = data.get("price")
+    reason = data.get("reason", "")
+    
+    if not stage or new_price is None:
+        raise HTTPException(status_code=400, detail="Укажите этап и новую стоимость")
+    
+    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # Check if stage is already paid
+    stage_data = deal.get("stages", {}).get(stage, {})
+    if stage_data.get("paid"):
+        raise HTTPException(status_code=400, detail="Этап уже оплачен, изменение стоимости невозможно")
+    
+    old_price = stage_data.get("price", 0)
+    
+    # Log price change
+    price_change_log = {
+        "id": str(uuid.uuid4()),
+        "stage": stage,
+        "old_price": old_price,
+        "new_price": new_price,
+        "reason": reason,
+        "changed_by": current_user["id"],
+        "changed_by_name": f"{current_user.get('name', '')} {current_user.get('last_name', '')}",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.deals.update_one(
+        {"id": deal_id},
+        {
+            "$set": {
+                f"stages.{stage}.price": new_price,
+                f"stages.{stage}.price_modified": True,
+                f"stages.{stage}.price_change_reason": reason,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            },
+            "$push": {
+                "price_changes": price_change_log
+            }
+        }
+    )
+    
+    return {
+        "message": "Стоимость этапа обновлена",
+        "old_price": old_price,
+        "new_price": new_price
+    }
+
 # ==================== NEW DEAL STAGES ENDPOINTS ====================
 
 # Platform commission constants
