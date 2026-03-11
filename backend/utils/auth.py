@@ -2,6 +2,7 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
+import logging
 from datetime import datetime, timezone, timedelta
 from passlib.context import CryptContext
 from typing import List
@@ -13,6 +14,8 @@ from config import JWT_SECRET, JWT_ALGORITHM, JWT_EXPIRE_DAYS
 from database import db
 
 # Password hashing
+# Suppress bcrypt version warning from passlib (passlib 1.7.4 incompatibility with bcrypt 4.x)
+logging.getLogger("passlib.handlers.bcrypt").setLevel(logging.ERROR)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT Bearer security
