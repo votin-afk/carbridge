@@ -69,7 +69,8 @@ const stageLabels = {
 };
 
 const Documents = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const location = useLocation();
   const [deals, setDeals] = useState([]);
   const [selectedDeal, setSelectedDeal] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -83,13 +84,33 @@ const Documents = () => {
   const [selectedStage, setSelectedStage] = useState('all');
   const [activeTab, setActiveTab] = useState('files'); // 'files' or 'chat'
   
+  // Help requests state
+  const [mainTab, setMainTab] = useState('deals'); // 'deals', 'manager_help', 'legal_help'
+  const [helpRequests, setHelpRequests] = useState([]);
+  const [selectedHelpRequest, setSelectedHelpRequest] = useState(null);
+  const [helpMessages, setHelpMessages] = useState([]);
+  const [newHelpMessage, setNewHelpMessage] = useState('');
+  const [sendingHelp, setSendingHelp] = useState(false);
+  
+  // Legal help state
+  const [legalRequests, setLegalRequests] = useState([]);
+  const [selectedLegalRequest, setSelectedLegalRequest] = useState(null);
+  
   const messagesEndRef = useRef(null);
+  const helpMessagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
     fetchDeals();
-  }, []);
+    fetchHelpRequests();
+    fetchLegalRequests();
+    
+    // Check if we need to open help section
+    if (location.state?.openHelpSection) {
+      setMainTab('manager_help');
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (selectedDeal) {
