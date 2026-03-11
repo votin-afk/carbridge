@@ -1040,14 +1040,15 @@ const ModeratorPage = () => {
                 <LoadingState />
               ) : users.length > 0 ? (
                 <div className="bg-[#15191E] border border-[#27272A] rounded-sm overflow-hidden overflow-x-auto">
-                  <table className="w-full min-w-[900px]">
+                  <table className="w-full min-w-[1100px]">
                     <thead className="bg-[#0B0F14]">
                       <tr>
                         <th className="text-left text-slate-400 text-sm font-medium p-4">Пользователь</th>
                         <th className="text-left text-slate-400 text-sm font-medium p-4">Email</th>
                         <th className="text-left text-slate-400 text-sm font-medium p-4">Роль</th>
                         <th className="text-left text-slate-400 text-sm font-medium p-4">Баланс</th>
-                        <th className="text-left text-slate-400 text-sm font-medium p-4">Дата регистрации</th>
+                        <th className="text-left text-slate-400 text-sm font-medium p-4">Предоплата</th>
+                        <th className="text-left text-slate-400 text-sm font-medium p-4">Верификация</th>
                         <th className="text-left text-slate-400 text-sm font-medium p-4">Действия</th>
                       </tr>
                     </thead>
@@ -1056,6 +1057,8 @@ const ModeratorPage = () => {
                         const role = roleConfig[u.role] || roleConfig.user;
                         const RoleIcon = role.icon;
                         const userAccount = userAccounts[u.id];
+                        const isVerified = userAccount?.is_verified || u.is_verified;
+                        const prepaymentConfirmed = userAccount?.prepayment_confirmed || u.prepayment_confirmed;
                         return (
                           <tr key={u.id} className="border-t border-[#27272A] hover:bg-[#1C2128]">
                             <td className="p-4">
@@ -1063,7 +1066,10 @@ const ModeratorPage = () => {
                                 <div className={`w-8 h-8 rounded-full ${role.bg} flex items-center justify-center`}>
                                   <RoleIcon size={16} className={role.color} />
                                 </div>
-                                <span className="text-white font-medium">{u.name}</span>
+                                <div>
+                                  <span className="text-white font-medium">{u.name} {u.last_name || ''}</span>
+                                  <p className="text-slate-500 text-xs">{u.phone || ''}</p>
+                                </div>
                               </div>
                             </td>
                             <td className="p-4 text-slate-400">{u.email}</td>
@@ -1086,8 +1092,38 @@ const ModeratorPage = () => {
                                 </button>
                               </div>
                             </td>
-                            <td className="p-4 text-slate-400 text-sm">
-                              {new Date(u.created_at).toLocaleDateString('ru')}
+                            <td className="p-4">
+                              {prepaymentConfirmed ? (
+                                <span className="px-2 py-1 rounded-full text-xs bg-emerald-500/10 text-emerald-400 flex items-center gap-1 w-fit">
+                                  <CheckCircle2 size={12} />
+                                  $500 оплачено
+                                </span>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="px-2 py-1 rounded-full text-xs bg-amber-500/10 text-amber-400">
+                                    Не оплачено
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleConfirmPrepayment(u.id, 'approve')}
+                                    className="bg-emerald-500 hover:bg-emerald-600 text-white h-7 text-xs"
+                                  >
+                                    Подтвердить
+                                  </Button>
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-4">
+                              {isVerified ? (
+                                <span className="px-2 py-1 rounded-full text-xs bg-emerald-500/10 text-emerald-400 flex items-center gap-1 w-fit">
+                                  <CheckCircle2 size={12} />
+                                  Верифицирован
+                                </span>
+                              ) : (
+                                <span className="px-2 py-1 rounded-full text-xs bg-slate-500/10 text-slate-400">
+                                  Не пройдена
+                                </span>
+                              )}
                             </td>
                             <td className="p-4">
                               <div className="flex items-center gap-2">
@@ -1104,7 +1140,7 @@ const ModeratorPage = () => {
                                   value={u.role || 'user'}
                                   onValueChange={(value) => handleUpdateUserRole(u.id, value)}
                                 >
-                                  <SelectTrigger className="w-36 bg-[#0B0F14] border-[#27272A]">
+                                  <SelectTrigger className="w-32 bg-[#0B0F14] border-[#27272A] h-8">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent className="bg-[#15191E] border-[#27272A]">
@@ -1113,15 +1149,6 @@ const ModeratorPage = () => {
                                     <SelectItem value="admin" className="text-white">Администратор</SelectItem>
                                   </SelectContent>
                                 </Select>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => openBalanceDialog(u)}
-                                  className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-                                >
-                                  <DollarSign size={14} className="mr-1" />
-                                  Баланс
-                                </Button>
                                 {u.role !== 'admin' && (
                                   <Button
                                     type="button"
