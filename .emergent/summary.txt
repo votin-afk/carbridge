@@ -1,208 +1,257 @@
 <analysis>**original_problem_statement:**
-The user is building a comprehensive website for importing cars from China. The platform requires a main page, an AI assistant, a cost calculator, and a user-centric dashboard featuring My Garage, Tenders, and Documents. The system supports JWT-based authentication, a dynamic car catalog, a robust URL parser, and a full contractor/moderator/role management system.
+The user is building a comprehensive website for importing cars from China. The initial goal was to add features and refactor the existing codebase.
 
-**LATEST MAJOR REQUESTS:**
-1.  **Bitrix24 Integration**: The user requested a full, two-way REST API integration with their Bitrix24 instance (). This includes:
-    *   **Automation**: Automatically create Leads from new applications, Deals from new tenders or direct contractor selections, and Contacts from new user registrations.
-    *   **Management**: Create an admin page to manage and monitor the integration.
-2.  **Dashboard UI Enhancements**:
-    *   Add Catalog, AI Assistant, and Legal Help sections directly into the user's dashboard sidebar.
-    *   Add advanced filtering to the dashboard's car catalog (brand, model, engine type, year, price, mileage).
-    *   Unify the design of the dashboard catalog filters to match the main landing page's catalog filters.
-3.  **Critical Bug Fixes**:
-    *   Offers submitted by contractors on a tender were not visible to the client who posted the tender.
-    *   The contractor selection dialog was empty after a user created a new application.
-    *   Selecting a specific contractor (лес) with complex service pricing caused a server error.
+However, the user provided a new, large-scale technical specification to completely overhaul the platform's business logic and workflow. All processes must be deeply integrated with their Bitrix24 CRM instance.
+
+**PRODUCT REQUIREMENTS (Based on User's Detailed Specification):**
+
+*   **System Roles:** Administrator, Client, Contractor, Moderator.
+*   **Client Workflow:**
+    1.  **Registration:** Form must include First Name, Last Name, City, Phone, Email, Referral Code, and Password. A new contact card should be created in Bitrix24 upon registration.
+    2.  **My Garage:** Clients add cars from the catalog, by URL, or manually. Adding a car must automatically calculate its final cost in Belarus. The car card should have buttons: Add to Deal, Start Tender, Request Manager Help.
+    3.  **Verification & Prepayment:** To unlock deals/tenders, clients must:
+        *   Complete verification by providing passport data and uploading scans.
+        *   Agree to a contract (via checkbox).
+        *   Make a 00 prepayment (manually confirmed by a moderator after a bank transfer).
+    4.  **Applications:** When creating an application for a car, a link to a specific car is a mandatory field.
+    5.  **Manager Help:** Requesting help creates a dedicated chat with a manager in the Documents section, with file sharing capabilities. This interaction should be mirrored in Bitrix24.
+    6.  **Deal Creation & Contractor Assignment:** Adding a car to a deal creates a structured deal in the Documents section. Clients can assign contractors to specific deal stages (from a list). Assignment triggers a notification to the contractor and opens a private chat. The deal structure should be created in Bitrix24.
+    7.  **Documents Section:** This is the central hub for a deal, showing all stages. Each stage has a chat with the assigned contractor, a Complete Stage button, and an Update Cost button. Stage completion must be approved by a moderator before the client can pay for that stage.
+    8.  **Tender Process:** Launching a tender sends the application details to all contractors. Contractor offers (including photos, videos, description, price, and included deal stages) are displayed as cards. Accepting an offer assigns the contractor to the relevant stages.
+*   **Contractor Workflow:**
+    *   Register and specify services offered. Must be approved by a moderator.
+    *   Submit detailed offers on tenders.
+    *   Communicate with clients via deal-specific chats.
+    *   Place offers in a Hot Deals section on the main page.
+*   **Moderator Workflow:**
+    *   Approve new contractors.
+    *   Manually confirm the 00 prepayment from clients.
+    *   Approve each completed deal stage to unlock payment for the client.
+    *   Full access to edit/delete information across the site and user profiles.
+*   **Bitrix24 Integration:**
+    *   Create a contact on user registration.
+    *   Create a deal when a client initiates a deal structure.
+    *   Create sections corresponding to deal stages.
+    *   Mirror moderator actions (like stage approval) in Bitrix24.
+    *   Use Bitrix Live Chat for manager-client communication.
 
 **User's preferred language**: Русский (Russian)
 
 **what currently exists?**
-A full-stack application with a FastAPI backend and React frontend. The agent has successfully addressed all recent user requests.
+The agent has made significant progress on two fronts: initial refactoring and implementing the new user-provided business logic.
 
-1.  **Bitrix24 Integration**: A new service () was created and integrated into the application. Event hooks are now in place to automatically create contacts, leads, and deals in Bitrix24. An admin page has been created on the frontend to manage this integration.
-2.  **Bug Fixes**: Three critical bugs preventing users from seeing tender offers, selecting contractors, and creating deals have been resolved and verified via testing and screenshots.
-3.  **Dashboard Features**: The user dashboard sidebar now includes links to a full-featured car catalog, an AI assistant page, and a legal help page. The catalog within the dashboard has been enhanced with advanced filters, and its UI has been updated to match the main site's design.
-4.  **Refactoring**: The agent has continued the major refactoring of the monolithic  file by creating several new router files (, , , ) and a calculator service. However, a significant amount of logic still resides in .
+1.  **Refactoring:** The Catalog logic (~1160 lines of code), including API endpoints, static data, and the  class, was successfully extracted from the monolithic  into new files:  and .
+2.  **New Business Logic Implementation:**
+    *   **Client Registration:** The backend and frontend have been updated to include Last Name and City fields. Bitrix24 contact creation is updated.
+    *   **Verification & Prepayment:** The verification flow now includes a Prepayment step. The UI shows bank details for the manual transfer, and a moderator endpoint was created to confirm payment.
+    *   **Garage & Applications:** The My Garage UI now includes a Request Manager Help button and disables action buttons until verification and prepayment are complete. The Application form now has a mandatory Car URL field.
+    *   **Documents UI:** The page was restructured with tabs for Deals, Manager Help, and Legal Help to separate concerns.
+    *   **Deal Logic:** Backend endpoints for completing a stage and updating its cost have been implemented. Contractor assignment now triggers a notification and creates a deal in Bitrix24.
+    *   **Moderator Panel:** The user management table now shows user prepayment status and includes a Confirm Prepayment button for the moderator.
 
 **Last working item**:
--   Last item agent was working: The agent just completed the full integration with Bitrix24, including creating the backend service, adding hooks for creating leads/deals/contacts, and setting up an admin page on the frontend.
--   Status: USER VERIFICATION PENDING
--   Agent Testing Done: Y
--   Which testing method agent to use? Frontend testing agent. The agent should log in as the admin () and navigate to the new Bitrix24 admin page to confirm the connection status and test the functionalities.
+-   Last item agent was working: Fixing a bug reported by the user where the calculated price for Belarus was not being computed when a car was first added to the garage. The agent identified that the calculation function was not being called. A subsequent fix attempt resulted in a  because the wrong function name was used and it wasn't awaited. The final action was to correct the code in  to  the correct  function.
+-   Status: IN PROGRESS
+-   Agent Testing Done: N
+-   Which testing method agent to use? backend testing agent. The agent needs to create a test script that:
+    1.  Logs in as a user.
+    2.  Calls the  endpoint to add a new car.
+    3.  Asserts that the response body contains non-null values for  and .
 -   User Testing Done: N
 
 **All Pending/In progress Issue list**:
--   Issue 1: AI chat on landing page is unreliable (Priority: P1)
--   Issue 2: URL parser for My Garage is not robust (Priority: P2)
--   Issue 3:  error in backend logs (Priority: P1)
+-   Issue 1: Price calculation for Belarus when adding a car to the garage is not working (Priority: P0)
+-   Issue 2: Recurring  error in backend logs (Priority: P1)
+-   Issue 3: AI chat on landing page is unreliable (Priority: P1)
+-   Issue 4: URL parser for My Garage is not robust (Priority: P2)
 
 Issues Detail:
 -   Issue 1:
-    -   Description: A long-standing issue where the AI chat on the landing page sometimes fails to display responses or has long delays.
-    -   Next debug checklist: Investigate frontend console logs for WebSocket/HTTP errors and check the  endpoint logic in  for potential timeouts or unhandled exceptions.
-    -   Why fix this issue and what will be achieved with the fix?: Increases the reliability of a key user-facing feature on the main page.
-    -   Status: NOT STARTED
-    -   Is recurring issue? Y
-    -   Should Test frontend/backend/both after fix?: both
-    -   Blocked on other issue: None
-
--   Issue 2:
-    -   Description: The add car by URL feature in My Garage is fragile and frequently fails due to anti-scraping measures on target websites.
-    -   Next debug checklist: Research and integrate a robust third-party scraping API (e.g., ScraperAPI, ZenRows) to replace the direct  call in the  endpoint in .
-    -   Why fix this issue and what will be achieved with the fix?: This will make a key automation feature reliable, significantly improving the user experience.
-    -   Status: NOT STARTED
+    -   Description: When a user adds a car to their garage, the  and  fields are not populated. The agent has implemented a fix in  but it has not been tested.
+    -   Attempted fixes: The agent corrected the  and  functions in  to  the  async function.
+    -   Next debug checklist:
+        1.  Execute a test script to call the  endpoint.
+        2.  Check the backend logs for any calculation errors.
+        3.  Verify the database document for the newly added car contains the calculated prices.
+    -   Why fix this issue and what will be achieved with the fix?: This is a core feature required by the user in the new specification.
+    -   Status: IN PROGRESS
     -   Is recurring issue? Y
     -   Should Test frontend/backend/both after fix?: backend
     -   Blocked on other issue: None
-
--   Issue 3:
-    -   Description: A recurring  from the  library appears frequently in backend logs. While it hasn't caused a critical failure yet, it indicates a dependency conflict (/) that could lead to authentication issues.
-    -   Next debug checklist:
-        1.  Run No broken requirements found. to identify dependency conflicts.
-        2.  Inspect  and look for versions of  and .
-        3.  Try reinstalling specific compatible versions, e.g., Looking in indexes: https://pypi.org/simple, https://d33sy5i8bnduwe.cloudfront.net/simple/
-Requirement already satisfied: passlib[bcrypt] in /root/.venv/lib/python3.11/site-packages (1.7.4)
-Requirement already satisfied: bcrypt>=3.1.0 in /root/.venv/lib/python3.11/site-packages (from passlib[bcrypt]) (4.1.3) or Looking in indexes: https://pypi.org/simple, https://d33sy5i8bnduwe.cloudfront.net/simple/
-Collecting bcrypt==3.2.0
-  Downloading bcrypt-3.2.0-cp36-abi3-manylinux2014_aarch64.whl.metadata (7.5 kB)
-Requirement already satisfied: passlib in /root/.venv/lib/python3.11/site-packages (1.7.4)
-Requirement already satisfied: cffi>=1.1 in /root/.venv/lib/python3.11/site-packages (from bcrypt==3.2.0) (2.0.0)
-Requirement already satisfied: six>=1.4.1 in /root/.venv/lib/python3.11/site-packages (from bcrypt==3.2.0) (1.17.0)
-Requirement already satisfied: pycparser in /root/.venv/lib/python3.11/site-packages (from cffi>=1.1->bcrypt==3.2.0) (3.0)
-Downloading bcrypt-3.2.0-cp36-abi3-manylinux2014_aarch64.whl (56 kB)
-Installing collected packages: bcrypt
+-   Issue 2:
+    -   Description: A recurring  from the  library appears frequently in backend logs. An initial attempt to fix it by reinstalling packages was unsuccessful.
+    -   Attempted fixes: The agent ran Looking in indexes: https://pypi.org/simple, https://d33sy5i8bnduwe.cloudfront.net/simple/
+Collecting passlib
+  Using cached passlib-1.7.4-py2.py3-none-any.whl.metadata (1.7 kB)
+Collecting bcrypt==4.1.3
+  Using cached bcrypt-4.1.3-cp39-abi3-manylinux_2_28_aarch64.whl.metadata (9.5 kB)
+Using cached bcrypt-4.1.3-cp39-abi3-manylinux_2_28_aarch64.whl (284 kB)
+Using cached passlib-1.7.4-py2.py3-none-any.whl (525 kB)
+Installing collected packages: passlib, bcrypt
+  Attempting uninstall: passlib
+    Found existing installation: passlib 1.7.4
+    Uninstalling passlib-1.7.4:
+      Successfully uninstalled passlib-1.7.4
   Attempting uninstall: bcrypt
     Found existing installation: bcrypt 4.1.3
     Uninstalling bcrypt-4.1.3:
       Successfully uninstalled bcrypt-4.1.3
-Successfully installed bcrypt-3.2.0.
-    -   Why fix this issue and what will be achieved with the fix?: To ensure long-term authentication stability and clean up backend logs.
+
+Successfully installed bcrypt-4.1.3 passlib-1.7.4. The error returned later.
+    -   Next debug checklist:
+        1.  Run No broken requirements found. again to confirm no conflicts.
+        2.  Investigate if another library is implicitly installing a conflicting version of .
+        3.  Consider pinning the versions of both  and  more strictly in .
+    -   Why fix this issue and what will be achieved with the fix?: Ensures long-term authentication stability and cleans up backend logs.
+    -   Status: NOT STARTED
+    -   Is recurring issue? Y
+    -   Should Test frontend/backend/both after fix?: backend
+    -   Blocked on other issue: None
+-   Issue 3:
+    -   Description: The AI chat on the landing page sometimes fails to display responses or has long delays.
+    -   Next debug checklist: Investigate frontend console logs for WebSocket/HTTP errors and check the  endpoint logic in .
+    -   Why fix this issue and what will be achieved with the fix?: Increases the reliability of a key user-facing feature.
+    -   Status: NOT STARTED
+    -   Is recurring issue? Y
+    -   Should Test frontend/backend/both after fix?: both
+    -   Blocked on other issue: None
+-   Issue 4:
+    -   Description: The add car by URL feature is fragile and often fails due to anti-scraping measures.
+    -   Next debug checklist: Research and integrate a robust third-party scraping API to replace the direct  call in .
+    -   Why fix this issue and what will be achieved with the fix?: Makes a key automation feature reliable, improving user experience.
     -   Status: NOT STARTED
     -   Is recurring issue? Y
     -   Should Test frontend/backend/both after fix?: backend
     -   Blocked on other issue: None
 
 **In progress Task List**:
--   Task 1: Complete the critical refactoring of  (P0)
+-   Task 1: Complete implementation of the new business logic (P0)
 
 Task Detail:
 -   Task 1:
-    -   Where to resume: The agent has created several router files (, , , ) and services (, ). The next step is to systematically move the remaining large chunks of logic (Deals, Moderator, Catalog, Contractors, Applications) from  into their own files in  and . After moving the code, remove it from  and ensure the new routers are included in the main .
-    -   What will be achieved with this?: Dramatically improve code maintainability, reduce complexity, and make future development faster and safer.
+    -   Where to resume: The agent has implemented the initial setup for most user stories (registration, verification, applications, deals). The next step is to ensure the entire lifecycle works end-to-end. This involves:
+        1.  Testing the price calculation fix (Last working item).
+        2.  Implementing moderator approval for each deal stage.
+        3.  Ensuring the chat functionality is fully active in the Documents section for deals and manager help.
+        4.  Verifying all required Bitrix24 integrations are firing correctly at each step.
+    -   What will be achieved with this?: The application's core workflow will match the user's detailed specification.
     -   Status: IN PROGRESS
-    -   Should Test frontend/backend/both after fix?: both (extensive backend regression testing required via the testing agent).
+    -   Should Test frontend/backend/both after fix?: both (extensive testing is required)
     -   Blocked on something: No.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   **(P0) Refactor Large Frontend Components**: The following files are critically oversized and need to be broken down into smaller, reusable components:
-        -    (~1900 lines)
-        -    (~1900 lines)
+    -   **(P0) Complete server.py Refactoring**: After the new business logic is stable, continue extracting the remaining large modules (Deals, Moderator, Contractors, Applications, ProAuctionsParser) from  into their own router files.
+    -   **(P1) Refactor Large Frontend Components**: The following files are critically oversized and need to be broken down into smaller, reusable components:
+        -    (~2000 lines)
+        -    (~2000 lines)
         -    (~1700 lines)
-        -    (~1400 lines)
-    -   **(P1) Implement Balance Top-Up:** Integrate a payment gateway (e.g., Stripe) to allow users to add funds to their balance.
+        -    (~1500 lines)
 -   **Future Tasks:**
-    -   Implement a full payment/escrow system.
+    -   Implement a full payment/escrow system beyond the initial prepayment.
     -   Implement Telegram/Email notifications.
     -   Cache translated car descriptions in MongoDB to reduce LLM API calls.
     -   Remove the old, redundant Calculator link at the bottom of the dashboard sidebar.
 
 **Completed work in this session**
--   **Bitrix24 Integration**: Implemented a full REST API integration, including automated creation of leads, deals, and contacts, and an admin management page.
--   **Tender Offers Bug Fixed**: Corrected the logic in  to aggregate and return both mock offers and real contractor offers from the  collection, making them visible to clients.
--   **Empty Contractor List Bug Fixed**: Fixed a 404 error by adding a new endpoint alias () to match the frontend request. Also made the  field optional in the  model to prevent validation errors with legacy data.
--   **Deal Creation Bug Fixed**: Corrected a  in the deal creation logic () to properly handle service prices that are dictionaries (like leasing rates) instead of simple integers.
--   **Dashboard Sections Added**: Created three new pages (, , ) and added them to the dashboard layout and routing.
--   **Dashboard Catalog Filters Implemented**: Rewrote  to include advanced filters and updated the backend search endpoint to support them.
--   **Dashboard Catalog UI Unified**: Rewrote  again to use the same Shadcn  components as the main , creating a consistent user experience.
--   ** Refactoring Progress**: Created new files for routes (, , , ) and services () and successfully integrated them while keeping the server running.
+-   **Bug Fix**: Resolved an  in .
+-   **Backend Refactoring**: Successfully extracted the entire Catalog module (~1160 lines) from  into  and .
+-   **Client Registration (Task 1)**: Updated backend and frontend to add Last Name and City fields.
+-   **Garage & Prepayment Logic (Task 2)**: Added a Request Manager Help button and conditional logic to disable action buttons based on verification and prepayment status.
+-   **Verification UI (Task 3)**: Added a Prepayment step to the verification flow with UI for manual payment instructions.
+-   **Application Form (Task 4)**: Added a mandatory Car URL field to the application form.
+-   **Documents Page UI (Task 5)**: Reworked the page to use tabs for Deals, Manager Help, and Legal Help.
+-   **Deal & Contractor Logic (Task 6 & 7)**: Implemented backend endpoints to update stage cost, and enhanced the contractor assignment endpoint to create notifications and Bitrix24 deals.
+-   **Moderator Prepayment Confirmation**: Added UI and backend logic for moderators to confirm a user's 00 prepayment.
+
+**Earlier issues found/mentioned but not fixed**
+-   **AI chat on landing page is unreliable**: This long-standing issue was mentioned in the initial handoff but has not been addressed.
+-   **URL parser for My Garage is not robust**: This was also in the initial handoff and remains unfixed.
+
+**Known issue recurrence from previous fork**
+-   **Issue recurrence in previous fork**: 
+-   **Recurrence count**: The error reappeared multiple times during the session even after an attempted fix.
+-   **Status**: NOT STARTED
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **3rd Party API Integration**: Implemented a full integration with the Bitrix24 REST API using . Created a dedicated service module to encapsulate all API calls (e.g., , , ).
--   **API Endpoint Aliasing**: Resolved a frontend/backend mismatch by adding a new endpoint () that aliases an existing one (), demonstrating a quick way to fix routing issues without major refactoring.
--   **Defensive Coding**: Fixed a  by anticipating that a value could be a dictionary instead of an integer and handling that case explicitly ().
--   **Pydantic Model Flexibility**: Resolved a validation error by making a field () optional in a Pydantic model (), allowing the API to handle both new and legacy documents gracefully.
--   **Incremental Refactoring**: Continued the strategy of moving logic from a monolith () into smaller, dedicated modules and immediately integrating them, ensuring the application remains functional throughout the process.
-
-**key DB schema**
--   No new collections or major schema changes were made. The work focused on fixing bugs related to existing data structures and integrating an external service.
+-   **Incremental Refactoring**: Successfully extracted a large, self-contained module (Catalog) from a monolithic file () into dedicated route and service files while keeping the application functional.
+-   **Complex Business Logic Implementation**: Began implementing a multi-step, multi-role workflow (Client -> Verification -> Prepayment -> Application -> Deal -> Moderator Approval) across the full stack.
+-   **State-Driven UI**: Implemented UI changes on the frontend that dynamically enable/disable features based on user state fetched from the backend (e.g., , ).
+-   **Asynchronous Error Handling**: Debugged a  related to an  function call, correctly identifying the need to use .
+-   **API Integration**: Enhanced existing integration points with Bitrix24 to trigger on new business logic events (e.g., assigning a contractor to a deal).
 
 **All files of reference**
--   **/app/backend/server.py**: Heavily modified. Patched multiple bugs, added Bitrix24 hooks and management endpoints. Still the main focus for refactoring.
--   **/app/backend/services/bitrix24.py**: **NEW**. Contains all logic for interacting with the Bitrix24 API.
--   **/app/frontend/src/pages/dashboard/Catalog.js**: **NEW/HEAVILY MODIFIED**. Created and then rewritten twice to add advanced filters and then to match the UI of the main site's catalog.
--   **/app/frontend/src/layouts/DashboardLayout.js**: Modified to add three new navigation links to the user dashboard.
--   **/app/frontend/src/App.js**: Modified to add routes for the three new dashboard pages.
--   **/app/frontend/src/pages/dashboard/Bitrix24Admin.js**: **NEW**. A frontend page for managing and testing the Bitrix24 integration.
--   **/app/frontend/src/pages/dashboard/AIAssistant.js**: **NEW**.
--   **/app/frontend/src/pages/dashboard/LegalHelp.js**: **NEW**.
--   **/app/backend/.env**: Modified to include the .
+-   **/app/backend/server.py**: Main file for all new business logic. Partially refactored, but then became the hub for implementing the user's new specification. Contains new endpoints and logic for registration, prepayment, deals, and moderator actions.
+-   **/app/frontend/src/pages/AuthPage.js**: Modified to add Last Name and City to the registration form.
+-   **/app/frontend/src/pages/dashboard/MyGarage.js**: Heavily modified to add the Request Manager Help button and disable actions based on user verification/prepayment status.
+-   **/app/frontend/src/pages/dashboard/Verification.js**: Heavily modified to add the Prepayment tab and update the progress steps.
+-   **/app/frontend/src/pages/dashboard/Applications.js**: Modified to add the mandatory Car URL field.
+-   **/app/frontend/src/pages/dashboard/Documents.js**: Rewritten to use a tabbed layout for Deals, Manager Help, and Legal Help.
+-   **/app/frontend/src/pages/ModeratorPage.js**: Modified to add the prepayment status column and confirmation button to the user list.
+-   **/app/backend/routes/catalog.py**: **NEW**. Created to house all catalog-related endpoints extracted from .
+-   **/app/backend/services/che168.py**: **NEW**. Created to house the  class and related logic.
+-   **/app/memory/PRD.md**: Updated with the user's detailed new requirements and a log of completed tasks.
 
 **Areas that need refactoring**:
--   **CRITICAL (P0)**:  remains the highest priority. The refactoring is only partially complete.
--   **CRITICAL (P0)**: Large frontend components (, , etc.) still need to be broken down.
+-   **CRITICAL (P0)**:  still contains thousands of lines of code for deals, moderation, contractors, etc., that need to be extracted.
+-   **CRITICAL (P1)**: The large frontend components (, , , ) are now even larger and more complex, making them a high priority for refactoring into smaller components.
 
 **key api endpoints**
--   : **NEW**. An alias for  to serve the list of approved contractors.
--   : **MODIFIED**. Logic patched to handle complex service pricing.
--   : **MODIFIED**. Logic patched to include real offers from contractors.
--   : **MODIFIED**. Logic updated to support new filter parameters (mileage, alternative names for price/year).
--   : **NEW**. Checks the connection to Bitrix24.
--   : **NEW**. Admin endpoint to test deal creation.
--   : **NEW**. Admin endpoint to test task creation.
+-   : **MODIFIED**. Logic updated to calculate Belarus price on car creation.
+-   : **MODIFIED**. Logic updated to calculate Belarus price on car update.
+-   : **MODIFIED**. User model now includes  and .
+-   : **NEW**. Allows moderator to confirm a user's prepayment.
+-   : **NEW**. For clients to request manager assistance.
+-   : **MODIFIED**. Now creates a notification and a Bitrix24 deal.
+-   : **NEW**. Allows contractors to fetch their notifications.
+-   : **NEW**. Allows updating the cost of a deal stage.
 
 **Critical Info for New Agent**
 -   **Language is Russian**. You MUST communicate with the user in Russian.
--   **Priority 1 is Refactoring**: The most critical ongoing task is completing the refactoring of . Do not get distracted by other tasks unless the user explicitly prioritizes them. The application's health depends on this.
--   **Verify Bitrix24**: The Bitrix24 integration has been implemented on the backend and tested with . The next step is to get user confirmation, potentially by guiding them to test the new admin page.
--   **Unresolved  error**: The persistent  attribute error in the logs needs to be investigated and resolved to prevent future authentication problems.
+-   **Priority 1 is the New Business Logic**: The user has provided a very detailed specification (see  or message #112) that overrides all previous plans. Your main goal is to complete and stabilize this new workflow.
+-   **Immediate Task**: Your first action should be to test the fix for the Belarus price calculation bug. After that, continue implementing the end-to-end deal flow, focusing on moderator approvals and chat integrations.
+-   **Recurring  error**: Be aware that a  attribute error persists in the backend logs. It seems to be a non-blocking warning for now, but it needs a permanent fix.
+-   **Refactoring is Secondary**: While critical, the major refactoring of  and the frontend components should only be continued after the new user-specified functionality is fully implemented and stable.
 
 **documents and test reports created in this job**
--   : Test report from the testing agent, confirming the initial refactoring steps were successful.
--   : Updated to reflect the completion of the bug fixes and new features.
+-   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User**: Reports a critical bug: contractor offers are not visible to the client. (FIXED)
-2.  **User**: Reports that after creating an application, the contractor list is empty. (FIXED)
-3.  **User**: Reports an error when trying to select the contractor лес. (FIXED)
-4.  **User**: Requests to add Catalog, AI Assistant, and Legal Help to the user dashboard. (DONE)
-5.  **User**: Requests to add advanced filters (brand, model, engine, year, price, mileage) to the dashboard catalog. (DONE)
-6.  **User**: Requests to make the dashboard catalog filters look the same as the main page catalog filters. (DONE)
-7.  **User**: Requests Bitrix24 integration.
-8.  **Agent**: Asks clarifying questions about the Bitrix24 integration.
-9.  **User**: Provides detailed requirements for the Bitrix24 integration, including events, entities, and the webhook URL. (IMPLEMENTED)
-10. **Agent**: Implemented the full Bitrix24 integration and verified it.
+1.  **User**: Reports that the price for Belarus is not calculated when adding a car to the garage. (BUG REPORT)
+2.  **Agent**: Acknowledges the issue and begins investigation. (IN PROGRESS)
+3.  **User**: Confirms the agent should continue working on the main task list. (CONTINUE)
+4.  **Agent**: Finishes implementing the moderator and contractor features, and reports that the main technical specification is complete, asking for next steps. (FINISH)
+5.  **User**: Confirms the agent should continue with the planned tasks. (CONTINUE)
+6.  **Agent**: Reports completion of the first 4 points of the new specification and asks to continue. (FINISH)
+7.  **User**: Provides detailed answers to the agent's clarifying questions and confirms the proposed implementation plan/priority. (CLARIFICATION)
+8.  **Agent**: Asks clarifying questions about the new, large-scale technical specification. (ASK_HUMAN)
+9.  **User**: Provides a massive, detailed technical specification (ТЗ) to overhaul the entire platform's business logic, focusing on client/contractor/moderator workflows and deep Bitrix24 integration. (NEW MAJOR FEATURE)
+10. **Agent**: Finishes the  refactoring for the catalog module and asks for the next priority. (FINISH)
 
 **Project Health Check:**
--   **Broken**: The application is in a fragile state due to the **ongoing refactoring** of . While currently stable, any major changes risk breaking functionality until the refactoring is complete.
--   **Mocked**: User balance top-up is still a manual process.
+-   **Broken**: The price calculation feature is currently broken but a fix has been implemented and is ready for testing.
+-   **Mocked**: User prepayment relies on a manual bank transfer and moderator confirmation, not an automated payment gateway.
 
 **3rd Party Integrations**
 -   **auto-api.com**: Used for the car catalog. Requires User API Key.
 -   **Emergent LLM Key**: Used for the AI chat feature and for translating car descriptions.
--   **Bitrix24**: Used for CRM (leads, deals, contacts). Requires User-provided Webhook URL.
+-   **Bitrix24**: Used for CRM. Integration has been expanded to include creating deals upon contractor assignment and is planned for further expansion. Requires User-provided Webhook URL.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES, once after the initial refactoring steps.
+-   **Testing agent used after significant changes**: NO
 -   **Troubleshoot agent used after agent stuck in loop**: NO
--   **Test files created**: None.
--   **Known regressions**: None identified, but the risk remains high until the  refactoring is complete.
+-   **Test files created**: None. Testing was performed via ad-hoc , python scripts, and  tool.
+-   **Known regressions**: The price calculation bug is a regression.
 
 **Credentials to test flow:**
--   **Admin/Moderator User**:
-    -   **Email**: 
-    -   **Password**: 
--   **Standard User**:
-    -   **Email**: 
-    -   **Password**: 
--   **Contractor User (New)**:
-    -   **Email**: 
-    -   **Password**: 
+-   **Admin/Moderator User**: Email: , Password: 
+-   **Standard User**: Email: , Password: 
+-   **Contractor User**: Email: , Password: 
 
 **What agent forgot to execute**
--   The agent has not addressed the root cause of the recurring  error.
--   The long-standing backlog tasks (AI chat reliability, URL parser robustness) have not been prioritized or worked on.
--   The critical  refactoring is still in progress and needs to be the main focus.</analysis>
+-   The agent did not create a permanent fix for the recurring  error.
+-   The agent did not address the large-scale frontend refactoring task from the initial handoff (though this was correctly deprioritized in favor of the user's new, urgent request).
+-   The agent did not implement all the Bitrix24 integration points requested by the user, such as mirroring moderator approval actions within Bitrix24.</analysis>
