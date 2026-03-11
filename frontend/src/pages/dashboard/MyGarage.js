@@ -528,10 +528,20 @@ const MyGarage = () => {
           <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-sm">
             <p className="text-amber-400 text-sm flex items-center gap-2">
               <Shield size={14} />
-              {!accountSummary?.contract_signed 
-                ? 'Для запуска сделок и тендеров необходимо пройти верификацию и подписать договор'
+              {!accountSummary?.is_verified 
+                ? 'Для запуска сделок и тендеров необходимо пройти верификацию'
+                : !accountSummary?.prepayment_confirmed
+                ? 'Для запуска сделок и тендеров необходимо внести предоплату $500'
+                : !accountSummary?.contract_signed 
+                ? 'Для запуска сделок и тендеров необходимо подписать договор'
                 : 'Пополните баланс для запуска сделок и тендеров'}
             </p>
+            <Button 
+              className="mt-2 bg-amber-500 hover:bg-amber-600 text-black"
+              onClick={() => navigate('/dashboard/verification')}
+            >
+              Пройти верификацию
+            </Button>
           </div>
         )}
       </div>
