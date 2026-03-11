@@ -447,6 +447,75 @@ const ContractorDashboard = () => {
               </div>
               <p className="text-slate-400 text-xs">{contractor.deals_count} сделок</p>
             </div>
+            
+            {/* Notifications */}
+            <div className="relative">
+              <Button 
+                variant="ghost" 
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="text-slate-400 relative"
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </Button>
+              
+              {/* Notifications Dropdown */}
+              {showNotifications && (
+                <div className="absolute right-0 top-12 w-80 bg-[#1C2128] border border-[#27272A] rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto">
+                  <div className="p-3 border-b border-[#27272A] flex justify-between items-center">
+                    <h4 className="text-white font-semibold">Уведомления</h4>
+                    {unreadCount > 0 && (
+                      <span className="text-xs text-[#00E5FF]">{unreadCount} новых</span>
+                    )}
+                  </div>
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-slate-400">
+                      Нет уведомлений
+                    </div>
+                  ) : (
+                    notifications.map(notification => (
+                      <div 
+                        key={notification.id}
+                        className={`p-3 border-b border-[#27272A] hover:bg-[#27272A] cursor-pointer ${!notification.is_read ? 'bg-[#27272A]/50' : ''}`}
+                        onClick={() => {
+                          if (!notification.is_read) {
+                            markNotificationRead(notification.id);
+                          }
+                          if (notification.type === 'new_tender') {
+                            setActiveTab('tenders');
+                            setShowNotifications(false);
+                          }
+                        }}
+                      >
+                        <div className="flex items-start gap-2">
+                          {notification.type === 'new_tender' && (
+                            <Gavel size={16} className="text-[#00E5FF] mt-0.5" />
+                          )}
+                          {notification.type === 'deal_assigned' && (
+                            <CheckCircle2 size={16} className="text-emerald-400 mt-0.5" />
+                          )}
+                          <div className="flex-1">
+                            <p className="text-white text-sm font-medium">{notification.title}</p>
+                            <p className="text-slate-400 text-xs">{notification.message}</p>
+                            <p className="text-slate-500 text-xs mt-1">
+                              {new Date(notification.created_at).toLocaleString('ru-RU')}
+                            </p>
+                          </div>
+                          {!notification.is_read && (
+                            <div className="w-2 h-2 bg-[#00E5FF] rounded-full"></div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+            
             <Button variant="ghost" onClick={handleLogout} className="text-slate-400">
               <LogOut size={18} />
             </Button>
