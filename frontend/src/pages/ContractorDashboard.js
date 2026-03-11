@@ -127,10 +127,37 @@ const ContractorDashboard = () => {
   useEffect(() => {
     if (token) {
       fetchDashboard(token);
+      fetchNotifications(token);
     } else {
       setLoading(false);
     }
   }, [token]);
+
+  const fetchNotifications = async (currentToken) => {
+    try {
+      const response = await axios.get(`${API}/contractor-notifications`, {
+        headers: { Authorization: `Bearer ${currentToken}` }
+      });
+      setNotifications(response.data.notifications || []);
+      setUnreadCount(response.data.unread_count || 0);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  const markNotificationRead = async (notificationId) => {
+    try {
+      await axios.post(`${API}/contractor-notifications/${notificationId}/read`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNotifications(prev => prev.map(n => 
+        n.id === notificationId ? { ...n, is_read: true } : n
+      ));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Error marking notification read:', error);
+    }
+  };
 
   const fetchDashboard = async (currentToken) => {
     try {
