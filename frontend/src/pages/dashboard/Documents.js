@@ -122,8 +122,20 @@ const Documents = () => {
   }, [selectedDeal]);
 
   useEffect(() => {
+    if (selectedHelpRequest) {
+      fetchHelpRequestMessages();
+      const interval = setInterval(fetchHelpRequestMessages, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [selectedHelpRequest]);
+
+  useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    helpMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [helpMessages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -137,6 +149,65 @@ const Documents = () => {
       console.error('Error fetching deals:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchHelpRequests = async () => {
+    try {
+      const response = await axios.get(`${API}/help-requests`, { headers });
+      setHelpRequests(response.data.filter(r => r.request_type === 'car_selection' || r.request_type === 'general'));
+    } catch (error) {
+      console.error('Error fetching help requests:', error);
+    }
+  };
+
+  const fetchLegalRequests = async () => {
+    try {
+      const response = await axios.get(`${API}/help-requests`, { headers });
+      setLegalRequests(response.data.filter(r => r.request_type === 'legal'));
+    } catch (error) {
+      console.error('Error fetching legal requests:', error);
+    }
+  };
+
+  const fetchHelpRequestMessages = async () => {
+    if (!selectedHelpRequest) return;
+    try {
+      const response = await axios.get(`${API}/help-requests/${selectedHelpRequest.id}`, { headers });
+      setHelpMessages(response.data.messages || []);
+    } catch (error) {
+      console.error('Error fetching help messages:', error);
+    }
+  };
+
+  const sendHelpMessage = async () => {
+    if (!newHelpMessage.trim() || !selectedHelpRequest) return;
+    
+    setSendingHelp(true);
+    try {
+      await axios.post(`${API}/help-requests/${selectedHelpRequest.id}/messages`, {
+        content: newHelpMessage
+      }, { headers });
+      
+      setNewHelpMessage('');
+      fetchHelpRequestMessages();
+    } catch (error) {
+      toast.error('Ошибка отправки сообщения');
+    } finally {
+      setSendingHelp(false);
+    }
+  };
+
+  const requestCallback = async () => {
+    try {
+      await axios.post(`${API}/callback-request`, {
+        request_type: 'manager_callback',
+        help_request_id: selectedHelpRequest?.id,
+        phone: user?.phone
+      }, { headers });
+      toast.success('Запрос на звонок отправлен! Менеджер свяжется с вами в ближайшее время.');
+    } catch (error) {
+      toast.error('Ошибка при отправке запроса');
     }
   };
 
