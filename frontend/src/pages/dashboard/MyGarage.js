@@ -1006,8 +1006,8 @@ const MyGarage = () => {
                       <Button
                         data-testid={`add-to-deal-${car.id}`}
                         onClick={() => handleAddToDeal(car.id)}
-                        disabled={addingToDeal === car.id}
-                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
+                        disabled={addingToDeal === car.id || !canPerformActions}
+                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50"
                       >
                         {addingToDeal === car.id ? (
                           <Loader2 size={16} className="mr-2 animate-spin" />
@@ -1021,11 +1021,38 @@ const MyGarage = () => {
                       <Button
                         data-testid={`start-tender-${car.id}`}
                         onClick={() => handleStartTender(car.id)}
+                        disabled={!canPerformActions}
                         variant="outline"
-                        className="w-full border-[#27272A] text-slate-300 hover:border-[#00E5FF] hover:text-[#00E5FF]"
+                        className="w-full border-[#27272A] text-slate-300 hover:border-[#00E5FF] hover:text-[#00E5FF] disabled:opacity-50"
                       >
                         <Send size={14} className="mr-2" />
                         Запустить тендер
+                      </Button>
+                      
+                      {/* Request Manager Help */}
+                      <Button
+                        data-testid={`request-help-${car.id}`}
+                        onClick={() => handleRequestManagerHelp(car.id)}
+                        disabled={!accountSummary?.is_verified || !accountSummary?.prepayment_confirmed}
+                        variant="outline"
+                        className="w-full border-[#27272A] text-slate-300 hover:border-amber-500 hover:text-amber-400 disabled:opacity-50"
+                      >
+                        <Headphones size={14} className="mr-2" />
+                        Помощь менеджера
+                      </Button>
+                      
+                      {/* Select Contractor */}
+                      <Button
+                        data-testid={`select-contractor-${car.id}`}
+                        onClick={() => navigate('/dashboard/applications', { 
+                          state: { prefillCar: car, selectContractor: true } 
+                        })}
+                        disabled={!canPerformActions}
+                        variant="outline"
+                        className="w-full border-[#27272A] text-slate-300 hover:border-purple-500 hover:text-purple-400 disabled:opacity-50"
+                      >
+                        <Users size={14} className="mr-2" />
+                        Выбрать подрядчика
                       </Button>
                     </>
                   )}
