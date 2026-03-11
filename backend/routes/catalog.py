@@ -586,6 +586,19 @@ async def add_catalog_car_to_garage(
         try:
             car_details = await Che168API.get_offer_details(inner_id)
             if car_details:
+                # Parse images - can be string or list
+                images_raw = car_details.get("images", "")
+                if isinstance(images_raw, str):
+                    try:
+                        import json as json_module
+                        images_list = json_module.loads(images_raw) if images_raw else []
+                    except:
+                        images_list = []
+                else:
+                    images_list = images_raw if images_raw else []
+                
+                first_image = images_list[0] if images_list else ""
+                
                 catalog_car = {
                     "id": car_id,
                     "brand": car_details.get("mark", "Unknown"),
@@ -596,7 +609,7 @@ async def add_catalog_car_to_garage(
                     "engine_type": Che168API.map_engine_type(car_details.get("engine_type", "")),
                     "engine_volume": int(float(car_details.get("displacement", 0) or 0) * 1000) or None,
                     "mileage": car_details.get("km_age"),
-                    "image_url": car_details.get("images", [""])[0] if car_details.get("images") else "",
+                    "image_url": first_image,
                     "source_url": car_details.get("url", ""),
                     "description": car_details.get("description", ""),
                     "body_type": Che168API.map_body_type(car_details.get("body_type", ""))
