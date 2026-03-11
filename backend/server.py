@@ -3622,7 +3622,7 @@ async def add_car_to_garage(car: CarCreate, current_user: dict = Depends(get_cur
             use_decree_140=False,
             payment_via_platform=True
         )
-        calc_result = calculate_custom_price(calc_input)
+        calc_result = await calculate_customs(calc_input)
         calculated_price_usd = calc_result.total_usd
         calculated_price_byn = calc_result.total_byn
         logger.info(f"Calculated price for {car.brand} {car.model}: ${calculated_price_usd} / {calculated_price_byn} BYN")
