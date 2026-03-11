@@ -251,6 +251,9 @@ const Applications = () => {
   const [loadingContractors, setLoadingContractors] = useState(false);
 
   const [formData, setFormData] = useState({
+    // Ссылка на понравившееся авто (ОБЯЗАТЕЛЬНО)
+    car_url: '',
+    
     // Раздел 1: Данные клиента
     client_type: 'individual',
     full_name: user?.name || '',
