@@ -265,9 +265,15 @@ const MyGarage = () => {
 
   // Add to deal function
   const handleAddToDeal = async (carId) => {
-    // Check verification first
-    if (!accountSummary?.is_verified || accountSummary?.verification_status !== 'approved') {
+    // Check verification and prepayment first
+    if (!accountSummary?.is_verified) {
       toast.error('Для создания сделки необходима верификация');
+      navigate('/dashboard/verification');
+      return;
+    }
+    
+    if (!accountSummary?.prepayment_confirmed) {
+      toast.error('Для создания сделки необходимо внести предоплату $500');
       navigate('/dashboard/verification');
       return;
     }
