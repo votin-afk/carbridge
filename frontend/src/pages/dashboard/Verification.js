@@ -191,12 +191,13 @@ const Verification = () => {
       </div>
 
       {/* Progress Steps */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         {[
           { step: 1, label: 'Личные данные', status: verification ? 'done' : 'current' },
           { step: 2, label: 'Документы', status: verification?.documents?.length > 0 ? 'done' : verification ? 'current' : 'pending' },
           { step: 3, label: 'Договор', status: verification?.contract_signed ? 'done' : verification?.documents?.length > 0 ? 'current' : 'pending' },
-          { step: 4, label: 'Подтверждение', status: verification?.status === 'approved' ? 'done' : 'pending' }
+          { step: 4, label: 'Предоплата $500', status: verification?.prepayment_confirmed ? 'done' : verification?.contract_signed ? 'current' : 'pending' },
+          { step: 5, label: 'Подтверждение', status: verification?.status === 'approved' ? 'done' : 'pending' }
         ].map(({ step, label, status }) => (
           <div key={step} className={`p-4 rounded-sm border ${
             status === 'done' ? 'bg-emerald-500/10 border-emerald-500/30' :
