@@ -53,6 +53,8 @@ JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
 # Password hashing
+# Suppress bcrypt version warning from passlib (passlib 1.7.4 incompatibility with bcrypt 4.x)
+logging.getLogger("passlib.handlers.bcrypt").setLevel(logging.ERROR)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
