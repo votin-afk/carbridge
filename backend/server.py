@@ -1130,8 +1130,13 @@ async def login(credentials: UserLogin):
 async def get_me(current_user: dict = Depends(get_current_user)):
     return UserResponse(
         id=current_user["id"], email=current_user["email"], name=current_user["name"],
-        phone=current_user.get("phone"), user_type=current_user["user_type"],
-        role=current_user.get("role", "user"), created_at=current_user["created_at"]
+        last_name=current_user.get("last_name"), phone=current_user.get("phone"),
+        city=current_user.get("city"), user_type=current_user["user_type"],
+        role=current_user.get("role", "user"),
+        balance=current_user.get("balance", 0.0),
+        is_verified=current_user.get("is_verified", False),
+        prepayment_confirmed=current_user.get("prepayment_confirmed", False),
+        created_at=current_user["created_at"]
     )
 
 # ==================== ROLE MANAGEMENT ENDPOINTS ====================
