@@ -3602,10 +3602,39 @@ async def check_referral_code(referral_code: str):
 @api_router.post("/garage", response_model=CarResponse)
 async def add_car_to_garage(car: CarCreate, current_user: dict = Depends(get_current_user)):
     car_id = str(uuid.uuid4())
+    
+    # Calculate Belarus price automatically
+    calculated_price_usd = None
+    calculated_price_byn = None
+    
+    try:
+        current_year = datetime.now().year
+        car_age = current_year - car.year
+        age_category = "under3" if car_age < 3 else ("3to5" if car_age < 5 else "over5")
+        engine_volume = car.engine_volume or 2000
+        
+        calc_input = CalculatorInput(
+            price_cny=car.price_cny,
+            age=age_category,
+            engine_type=car.engine_type,
+            engine_volume=engine_volume if car.engine_type != "electric" else 0,
+            user_type="individual",
+            use_decree_140=False,
+            payment_via_platform=True
+        )
+        calc_result = calculate_custom_price(calc_input)
+        calculated_price_usd = calc_result.total_usd
+        calculated_price_byn = calc_result.total_byn
+        logger.info(f"Calculated price for {car.brand} {car.model}: ${calculated_price_usd} / {calculated_price_byn} BYN")
+    except Exception as e:
+        logger.error(f"Price calculation error: {e}")
+    
     car_doc = {
         "id": car_id,
         "user_id": current_user["id"],
         **car.model_dump(),
+        "calculated_price_usd": calculated_price_usd,
+        "calculated_price_byn": calculated_price_byn,
         "status": "saved",
         "created_at": datetime.now(timezone.utc).isoformat()
     }
