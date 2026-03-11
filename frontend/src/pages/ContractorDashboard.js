@@ -90,6 +90,11 @@ const ContractorDashboard = () => {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [dealActiveTab, setDealActiveTab] = useState('chat');
   
+  // Notifications state
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
+  
   const [offerData, setOfferData] = useState({
     price_usd: '',
     price_cny: '',
