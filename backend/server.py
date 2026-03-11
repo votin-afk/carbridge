@@ -95,8 +95,10 @@ ROLES = ["user", "moderator", "admin"]
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
-    name: str
-    phone: Optional[str] = None
+    name: str  # Имя
+    last_name: str  # Фамилия
+    phone: str  # Телефон (обязательный)
+    city: Optional[str] = None  # Город
     user_type: Literal["individual", "legal"] = "individual"
     referral_code: Optional[str] = None
 
@@ -109,9 +111,14 @@ class UserResponse(BaseModel):
     id: str
     email: str
     name: str
+    last_name: Optional[str] = None
     phone: Optional[str] = None
+    city: Optional[str] = None
     user_type: str
     role: str = "user"
+    balance: float = 0.0  # Баланс пользователя
+    is_verified: bool = False  # Прошёл верификацию
+    prepayment_confirmed: bool = False  # Предоплата 500$ подтверждена
     created_at: str
 
 class TokenResponse(BaseModel):
