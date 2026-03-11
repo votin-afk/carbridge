@@ -1037,14 +1037,20 @@ async def register(user: UserCreate):
             referral_code_used = user.referral_code
     
     user_id = str(uuid.uuid4())
+    full_name = f"{user.name} {user.last_name}"
     user_doc = {
         "id": user_id,
         "email": user.email,
         "password_hash": hash_password(user.password),
         "name": user.name,
+        "last_name": user.last_name,
         "phone": user.phone,
+        "city": user.city,
         "user_type": user.user_type,
         "role": role,
+        "balance": 0.0,
+        "is_verified": False,
+        "prepayment_confirmed": False,
         "referred_by": referred_by,
         "referral_code_used": referral_code_used,
         "created_at": datetime.now(timezone.utc).isoformat()
