@@ -50,7 +50,10 @@ import {
   Send,
   Headphones,
   XCircle,
-  Users
+  Users,
+  ExternalLink,
+  Link2,
+  Shield
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
