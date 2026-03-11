@@ -14,7 +14,7 @@ from database import db
 from utils.auth import get_current_user
 from utils.cache import get_cached, set_cache
 from services.che168 import Che168API
-from services.calculator import calculate_customs, CalculatorInput
+from services.calculator import calculate_customs_price, CalculatorInput
 
 logger = logging.getLogger(__name__)
 
