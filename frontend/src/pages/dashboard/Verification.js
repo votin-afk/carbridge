@@ -224,7 +224,7 @@ const Verification = () => {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-[#15191E] p-1">
+        <TabsList className="bg-[#15191E] p-1 flex-wrap">
           <TabsTrigger value="data" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black">
             <User size={16} className="mr-2" />
             Личные данные
@@ -236,6 +236,10 @@ const Verification = () => {
           <TabsTrigger value="contract" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black">
             <Shield size={16} className="mr-2" />
             Договор
+          </TabsTrigger>
+          <TabsTrigger value="prepayment" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black">
+            <CreditCard size={16} className="mr-2" />
+            Предоплата
           </TabsTrigger>
         </TabsList>
 
