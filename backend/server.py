@@ -6575,6 +6575,23 @@ async def start_tender_from_application(application_id: str, current_user: dict 
         }}
     )
     
+    # Send notifications to all approved contractors
+    approved_contractors = await db.contractors.find({"status": "approved"}, {"_id": 0}).to_list(100)
+    for contractor in approved_contractors:
+        notification_doc = {
+            "id": str(uuid.uuid4()),
+            "contractor_id": contractor["id"],
+            "type": "new_tender",
+            "title": "Новый тендер",
+            "message": f"Появился новый тендер на {app.get('brand', 'авто')} {app.get('model', '')}",
+            "tender_id": tender_id,
+            "is_read": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.notifications.insert_one(notification_doc)
+    
+    logger.info(f"Tender {tender_id} created, notifications sent to {len(approved_contractors)} contractors")
+    
     return {"message": "Тендер запущен", "tender_id": tender_id}
 
 @api_router.post("/applications/{application_id}/select-contractor")
