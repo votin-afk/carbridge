@@ -1380,6 +1380,87 @@ async def sign_user_contract(user_id: str, data: dict, current_user: dict = Depe
         "contract_signed": contract_signed
     }
 
+@api_router.post("/moderator/users/{user_id}/confirm-prepayment")
+async def confirm_user_prepayment(user_id: str, data: dict, current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Confirm user prepayment of $500"""
+    action = data.get("action")  # "approve" or "reject"
+    amount = data.get("amount", 500.0)  # Default prepayment amount
+    
+    if action not in ["approve", "reject"]:
+        raise HTTPException(status_code=400, detail="Неверное действие")
+    
+    prepayment_confirmed = action == "approve"
+    
+    # Update user document
+    await db.users.update_one(
+        {"id": user_id},
+        {
+            "$set": {
+                "prepayment_confirmed": prepayment_confirmed,
+                "prepayment_amount": amount if prepayment_confirmed else 0,
+                "prepayment_date": datetime.now(timezone.utc).isoformat(),
+                "prepayment_confirmed_by": current_user["id"]
+            }
+        }
+    )
+    
+    # Update account document
+    await db.accounts.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                "prepayment_confirmed": prepayment_confirmed,
+                "prepayment_amount": amount if prepayment_confirmed else 0,
+                "prepayment_date": datetime.now(timezone.utc).isoformat(),
+                "prepayment_confirmed_by": current_user["id"]
+            }
+        },
+        upsert=True
+    )
+    
+    # Add to balance if prepayment confirmed
+    if prepayment_confirmed:
+        await db.accounts.update_one(
+            {"user_id": user_id},
+            {"$inc": {"balance": amount}}
+        )
+    
+    # Log moderation action
+    await db.moderation_logs.insert_one({
+        "id": str(uuid.uuid4()),
+        "action": "prepayment_confirmation",
+        "target_type": "user",
+        "target_id": user_id,
+        "moderator_id": current_user["id"],
+        "moderator_name": current_user.get("name", ""),
+        "result": "approved" if prepayment_confirmed else "rejected",
+        "amount": amount,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    # Bitrix24: Update contact with prepayment info
+    b24 = get_bitrix24()
+    if b24 and prepayment_confirmed:
+        try:
+            user = await db.users.find_one({"id": user_id}, {"_id": 0})
+            if user:
+                asyncio.create_task(b24.create_lead(
+                    title=f"Предоплата подтверждена - {user.get('name', '')} {user.get('last_name', '')}",
+                    description=f"Клиент внёс предоплату ${amount}. Email: {user.get('email', '')}",
+                    contact_email=user.get("email"),
+                    contact_phone=user.get("phone"),
+                    source="prepayment",
+                    user_id=user_id
+                ))
+        except Exception as e:
+            logger.error(f"Bitrix24 lead creation error: {e}")
+    
+    return {
+        "message": f"Предоплата {'подтверждена' if prepayment_confirmed else 'отклонена'}",
+        "prepayment_confirmed": prepayment_confirmed,
+        "amount": amount if prepayment_confirmed else 0
+    }
+
 @api_router.post("/moderator/documents/{doc_id}/verify")
 async def verify_document(doc_id: str, data: dict, current_user: dict = Depends(require_role(["moderator", "admin"]))):
     """Verify a user document"""
