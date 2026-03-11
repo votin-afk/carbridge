@@ -610,6 +610,34 @@ async def add_catalog_car_to_garage(
     # Create garage entry
     garage_id = str(uuid.uuid4())
     car_year = catalog_car.get("year_to") or catalog_car.get("year_from", 2023)
+    price_cny = catalog_car.get("price_from_cny", 0)
+    engine_type = catalog_car.get("engine_type", "ice")
+    engine_volume = catalog_car.get("engine_volume") or 2000
+    
+    # Calculate Belarus price
+    calculated_price_usd = None
+    calculated_price_byn = None
+    
+    try:
+        current_year = datetime.now().year
+        car_age = current_year - car_year
+        age_category = "under3" if car_age < 3 else ("3to5" if car_age < 5 else "over5")
+        
+        calc_input = CalculatorInput(
+            price_cny=price_cny,
+            age=age_category,
+            engine_type=engine_type,
+            engine_volume=engine_volume if engine_type != "electric" else 0,
+            user_type="individual",
+            use_decree_140=False,
+            payment_via_platform=True
+        )
+        calc_result = await calculate_customs_price(calc_input)
+        calculated_price_usd = calc_result.total_usd
+        calculated_price_byn = calc_result.total_byn
+        logger.info(f"Calculated price for {catalog_car['brand']} {catalog_car['model']}: ${calculated_price_usd} / {calculated_price_byn} BYN")
+    except Exception as e:
+        logger.error(f"Price calculation error: {e}")
     
     garage_doc = {
         "id": garage_id,
@@ -617,13 +645,15 @@ async def add_catalog_car_to_garage(
         "brand": catalog_car["brand"],
         "model": catalog_car["model"],
         "year": car_year,
-        "price_cny": catalog_car.get("price_from_cny", 0),
-        "engine_type": catalog_car.get("engine_type", "ice"),
-        "engine_volume": catalog_car.get("engine_volume"),
+        "price_cny": price_cny,
+        "engine_type": engine_type,
+        "engine_volume": engine_volume,
         "mileage": catalog_car.get("mileage"),
         "image_url": catalog_car.get("image_url"),
         "source_url": catalog_car.get("source_url"),
         "description": catalog_car.get("description", ""),
+        "calculated_price_usd": calculated_price_usd,
+        "calculated_price_byn": calculated_price_byn,
         "status": "saved",
         "from_catalog": True,
         "catalog_id": car_id,
@@ -632,4 +662,9 @@ async def add_catalog_car_to_garage(
     }
     await db.garage.insert_one(garage_doc)
     
-    return {"message": "Car added to garage", "garage_id": garage_id}
+    return {
+        "message": "Car added to garage", 
+        "garage_id": garage_id,
+        "calculated_price_usd": calculated_price_usd,
+        "calculated_price_byn": calculated_price_byn
+    }
