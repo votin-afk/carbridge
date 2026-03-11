@@ -6972,6 +6972,52 @@ async def reject_contractor(contractor_id: str, data: dict, current_user: dict =
     
     return {"message": "Заявка отклонена"}
 
+# ==================== CONTRACTOR NOTIFICATIONS ====================
+
+@api_router.get("/contractor-notifications")
+async def get_contractor_notifications(contractor: dict = Depends(get_current_contractor)):
+    """Get notifications for the current contractor"""
+    notifications = await db.notifications.find(
+        {"contractor_id": contractor["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    # Mark unread count
+    unread_count = len([n for n in notifications if not n.get("is_read")])
+    
+    return {
+        "notifications": notifications,
+        "unread_count": unread_count
+    }
+
+@api_router.post("/contractor-notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str, contractor: dict = Depends(get_current_contractor)):
+    """Mark notification as read"""
+    await db.notifications.update_one(
+        {"id": notification_id, "contractor_id": contractor["id"]},
+        {"$set": {"is_read": True, "read_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "Уведомление отмечено как прочитанное"}
+
+@api_router.get("/contractor-deals")
+async def get_contractor_deals(contractor: dict = Depends(get_current_contractor)):
+    """Get deals where contractor is assigned to any stage"""
+    # Find all deals where this contractor is assigned
+    deals = []
+    async for deal in db.deals.find({}, {"_id": 0}):
+        # Check if contractor is assigned to any stage
+        stages = deal.get("stages", {})
+        for stage_key, stage_data in stages.items():
+            if stage_data.get("contractor_id") == contractor["id"]:
+                deals.append(deal)
+                break
+        # Also check main contractor
+        if deal.get("contractor_id") == contractor["id"]:
+            if deal not in deals:
+                deals.append(deal)
+    
+    return deals
+
 # ==================== GPS TRACKING ENDPOINT ====================
 
 @api_router.get("/deals/{deal_id}/tracking")
