@@ -2794,12 +2794,29 @@ async def get_account_summary(current_user: dict = Depends(get_current_user)):
         {"_id": 0}
     )
     
+    # Check prepayment status from user or account
+    prepayment_confirmed = current_user.get("prepayment_confirmed", False)
+    if account:
+        prepayment_confirmed = account.get("prepayment_confirmed", prepayment_confirmed)
+    
+    # Check if user can perform actions (verification + prepayment + application filled)
+    is_verified = current_user.get("is_verified", False)
+    if account:
+        is_verified = account.get("is_verified", is_verified)
+    
+    contract_signed = verification.get("contract_signed", False) if verification else False
+    
+    # User can perform actions only if verified AND prepayment confirmed
+    can_perform_actions = is_verified and prepayment_confirmed and contract_signed
+    
     return {
-        "balance": account.get("balance", 0) if account else 0,
-        "is_verified": account.get("is_verified", False) if account else False,
+        "balance": account.get("balance", 0) if account else current_user.get("balance", 0),
+        "is_verified": is_verified,
+        "prepayment_confirmed": prepayment_confirmed,
         "verification_status": verification.get("status") if verification else "not_started",
-        "contract_signed": verification.get("contract_signed", False) if verification else False,
+        "contract_signed": contract_signed,
         "contract_number": verification.get("contract_number") if verification else None,
+        "can_perform_actions": can_perform_actions,
         "active_deal": active_deal
     }
 
