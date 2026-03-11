@@ -494,6 +494,16 @@ const MyGarage = () => {
               <span className="text-sm">{accountSummary?.is_verified ? 'Верифицирован' : 'Не верифицирован'}</span>
             </div>
             
+            {/* Prepayment Status */}
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-sm border ${
+              accountSummary?.prepayment_confirmed 
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+            }`}>
+              <DollarSign size={16} />
+              <span className="text-sm">{accountSummary?.prepayment_confirmed ? 'Предоплата $500' : 'Предоплата не внесена'}</span>
+            </div>
+            
             {/* Contract Status */}
             <div className={`flex items-center gap-2 px-4 py-2 rounded-sm border ${
               accountSummary?.contract_signed 
