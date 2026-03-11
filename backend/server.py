@@ -4218,7 +4218,123 @@ async def calculate_leasing(data: LeasingCalculation):
 
 # ==================== MANAGER HELP REQUEST ====================
 
-MANAGER_HELP_COST = 200  # USD
+MANAGER_HELP_COST = 200  # USD (deprecated - now free with prepayment)
+
+@api_router.post("/help-requests")
+async def create_help_request(data: dict, current_user: dict = Depends(get_current_user)):
+    """Create a general help request (free with prepayment)"""
+    # Check if user has verified and paid prepayment
+    if not current_user.get("prepayment_confirmed"):
+        account = await db.accounts.find_one({"user_id": current_user["id"]})
+        if not account or not account.get("prepayment_confirmed"):
+            raise HTTPException(
+                status_code=403, 
+                detail="Для запроса помощи менеджера необходимо внести предоплату $500"
+            )
+    
+    request_type = data.get("request_type", "general")
+    car_id = data.get("car_id")
+    car_details = data.get("car_details", {})
+    description = data.get("description", "")
+    
+    request_id = str(uuid.uuid4())
+    help_request = {
+        "id": request_id,
+        "user_id": current_user["id"],
+        "user_name": f"{current_user.get('name', '')} {current_user.get('last_name', '')}",
+        "user_email": current_user.get("email"),
+        "user_phone": current_user.get("phone"),
+        "request_type": request_type,
+        "car_id": car_id,
+        "car_details": car_details,
+        "description": description,
+        "status": "pending",
+        "assigned_manager_id": None,
+        "assigned_manager_name": None,
+        "messages": [],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.help_requests.insert_one(help_request)
+    
+    # Update car if car_id provided
+    if car_id:
+        await db.garage.update_one(
+            {"id": car_id},
+            {"$set": {
+                "manager_help_requested": True, 
+                "manager_help_request_id": request_id
+            }}
+        )
+    
+    # Bitrix24: Create lead for manager help request
+    b24 = get_bitrix24()
+    if b24:
+        try:
+            asyncio.create_task(b24.create_lead(
+                title=f"Запрос помощи менеджера - {current_user.get('name', '')} {current_user.get('last_name', '')}",
+                description=f"Тип: {request_type}\nОписание: {description}\n\nАвто: {car_details}",
+                contact_email=current_user.get("email"),
+                contact_phone=current_user.get("phone"),
+                source="manager_help",
+                user_id=current_user["id"]
+            ))
+        except Exception as e:
+            logger.error(f"Bitrix24 lead creation error: {e}")
+    
+    return {
+        "message": "Запрос на помощь менеджера отправлен",
+        "request_id": request_id
+    }
+
+@api_router.get("/help-requests")
+async def get_user_help_requests(current_user: dict = Depends(get_current_user)):
+    """Get current user's help requests"""
+    requests = await db.help_requests.find(
+        {"user_id": current_user["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    return requests
+
+@api_router.get("/help-requests/{request_id}")
+async def get_help_request(request_id: str, current_user: dict = Depends(get_current_user)):
+    """Get a specific help request with chat history"""
+    request = await db.help_requests.find_one(
+        {"id": request_id, "user_id": current_user["id"]},
+        {"_id": 0}
+    )
+    if not request:
+        raise HTTPException(status_code=404, detail="Запрос не найден")
+    return request
+
+@api_router.post("/help-requests/{request_id}/messages")
+async def send_help_request_message(
+    request_id: str, 
+    data: dict, 
+    current_user: dict = Depends(get_current_user)
+):
+    """Send a message in a help request chat"""
+    request = await db.help_requests.find_one(
+        {"id": request_id, "user_id": current_user["id"]}
+    )
+    if not request:
+        raise HTTPException(status_code=404, detail="Запрос не найден")
+    
+    message = {
+        "id": str(uuid.uuid4()),
+        "sender_id": current_user["id"],
+        "sender_name": f"{current_user.get('name', '')} {current_user.get('last_name', '')}",
+        "sender_type": "user",
+        "content": data.get("content", ""),
+        "attachments": data.get("attachments", []),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.help_requests.update_one(
+        {"id": request_id},
+        {"$push": {"messages": message}}
+    )
+    
+    return {"message": "Сообщение отправлено", "message_data": message}
 
 @api_router.post("/garage/{car_id}/request-manager-help")
 async def request_manager_help(car_id: str, current_user: dict = Depends(get_current_user)):
