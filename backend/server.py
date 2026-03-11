@@ -1908,12 +1908,18 @@ async def select_contractor_for_stage(deal_id: str, data: dict, current_user: di
     if stage not in allowed_stages:
         raise HTTPException(status_code=400, detail="Неверный этап")
     
+    # Get contractor info
+    contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0})
+    contractor_name = contractor.get("name", "") if contractor else ""
+    contractor_email = contractor.get("email", "") if contractor else ""
+    
     # Update deal with contractor selection
     await db.deals.update_one(
         {"id": deal_id},
         {
             "$set": {
                 f"stages.{stage}.contractor_id": contractor_id,
+                f"stages.{stage}.contractor_name": contractor_name,
                 f"stages.{stage}.price": price,
                 f"stages.{stage}.status": "contractor_selected",
                 f"contractors.{stage}": contractor_id,
@@ -1922,7 +1928,46 @@ async def select_contractor_for_stage(deal_id: str, data: dict, current_user: di
         }
     )
     
-    return {"message": f"Подрядчик выбран для этапа {stage}"}
+    # Create notification for contractor
+    stage_labels = {
+        "inspection": "Инспекция авто",
+        "export": "Выкуп и экспорт",
+        "logistics_china": "Доставка до порта (Китай)",
+        "insurance": "Страхование авто",
+        "delivery_rb": "Доставка в Беларусь",
+        "customs": "Таможенное оформление"
+    }
+    
+    notification = {
+        "id": str(uuid.uuid4()),
+        "contractor_id": contractor_id,
+        "deal_id": deal_id,
+        "type": "contractor_selected",
+        "title": f"Вас выбрали на этап: {stage_labels.get(stage, stage)}",
+        "message": f"Клиент выбрал вас для выполнения этапа '{stage_labels.get(stage, stage)}'. Стоимость: ${price}. Свяжитесь с клиентом для обсуждения деталей.",
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.notifications.insert_one(notification)
+    
+    # Bitrix24: Create task for contractor assignment
+    b24 = get_bitrix24()
+    if b24:
+        try:
+            car_info = deal.get("car_info", {})
+            asyncio.create_task(b24.create_deal(
+                title=f"Этап сделки: {stage_labels.get(stage, stage)} - {car_info.get('brand', '')} {car_info.get('model', '')}",
+                description=f"Подрядчик: {contractor_name}\nЭтап: {stage_labels.get(stage, stage)}\nСтоимость: ${price}",
+                contact_email=current_user.get("email"),
+                contact_phone=current_user.get("phone"),
+                amount=price,
+                source="contractor_selection",
+                stage="execution"
+            ))
+        except Exception as e:
+            logger.error(f"Bitrix24 deal creation error: {e}")
+    
+    return {"message": f"Подрядчик выбран для этапа {stage}", "contractor_name": contractor_name}
 
 @api_router.post("/deals/{deal_id}/pay-stage")
 async def pay_deal_stage(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
