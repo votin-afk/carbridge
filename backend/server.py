@@ -3699,7 +3699,7 @@ async def update_car(car_id: str, car_update: CarUpdate, current_user: dict = De
                 use_decree_140=False,
                 payment_via_platform=True
             )
-            calc_result = calculate_custom_price(calc_input)
+            calc_result = await calculate_customs(calc_input)
             update_data["calculated_price_usd"] = calc_result.total_usd
             update_data["calculated_price_byn"] = calc_result.total_byn
         except:
