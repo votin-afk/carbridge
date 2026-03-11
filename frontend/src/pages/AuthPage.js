@@ -17,7 +17,9 @@ const AuthPage = () => {
     email: '',
     password: '',
     name: '',
+    last_name: '',
     phone: '',
+    city: '',
     user_type: 'individual',
     referral_code: ''
   });
