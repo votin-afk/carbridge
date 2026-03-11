@@ -3776,6 +3776,31 @@ async def create_tender(tender: TenderCreate, current_user: dict = Depends(get_c
         except Exception as e:
             logger.error(f"Bitrix24 tender deal creation error: {e}")
     
+    # Send notifications to all approved contractors
+    try:
+        approved_contractors = await db.contractors.find({"status": "approved"}, {"_id": 0}).to_list(100)
+        for contractor in approved_contractors:
+            notification_doc = {
+                "id": str(uuid.uuid4()),
+                "contractor_id": contractor["id"],
+                "type": "new_tender",
+                "title": "Новый тендер",
+                "message": f"Появился новый тендер на {car.get('brand', 'авто')} {car.get('model', '')}",
+                "tender_id": tender_id,
+                "car_info": {
+                    "brand": car.get("brand"),
+                    "model": car.get("model"),
+                    "year": car.get("year"),
+                    "price_cny": car.get("price_cny")
+                },
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.notifications.insert_one(notification_doc)
+        logger.info(f"Tender {tender_id} created from garage, notifications sent to {len(approved_contractors)} contractors")
+    except Exception as e:
+        logger.error(f"Error sending tender notifications: {e}")
+    
     return TenderResponse(**tender_doc)
 
 def generate_mock_offers(tender_id: str, car: dict) -> List[dict]:
