@@ -497,6 +497,13 @@ const Applications = () => {
   };
 
   const handleSubmit = async () => {
+    // Проверка обязательного поля car_url
+    if (!formData.car_url || formData.car_url.trim() === '') {
+      toast.error('Пожалуйста, укажите ссылку на понравившееся авто');
+      setCurrentStep(1);
+      return;
+    }
+    
     setSubmitting(true);
     try {
       const payload = {
