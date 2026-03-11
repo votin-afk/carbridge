@@ -1117,7 +1117,12 @@ async def login(credentials: UserLogin):
     token = create_token(user["id"], user["email"])
     user_response = UserResponse(
         id=user["id"], email=user["email"], name=user["name"],
-        phone=user.get("phone"), user_type=user["user_type"], role=role, created_at=user["created_at"]
+        last_name=user.get("last_name"), phone=user.get("phone"), city=user.get("city"),
+        user_type=user["user_type"], role=role,
+        balance=user.get("balance", 0.0),
+        is_verified=user.get("is_verified", False),
+        prepayment_confirmed=user.get("prepayment_confirmed", False),
+        created_at=user["created_at"]
     )
     return TokenResponse(access_token=token, user=user_response)
 
