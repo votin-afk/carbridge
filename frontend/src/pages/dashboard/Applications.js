@@ -628,6 +628,25 @@ const Applications = () => {
               Раздел 1: Данные клиента
             </h3>
             
+            {/* Ссылка на понравившееся авто - ОБЯЗАТЕЛЬНОЕ ПОЛЕ */}
+            <div className="p-4 bg-[#00E5FF]/10 border border-[#00E5FF]/30 rounded-sm">
+              <Label className="text-[#00E5FF] font-medium flex items-center gap-2 mb-2">
+                <ExternalLink size={16} />
+                Ссылка на понравившееся авто *
+              </Label>
+              <Input
+                data-testid="car-url-input"
+                value={formData.car_url}
+                onChange={(e) => setFormData(p => ({ ...p, car_url: e.target.value }))}
+                placeholder="https://www.che168.com/dealer/... или другая ссылка на авто"
+                className="bg-[#0B0F14] border-[#27272A]"
+                required
+              />
+              <p className="text-slate-400 text-xs mt-1">
+                Вставьте ссылку на автомобиль с китайской площадки (che168, guazi, dongchedi и др.)
+              </p>
+            </div>
+            
             {/* Тип клиента */}
             <div>
               <Label className="text-slate-300 mb-2 block">Тип клиента</Label>
