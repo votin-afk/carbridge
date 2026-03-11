@@ -1519,10 +1519,20 @@ async def get_deals_pending_moderation_early(current_user: dict = Depends(requir
     pending = []
     for deal in deals:
         stages = deal.get("stages", {})
+        
+        # Handle case where stages might be a list instead of dict
+        if isinstance(stages, list):
+            continue
+        
+        if not isinstance(stages, dict):
+            continue
+            
         user = await db.users.find_one({"id": deal.get("user_id")}, {"_id": 0, "name": 1, "email": 1})
         
         # Check each stage
         for stage_key, stage_data in stages.items():
+            if not isinstance(stage_data, dict):
+                continue
             if stage_data.get("locked") and not stage_data.get("moderator_confirmed") and not stage_data.get("paid"):
                 pending.append({
                     "deal_id": deal["id"],
