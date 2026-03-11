@@ -35,7 +35,11 @@ import {
   Building2,
   Loader2,
   BadgeCheck,
-  XCircle
+  XCircle,
+  CreditCard,
+  DollarSign,
+  BanknoteIcon,
+  Copy
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
