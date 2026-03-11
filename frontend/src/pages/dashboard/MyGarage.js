@@ -349,7 +349,18 @@ const MyGarage = () => {
     }
   };
 
-  const handleStartTender = async (carId) => {
+  const handleStartTender = (carId) => {
+    // Check verification and prepayment first
+    if (!accountSummary?.is_verified) {
+      toast.error('Для запуска тендера необходима верификация');
+      navigate('/dashboard/verification');
+      return;
+    }
+    if (!accountSummary?.prepayment_confirmed) {
+      toast.error('Для запуска тендера необходимо внести предоплату $500');
+      navigate('/dashboard/verification');
+      return;
+    }
     if (!accountSummary?.contract_signed) {
       toast.error('Для запуска тендера необходимо подписать договор');
       navigate('/dashboard/verification');
@@ -374,7 +385,46 @@ const MyGarage = () => {
     }
   };
 
-  const canPerformActions = accountSummary?.contract_signed && (accountSummary?.balance || 0) > 0;
+  // Request manager help function
+  const handleRequestManagerHelp = async (carId) => {
+    // Check verification and prepayment first
+    if (!accountSummary?.is_verified) {
+      toast.error('Для запроса помощи менеджера необходима верификация');
+      navigate('/dashboard/verification');
+      return;
+    }
+    if (!accountSummary?.prepayment_confirmed) {
+      toast.error('Для запроса помощи менеджера необходимо внести предоплату $500');
+      navigate('/dashboard/verification');
+      return;
+    }
+    
+    const car = cars.find(c => c.id === carId);
+    if (!car) return;
+    
+    try {
+      const response = await axios.post(`${API}/help-requests`, {
+        request_type: 'car_selection',
+        car_id: carId,
+        car_details: {
+          brand: car.brand,
+          model: car.model,
+          year: car.year,
+          price_cny: car.price_cny
+        },
+        description: `Запрос помощи в подборе авто: ${car.brand} ${car.model}`
+      }, { headers });
+      
+      toast.success('Запрос отправлен! Менеджер свяжется с вами в ближайшее время');
+      navigate('/dashboard/documents', { state: { openHelpSection: true } });
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка при отправке запроса');
+    }
+  };
+
+  const canPerformActions = accountSummary?.is_verified && 
+                            accountSummary?.prepayment_confirmed && 
+                            accountSummary?.contract_signed;
 
   const getStatusBadge = (status) => {
     const styles = {
