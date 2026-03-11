@@ -303,6 +303,28 @@ const ModeratorPage = () => {
     setSelectedContractor(null);
   };
 
+  // ==================== PREPAYMENT CONFIRMATION ====================
+
+  const handleConfirmPrepayment = async (userId, action, amount = 500) => {
+    try {
+      await axios.post(`${API}/moderator/users/${userId}/confirm-prepayment`, {
+        action, // 'approve' or 'reject'
+        amount
+      }, { headers });
+      
+      toast.success(action === 'approve' ? 'Предоплата подтверждена!' : 'Предоплата отклонена');
+      fetchData();
+      // Update local users state
+      setUsers(prev => prev.map(u => 
+        u.id === userId 
+          ? { ...u, prepayment_confirmed: action === 'approve' }
+          : u
+      ));
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка при обработке предоплаты');
+    }
+  };
+
   // ==================== DELETE HANDLERS ====================
   
   // Show delete confirmation dialog
