@@ -149,6 +149,40 @@ const DealCars = () => {
     }
   };
 
+  // Complete stage - send for moderator approval
+  const completeStage = async (dealId, stage) => {
+    setProcessing(true);
+    try {
+      await axios.post(`${API}/deals/${dealId}/complete-stage`, { stage }, { headers });
+      toast.success('Этап отмечен как завершённый. Ожидайте подтверждения модератора.');
+      setCompleteStageDialog(null);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Update stage price
+  const updateStagePrice = async (dealId, stage, newPrice, reason) => {
+    setProcessing(true);
+    try {
+      await axios.post(`${API}/deals/${dealId}/update-stage-price`, { 
+        stage, 
+        price: newPrice,
+        reason 
+      }, { headers });
+      toast.success('Стоимость этапа обновлена');
+      setUpdatePriceDialog(null);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   // Cancel deal - show confirmation dialog
   const showCancelDealDialog = (dealId) => {
     setCancelDealDialog({ dealId });
