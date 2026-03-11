@@ -1079,8 +1079,10 @@ async def register(user: UserCreate):
     
     token = create_token(user_id, user.email)
     user_response = UserResponse(
-        id=user_id, email=user.email, name=user.name,
-        phone=user.phone, user_type=user.user_type, role=role, created_at=user_doc["created_at"]
+        id=user_id, email=user.email, name=user.name, last_name=user.last_name,
+        phone=user.phone, city=user.city, user_type=user.user_type, role=role,
+        balance=0.0, is_verified=False, prepayment_confirmed=False,
+        created_at=user_doc["created_at"]
     )
     
     # Bitrix24: Create contact for new user
@@ -1088,12 +1090,12 @@ async def register(user: UserCreate):
     if b24:
         try:
             asyncio.create_task(b24.create_contact(
-                name=user.name,
+                name=full_name,
                 email=user.email,
                 phone=user.phone,
                 user_type=user.user_type,
                 user_id=user_id,
-                comments=f"Регистрация на CarBridge. Реферал: {referral_code_used or 'Нет'}"
+                comments=f"Регистрация на CarBridge. Город: {user.city or 'Не указан'}. Реферал: {referral_code_used or 'Нет'}"
             ))
         except Exception as e:
             logger.error(f"Bitrix24 contact creation error: {e}")
