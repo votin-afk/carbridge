@@ -87,22 +87,37 @@ const AuthPage = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <>
-                <div>
-                  <Label htmlFor="name" className="text-slate-300">Имя</Label>
-                  <Input
-                    data-testid="auth-name-input"
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="Ваше имя"
-                    className="mt-1 bg-[#0B0F14] border-[#27272A] text-white placeholder:text-slate-500"
-                    required
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="name" className="text-slate-300">Имя *</Label>
+                    <Input
+                      data-testid="auth-name-input"
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      placeholder="Иван"
+                      className="mt-1 bg-[#0B0F14] border-[#27272A] text-white placeholder:text-slate-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="last_name" className="text-slate-300">Фамилия *</Label>
+                    <Input
+                      data-testid="auth-lastname-input"
+                      id="last_name"
+                      name="last_name"
+                      value={formData.last_name}
+                      onChange={handleChange}
+                      placeholder="Иванов"
+                      className="mt-1 bg-[#0B0F14] border-[#27272A] text-white placeholder:text-slate-500"
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="phone" className="text-slate-300">Телефон</Label>
+                  <Label htmlFor="phone" className="text-slate-300">Телефон *</Label>
                   <Input
                     data-testid="auth-phone-input"
                     id="phone"
@@ -110,6 +125,20 @@ const AuthPage = () => {
                     value={formData.phone}
                     onChange={handleChange}
                     placeholder="+375 XX XXX XX XX"
+                    className="mt-1 bg-[#0B0F14] border-[#27272A] text-white placeholder:text-slate-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="city" className="text-slate-300">Город</Label>
+                  <Input
+                    data-testid="auth-city-input"
+                    id="city"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    placeholder="Минск"
                     className="mt-1 bg-[#0B0F14] border-[#27272A] text-white placeholder:text-slate-500"
                   />
                 </div>
