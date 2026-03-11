@@ -59,7 +59,8 @@ import {
   Image,
   Video,
   File,
-  Trash2
+  Trash2,
+  Bell
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
