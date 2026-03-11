@@ -32,7 +32,9 @@ import {
   Save,
   ShoppingCart,
   DollarSign,
-  Shield
+  Shield,
+  Headphones,
+  Users
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
