@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLocation } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
@@ -16,6 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../components/ui/tabs";
 import { 
   FileText, 
   Download,
@@ -37,7 +44,12 @@ import {
   CheckCircle2,
   User,
   Building2,
-  Trash2
+  Trash2,
+  Headphones,
+  Scale,
+  Phone,
+  Mail,
+  AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
