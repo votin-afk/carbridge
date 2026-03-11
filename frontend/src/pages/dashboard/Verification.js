@@ -570,6 +570,120 @@ const Verification = () => {
             )}
           </div>
         </TabsContent>
+
+        {/* Prepayment Tab */}
+        <TabsContent value="prepayment">
+          <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-6">
+            {!verification?.contract_signed ? (
+              <div className="text-center py-12">
+                <AlertCircle size={48} className="mx-auto mb-4 text-amber-400" />
+                <p className="text-white font-medium">Сначала подпишите договор</p>
+                <Button onClick={() => setActiveTab('contract')} className="mt-4">
+                  Перейти к договору
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-white font-semibold text-lg">Предоплата за услуги платформы</h3>
+                    <p className="text-slate-400 text-sm">Сумма: $500</p>
+                  </div>
+                  {verification?.prepayment_confirmed && (
+                    <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 rounded-full">
+                      <BadgeCheck size={16} className="text-emerald-400" />
+                      <span className="text-emerald-400 text-sm">Оплачено</span>
+                    </div>
+                  )}
+                </div>
+
+                {!verification?.prepayment_confirmed ? (
+                  <>
+                    <div className="p-4 bg-[#0B0F14] border border-[#27272A] rounded-sm">
+                      <h4 className="text-white font-medium mb-4 flex items-center gap-2">
+                        <BanknoteIcon size={18} className="text-[#00E5FF]" />
+                        Реквизиты для оплаты
+                      </h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center p-3 bg-[#15191E] rounded-sm">
+                          <div>
+                            <p className="text-slate-400 text-xs">Получатель</p>
+                            <p className="text-white font-mono">ООО "КарБридж"</p>
+                          </div>
+                          <button 
+                            onClick={() => {navigator.clipboard.writeText('ООО "КарБридж"'); toast.success('Скопировано');}}
+                            className="p-2 hover:bg-[#27272A] rounded-sm"
+                          >
+                            <Copy size={14} className="text-slate-400" />
+                          </button>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-[#15191E] rounded-sm">
+                          <div>
+                            <p className="text-slate-400 text-xs">IBAN</p>
+                            <p className="text-white font-mono">BY20ALFA30122000000001234567</p>
+                          </div>
+                          <button 
+                            onClick={() => {navigator.clipboard.writeText('BY20ALFA30122000000001234567'); toast.success('Скопировано');}}
+                            className="p-2 hover:bg-[#27272A] rounded-sm"
+                          >
+                            <Copy size={14} className="text-slate-400" />
+                          </button>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-[#15191E] rounded-sm">
+                          <div>
+                            <p className="text-slate-400 text-xs">Назначение платежа</p>
+                            <p className="text-white font-mono">Предоплата по договору № {verification?.contract_number}</p>
+                          </div>
+                          <button 
+                            onClick={() => {navigator.clipboard.writeText(`Предоплата по договору № ${verification?.contract_number}`); toast.success('Скопировано');}}
+                            className="p-2 hover:bg-[#27272A] rounded-sm"
+                          >
+                            <Copy size={14} className="text-slate-400" />
+                          </button>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-[#15191E] rounded-sm">
+                          <div>
+                            <p className="text-slate-400 text-xs">Сумма к оплате</p>
+                            <p className="text-emerald-400 font-bold text-xl">$500</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-sm">
+                      <p className="text-amber-400 text-sm">
+                        После оплаты модератор проверит поступление средств и подтвердит предоплату. 
+                        Обычно это занимает 1-2 рабочих дня.
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-sm">
+                      <p className="text-blue-400 text-sm flex items-center gap-2">
+                        <Clock size={14} />
+                        Статус: Ожидание подтверждения оплаты модератором
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="p-6 bg-emerald-500/10 border border-emerald-500/30 rounded-sm text-center">
+                    <CheckCircle2 size={48} className="mx-auto mb-4 text-emerald-400" />
+                    <h4 className="text-emerald-400 font-bold text-lg">Предоплата подтверждена!</h4>
+                    <p className="text-slate-300 mt-2">
+                      Теперь вам доступны все функции платформы: создание сделок, запуск тендеров, 
+                      выбор подрядчиков и помощь менеджера.
+                    </p>
+                    <Button 
+                      onClick={() => window.location.href = '/dashboard/garage'}
+                      className="mt-4 bg-emerald-500 hover:bg-emerald-600 text-white"
+                    >
+                      Перейти в гараж
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </TabsContent>
       </Tabs>
 
       {/* Contract Dialog */}
