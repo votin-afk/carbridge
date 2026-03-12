@@ -601,6 +601,7 @@ const ContractorDialog = ({ open, onClose, dialogData, contractors, onSelect, pr
   // Map stage key to service type
   const getServiceType = (stageKey) => {
     const mapping = {
+      'leasing': 'leasing',
       'inspection': 'inspection',
       'export': 'export',
       'logistics_china': 'logistics',
@@ -616,6 +617,9 @@ const ContractorDialog = ({ open, onClose, dialogData, contractors, onSelect, pr
   // Filter contractors by service
   const filteredContractors = contractors.filter(c => {
     const services = c.services?.toLowerCase() || '';
+    if (stage === 'leasing') {
+      return services.includes('leasing') || services.includes('лизинг');
+    }
     if (stage === 'insurance') {
       return services.includes('insurance') || services.includes('страхов');
     }
