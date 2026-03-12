@@ -894,10 +894,15 @@ const ModeratorPage = () => {
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right space-y-1">
                           <span className="px-3 py-1 bg-purple-500/10 text-purple-400 rounded-full text-sm">
                             {stageLabels[item.stage_key] || item.stage_key}
                           </span>
+                          {item.is_from_tender ? (
+                            <p className="text-xs text-purple-300">из предложения тендера</p>
+                          ) : (
+                            <p className="text-xs text-amber-300">выбор клиента</p>
+                          )}
                         </div>
                       </div>
 
@@ -915,8 +920,8 @@ const ModeratorPage = () => {
                           <p className="text-[#00E5FF] font-medium">${item.price?.toLocaleString() || '0'}</p>
                         </div>
                         <div className="bg-[#0B0F14] p-3 rounded">
-                          <p className="text-slate-500 text-xs">Дата создания</p>
-                          <p className="text-slate-300">{item.created_at ? new Date(item.created_at).toLocaleDateString('ru-RU') : '—'}</p>
+                          <p className="text-slate-500 text-xs">Дата назначения</p>
+                          <p className="text-slate-300">{item.assigned_at ? new Date(item.assigned_at).toLocaleDateString('ru-RU') : item.created_at ? new Date(item.created_at).toLocaleDateString('ru-RU') : '—'}</p>
                         </div>
                       </div>
 
