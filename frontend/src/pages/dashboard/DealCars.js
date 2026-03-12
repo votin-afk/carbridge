@@ -30,6 +30,7 @@ import {
 import { Checkbox } from "../../components/ui/checkbox";
 import {
   Car,
+  CheckCircle,
   CheckCircle2,
   Clock,
   Loader2,
