@@ -33,8 +33,7 @@ import {
   ShoppingCart,
   DollarSign,
   Shield,
-  Headphones,
-  Users
+  Headphones
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
