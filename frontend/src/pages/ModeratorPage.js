@@ -1751,6 +1751,158 @@ const ModeratorPage = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Stage Details Dialog */}
+        <Dialog open={!!stageDetailsDialog} onOpenChange={() => setStageDetailsDialog(null)}>
+          <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                  <FileCheck size={20} className="text-purple-400" />
+                </div>
+                <div>
+                  <span>Детали этапа: {stageDetailsDialog && {
+                    leasing: 'Лизинг',
+                    inspection: 'Инспекция',
+                    export: 'Выкуп',
+                    logistics_china: 'Доставка (Китай)',
+                    insurance: 'Страхование',
+                    delivery_rb: 'Доставка (РБ)',
+                    customs: 'Таможня',
+                    completion: 'Завершение'
+                  }[stageDetailsDialog.stage_key]}</span>
+                  <p className="text-sm text-slate-400 font-normal mt-0.5">
+                    {stageDetailsDialog?.car_info?.brand} {stageDetailsDialog?.car_info?.model} • Сделка #{stageDetailsDialog?.deal_id?.slice(0, 8)}
+                  </p>
+                </div>
+              </DialogTitle>
+            </DialogHeader>
+
+            {loadingStageDetails ? (
+              <div className="flex-1 flex items-center justify-center py-12">
+                <Loader2 size={32} className="animate-spin text-purple-400" />
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto space-y-4 mt-4">
+                {/* Deal Info */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-[#0B0F14] p-3 rounded-lg">
+                    <p className="text-slate-500 text-xs">Клиент</p>
+                    <p className="text-white font-medium">{stageDetailsDialog?.user?.name || stageDetailsDialog?.user?.email || '—'}</p>
+                  </div>
+                  <div className="bg-[#0B0F14] p-3 rounded-lg">
+                    <p className="text-slate-500 text-xs">Подрядчик</p>
+                    <p className="text-purple-300 font-medium">{stageDetailsDialog?.contractor_name || '—'}</p>
+                  </div>
+                  <div className="bg-[#0B0F14] p-3 rounded-lg">
+                    <p className="text-slate-500 text-xs">Цена этапа</p>
+                    <p className="text-[#00E5FF] font-bold">${stageDetailsDialog?.price?.toLocaleString() || '0'}</p>
+                  </div>
+                  <div className="bg-[#0B0F14] p-3 rounded-lg">
+                    <p className="text-slate-500 text-xs">Статус</p>
+                    <p className="text-amber-400">{stageDetailsDialog?.status === 'pending_review' ? 'На проверке' : stageDetailsDialog?.status === 'awaiting_approval' ? 'Ожидает подтверждения' : stageDetailsDialog?.status}</p>
+                  </div>
+                </div>
+
+                {/* Files Section */}
+                <div className="bg-[#0B0F14] rounded-lg p-4">
+                  <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                    <FileText size={18} className="text-purple-400" />
+                    Файлы этапа ({stageFiles.length})
+                  </h4>
+                  {stageFiles.length === 0 ? (
+                    <p className="text-slate-500 text-sm">Нет загруженных файлов</p>
+                  ) : (
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {stageFiles.map(file => (
+                        <div key={file.id} className="flex items-center gap-3 p-2 bg-[#15191E] rounded">
+                          <div className="w-8 h-8 bg-[#27272A] rounded flex items-center justify-center">
+                            {file.category === 'photo' ? <Image size={14} className="text-emerald-400" /> : <FileText size={14} className="text-blue-400" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm truncate">{file.original_name}</p>
+                            <p className="text-slate-500 text-xs">
+                              {file.uploader_name} • {new Date(file.created_at).toLocaleDateString('ru-RU')}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => downloadStageFile(stageDetailsDialog.deal_id, file.id, file.original_name)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Download size={14} />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Messages Section */}
+                <div className="bg-[#0B0F14] rounded-lg p-4">
+                  <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                    <MessageSquare size={18} className="text-purple-400" />
+                    Переписка ({stageMessages.length})
+                  </h4>
+                  {stageMessages.length === 0 ? (
+                    <p className="text-slate-500 text-sm">Нет сообщений</p>
+                  ) : (
+                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                      {stageMessages.map(msg => (
+                        <div
+                          key={msg.id}
+                          className={`p-3 rounded-lg ${
+                            msg.sender_type === 'client'
+                              ? 'bg-[#00E5FF]/10 border border-[#00E5FF]/30'
+                              : 'bg-purple-500/10 border border-purple-500/30'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            {msg.sender_type === 'client' ? (
+                              <User size={12} className="text-[#00E5FF]" />
+                            ) : (
+                              <Building2 size={12} className="text-purple-400" />
+                            )}
+                            <span className={`text-xs font-medium ${
+                              msg.sender_type === 'client' ? 'text-[#00E5FF]' : 'text-purple-400'
+                            }`}>
+                              {msg.sender_name}
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              {new Date(msg.created_at).toLocaleString('ru-RU')}
+                            </span>
+                          </div>
+                          <p className="text-white text-sm whitespace-pre-wrap">{msg.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-4 border-t border-[#27272A]">
+                  <Button
+                    onClick={() => {
+                      handleConfirmStage(stageDetailsDialog.deal_id, stageDetailsDialog.stage_key);
+                    }}
+                    className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white"
+                  >
+                    <CheckCircle2 size={16} className="mr-2" />
+                    Подтвердить этап
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setStageDetailsDialog(null)}
+                    className="border-slate-500 text-slate-400"
+                  >
+                    Закрыть
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
