@@ -332,9 +332,10 @@ const Applications = () => {
       const car = location.state.prefillCar;
       setPrefillCar(car);
       
-      // Auto-fill form with car data
+      // Auto-fill form with car data including car_url from source_url
       setFormData(prev => ({
         ...prev,
+        car_url: car.source_url || '', // Fill car_url from garage car's source_url
         brand: car.brand || '',
         model: car.model || '',
         year_from: car.year ? String(car.year) : '',
