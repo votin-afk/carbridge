@@ -642,12 +642,19 @@ const ContractorDialog = ({ open, onClose, dialogData, contractors, onSelect, pr
     const prices = contractor.service_prices;
     if (!prices) return null;
     
-    // Check for specific service price
+    // Check for specific stage price first
+    if (prices[stage]) return prices[stage];
+    
+    // Check for service type price
     if (prices[serviceType]) return prices[serviceType];
     
-    // Fallbacks
-    if (stage === 'delivery_rb' && prices.logistics) return prices.logistics;
-    if (stage === 'logistics_china' && prices.logistics) return prices.logistics;
+    // Fallbacks for logistics stages
+    if (stage === 'delivery_rb') {
+      return prices.delivery_rb || prices.logistics || null;
+    }
+    if (stage === 'logistics_china') {
+      return prices.logistics_china || prices.logistics || null;
+    }
     
     return null;
   };
