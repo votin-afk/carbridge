@@ -205,8 +205,51 @@ const ModeratorPage = () => {
       // Refresh pending stages
       const response = await axios.get(`${API}/moderator/deals/pending-stages`, { headers });
       setPendingStages(response.data);
+      // Close dialog if open
+      setStageDetailsDialog(null);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Ошибка подтверждения этапа');
+    }
+  };
+
+  const openStageDetails = async (item) => {
+    setStageDetailsDialog(item);
+    setLoadingStageDetails(true);
+    setStageMessages([]);
+    setStageFiles([]);
+    
+    try {
+      // Fetch messages and files for this stage
+      const [messagesRes, filesRes] = await Promise.all([
+        axios.get(`${API}/moderator/deals/${item.deal_id}/stages/${item.stage_key}/messages`, { headers }),
+        axios.get(`${API}/moderator/deals/${item.deal_id}/stages/${item.stage_key}/files`, { headers })
+      ]);
+      setStageMessages(messagesRes.data);
+      setStageFiles(filesRes.data);
+    } catch (error) {
+      console.error('Error fetching stage details:', error);
+      toast.error('Ошибка загрузки деталей этапа');
+    } finally {
+      setLoadingStageDetails(false);
+    }
+  };
+
+  const downloadStageFile = async (dealId, fileId, filename) => {
+    try {
+      const response = await axios.get(
+        `${API}/moderator/deals/${dealId}/files/${fileId}/download`,
+        { headers, responseType: 'blob' }
+      );
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error('Ошибка скачивания файла');
     }
   };
 
