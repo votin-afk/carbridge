@@ -3326,6 +3326,61 @@ async def get_contractor_deal_unread_counts(deal_id: str, current_user: dict = D
     
     return unread_counts
 
+# Stage completion by client (send to moderator review)
+@api_router.post("/deals/{deal_id}/stages/{stage_key}/complete")
+async def complete_stage_for_review(deal_id: str, stage_key: str, current_user: dict = Depends(get_current_user)):
+    """Mark a stage as complete and send to moderator for review"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    if deal.get("user_id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
+    
+    # Get stage data
+    stage_data = deal.get("stages", {}).get(stage_key, {})
+    if not stage_data:
+        raise HTTPException(status_code=400, detail="Этап не найден")
+    
+    if not stage_data.get("contractor_id"):
+        raise HTTPException(status_code=400, detail="Подрядчик не назначен на этот этап")
+    
+    if stage_data.get("status") in ["completed", "paid"]:
+        raise HTTPException(status_code=400, detail="Этап уже завершён")
+    
+    if stage_data.get("status") == "pending_review":
+        raise HTTPException(status_code=400, detail="Этап уже отправлен на проверку")
+    
+    # Update stage status to pending_review
+    await db.deals.update_one(
+        {"id": deal_id},
+        {
+            "$set": {
+                f"stages.{stage_key}.status": "pending_review",
+                f"stages.{stage_key}.review_requested_at": datetime.now(timezone.utc).isoformat(),
+                f"stages.{stage_key}.review_requested_by": current_user["id"]
+            }
+        }
+    )
+    
+    # Get stage label for notification
+    stage_labels = {
+        "leasing": "Лизинг",
+        "inspection": "Инспекция",
+        "export": "Выкуп",
+        "logistics_china": "Доставка (Китай)",
+        "insurance": "Страхование",
+        "delivery_rb": "Доставка (РБ)",
+        "customs": "Таможня",
+        "completion": "Завершение"
+    }
+    
+    # Notify moderators (create notification in admin notifications or similar)
+    car_info = deal.get("car_info", {})
+    car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')}"
+    
+    return {"message": "Этап отправлен на проверку модератору"}
+
 # ==================== END STAGE-SPECIFIC MESSAGES API ====================
 
 # ==================== END DEAL MESSAGES & FILES API ====================
