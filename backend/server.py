@@ -1756,6 +1756,7 @@ async def add_car_to_deal(data: dict, current_user: dict = Depends(get_current_u
     car_id = data.get("car_id")
     from_tender = data.get("from_tender", False)
     tender_offer_id = data.get("tender_offer_id")
+    tender_id = data.get("tender_id")
     
     # Check verification
     verification = await db.verifications.find_one({"user_id": current_user["id"]})
@@ -1791,8 +1792,52 @@ async def add_car_to_deal(data: dict, current_user: dict = Depends(get_current_u
             "created_at": datetime.now(timezone.utc).isoformat()
         })
     
-    # Get car info
-    car = await db.garage.find_one({"id": car_id, "user_id": current_user["id"]})
+    # Get car info - try garage first
+    car = None
+    if car_id:
+        car = await db.garage.find_one({"id": car_id, "user_id": current_user["id"]})
+    
+    # If car not found and this is from tender, try to get car info from tender offer
+    if not car and from_tender and tender_offer_id:
+        offer = await db.contractor_offers.find_one({"id": tender_offer_id})
+        if not offer:
+            # Try tender_offers collection
+            offer = await db.tender_offers.find_one({"id": tender_offer_id})
+        
+        if offer:
+            # Create car info from offer data
+            car = {
+                "id": str(uuid.uuid4()),
+                "user_id": current_user["id"],
+                "brand": offer.get("car_brand", offer.get("brand", "N/A")),
+                "model": offer.get("car_model", offer.get("model", "")),
+                "year": offer.get("car_year", offer.get("year")),
+                "price_cny": offer.get("price_cny", 0),
+                "price_usd": offer.get("price_usd", 0),
+                "calculated_price_usd": offer.get("price_usd", 0),
+                "engine_type": offer.get("engine_type", "ice"),
+                "engine_volume": offer.get("engine_volume"),
+                "mileage": offer.get("mileage"),
+                "image_url": offer.get("car_photos", [""])[0] if offer.get("car_photos") else offer.get("image_url", ""),
+                "source_url": offer.get("car_link", offer.get("source_url", "")),
+                "description": offer.get("car_details", offer.get("description", "")),
+                "from_tender_offer": True,
+                "tender_offer_id": tender_offer_id,
+                "status": "in_deal",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            # Save to garage
+            await db.garage.insert_one(car)
+            car_id = car["id"]
+            logger.info(f"Created garage entry from tender offer: {car_id}")
+    
+    # If still no car, try to get from tender's car_info
+    if not car and from_tender and tender_id:
+        tender = await db.tenders.find_one({"id": tender_id, "user_id": current_user["id"]})
+        if tender and tender.get("car_info"):
+            car = tender["car_info"]
+            car_id = car.get("id")
+    
     if not car:
         raise HTTPException(status_code=404, detail="Автомобиль не найден")
     
