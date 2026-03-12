@@ -1404,6 +1404,12 @@ const DealCard = ({
                         )}
                       </div>
                     )}
+                    {status === 'contractor_assigned' && stageData?.contractor_name && (
+                      <p className="text-purple-400 text-sm">
+                        {stageData.contractor_name} • ${stageData.price || 'цена не указана'}
+                        <span className="text-purple-300 text-xs ml-2">— готово к оплате</span>
+                      </p>
+                    )}
                     {status === 'contractor_selected' && stageData?.price && !isLocked && (
                       <p className="text-amber-400 text-sm">Подрядчик выбран • ${stageData.price}</p>
                     )}
