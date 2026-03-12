@@ -647,20 +647,45 @@ const ContractorDialog = ({ open, onClose, dialogData, contractors, onSelect, pr
     if (!prices) return null;
     
     // Check for specific stage price first
-    if (prices[stage]) return prices[stage];
+    let price = prices[stage];
     
-    // Check for service type price
-    if (prices[serviceType]) return prices[serviceType];
+    // Check for service type price if stage price not found
+    if (!price) price = prices[serviceType];
+    
+    // Handle leasing (stored as object with rate and currency)
+    if (stage === 'leasing' && price) {
+      if (typeof price === 'object' && price.rate) {
+        return price.rate; // Return just the rate number
+      }
+      return price;
+    }
     
     // Fallbacks for logistics stages
     if (stage === 'delivery_rb') {
-      return prices.delivery_rb || prices.logistics || null;
+      price = prices.delivery_rb || prices.logistics || null;
     }
     if (stage === 'logistics_china') {
-      return prices.logistics_china || prices.logistics || null;
+      price = prices.logistics_china || prices.logistics || null;
     }
     
-    return null;
+    // Handle if price is an object (for other services)
+    if (typeof price === 'object' && price.rate) {
+      return price.rate;
+    }
+    
+    return price || null;
+  };
+
+  // Get currency for price display
+  const getPriceCurrency = (contractor) => {
+    const prices = contractor.service_prices;
+    if (!prices) return '$';
+    
+    const price = prices[stage] || prices[serviceType];
+    if (typeof price === 'object' && price.currency) {
+      return price.currency === 'BYN' ? 'BYN' : '$';
+    }
+    return '$';
   };
 
   return (
