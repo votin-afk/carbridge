@@ -1437,7 +1437,8 @@ const DealCard = ({
                 </div>
 
                 {/* Stage Actions */}
-                {isCurrent && status === 'pending' && !isLocked && (
+                {/* Allow selecting contractor for pending stages (not just current) */}
+                {status === 'pending' && !isLocked && (
                   <div className="flex gap-2">
                     {/* Leasing stage */}
                     {stage.key === 'leasing' && (
