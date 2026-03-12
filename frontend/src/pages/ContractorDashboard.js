@@ -204,6 +204,7 @@ const ContractorDashboard = () => {
   useEffect(() => {
     if (selectedDeal && token) {
       fetchDealData();
+      fetchMyStages();
       const interval = setInterval(fetchDealData, 5000);
       return () => clearInterval(interval);
     }
@@ -217,6 +218,19 @@ const ContractorDashboard = () => {
       setMyDeals(response.data);
     } catch (error) {
       console.error('Error fetching deals:', error);
+    }
+  };
+
+  const fetchMyStages = async () => {
+    if (!selectedDeal) return;
+    try {
+      const response = await axios.get(`${API}/contractor/deals/${selectedDeal.id}/my-stages`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMyStages(response.data);
+    } catch (error) {
+      console.error('Error fetching my stages:', error);
+      setMyStages([]);
     }
   };
 
