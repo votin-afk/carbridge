@@ -332,6 +332,7 @@ const DealCars = () => {
         leasingData={leasingDialog}
         leasingCompanies={leasingCompanies}
         onSubmit={submitLeasingRequest}
+        onSelectContractor={selectContractor}
         processing={processing}
       />
 
