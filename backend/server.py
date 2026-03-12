@@ -2023,7 +2023,7 @@ async def select_contractor_for_stage(deal_id: str, data: dict, current_user: di
     
     # Get contractor info
     contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0})
-    contractor_name = contractor.get("name", "") if contractor else ""
+    contractor_name = contractor.get("company_name", "") or contractor.get("name", "") if contractor else ""
     contractor_email = contractor.get("email", "") if contractor else ""
     
     # Update deal with contractor selection - requires moderator approval
