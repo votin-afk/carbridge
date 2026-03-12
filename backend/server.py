@@ -1539,6 +1539,7 @@ async def get_deals_pending_moderation_early(current_user: dict = Depends(requir
             # Check for stages needing moderation:
             # 1. Locked stages from tender offer that aren't confirmed yet
             # 2. Stages with awaiting_approval flag (manually selected contractor)
+            # 3. Stages with pending_review status (client completed and sent for review)
             needs_moderation = False
             
             if stage_data.get("locked") and not stage_data.get("moderator_confirmed") and not stage_data.get("paid"):
@@ -1546,6 +1547,10 @@ async def get_deals_pending_moderation_early(current_user: dict = Depends(requir
             elif stage_data.get("awaiting_approval") and not stage_data.get("moderator_approved") and not stage_data.get("paid"):
                 needs_moderation = True
             elif stage_data.get("status") == "pending_moderation" and not stage_data.get("paid"):
+                needs_moderation = True
+            elif stage_data.get("status") == "pending_review" and not stage_data.get("paid"):
+                needs_moderation = True
+            elif stage_data.get("status") == "awaiting_approval" and not stage_data.get("moderator_approved") and not stage_data.get("paid"):
                 needs_moderation = True
             
             if needs_moderation and stage_data.get("contractor_id"):
