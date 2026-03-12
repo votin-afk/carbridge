@@ -5185,16 +5185,30 @@ async def confirm_deal_stage(deal_id: str, stage: dict, current_user: dict = Dep
     if stage_key not in stages:
         raise HTTPException(status_code=400, detail=f"Stage {stage_key} not found in deal")
     
-    # Update stage to confirmed by moderator
+    # Update stage to confirmed by moderator - enables payment
     await db.deals.update_one(
         {"id": deal_id},
         {"$set": {
             f"stages.{stage_key}.moderator_confirmed": True,
+            f"stages.{stage_key}.moderator_approved": True,
+            f"stages.{stage_key}.awaiting_approval": False,
+            f"stages.{stage_key}.status": "approved",
             f"stages.{stage_key}.moderator_id": current_user["id"],
             f"stages.{stage_key}.confirmed_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat()
         }}
     )
+    
+    # Log moderation action
+    await db.moderation_logs.insert_one({
+        "id": str(uuid.uuid4()),
+        "deal_id": deal_id,
+        "stage_key": stage_key,
+        "action": "approve_stage",
+        "moderator_id": current_user["id"],
+        "moderator_name": current_user.get("name", current_user.get("email")),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
     
     return {"message": f"Этап '{stage_key}' подтверждён модератором"}
 
