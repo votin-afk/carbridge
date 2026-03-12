@@ -84,6 +84,7 @@ const ContractorDashboard = () => {
   // Deal chat states
   const [myDeals, setMyDeals] = useState([]);
   const [selectedDeal, setSelectedDeal] = useState(null);
+  const [myStages, setMyStages] = useState([]); // Stages assigned to contractor for selected deal
   const [dealMessages, setDealMessages] = useState([]);
   const [dealFiles, setDealFiles] = useState([]);
   const [newMessage, setNewMessage] = useState('');
