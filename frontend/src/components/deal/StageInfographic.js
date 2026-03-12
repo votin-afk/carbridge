@@ -33,7 +33,8 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  Trash2
+  Trash2,
+  ClipboardCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -58,6 +59,7 @@ const StageInfographic = ({ deal, token, onRefresh }) => {
   const [files, setFiles] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [unreadCounts, setUnreadCounts] = useState({});
