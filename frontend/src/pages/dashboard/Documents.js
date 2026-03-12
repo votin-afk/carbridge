@@ -545,60 +545,83 @@ const Documents = () => {
     }
 
     return (
-      <div className="bg-[#15191E] border border-[#27272A] rounded-lg overflow-hidden">
+      <div className="space-y-4">
         {/* Deal Header */}
-        <div className="p-4 border-b border-[#27272A] flex items-center justify-between">
-          <div>
-            <h3 className="text-white font-semibold">
-              {selectedDeal.car_info?.brand} {selectedDeal.car_info?.model}
-            </h3>
-            <p className="text-slate-400 text-sm">
-              Сделка #{selectedDeal.id?.slice(0, 8)}
-            </p>
+        <div className="bg-[#15191E] border border-[#27272A] rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {selectedDeal.car_info?.image_url ? (
+                <img src={selectedDeal.car_info.image_url} alt="" className="w-16 h-12 object-cover rounded" />
+              ) : (
+                <div className="w-16 h-12 bg-[#0B0F14] rounded flex items-center justify-center">
+                  <Car size={24} className="text-slate-600" />
+                </div>
+              )}
+              <div>
+                <h3 className="text-white font-semibold text-lg">
+                  {selectedDeal.car_info?.brand} {selectedDeal.car_info?.model}
+                </h3>
+                <p className="text-slate-400 text-sm">
+                  Сделка #{selectedDeal.id?.slice(0, 8)} • {selectedDeal.car_info?.year || ''}
+                </p>
+              </div>
+            </div>
           </div>
-          
-          {/* Stage Filter */}
-          <Select value={selectedStage} onValueChange={setSelectedStage}>
-            <SelectTrigger className="w-[200px] bg-[#0B0F14] border-[#27272A]">
-              <SelectValue placeholder="Все этапы" />
-            </SelectTrigger>
-            <SelectContent className="bg-[#15191E] border-[#27272A]">
-              <SelectItem value="all">Все этапы</SelectItem>
-              {Object.entries(stageLabels).map(([key, label]) => (
-                <SelectItem key={key} value={key}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-[#27272A]">
-          <button
-            onClick={() => setActiveTab('files')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'files'
-                ? 'text-[#00E5FF] border-b-2 border-[#00E5FF]'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Folder size={16} className="inline mr-2" />
-            Файлы ({filteredFiles.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('chat')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'chat'
-                ? 'text-[#00E5FF] border-b-2 border-[#00E5FF]'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <MessageSquare size={16} className="inline mr-2" />
-            Чат ({filteredMessages.length})
-          </button>
-        </div>
+        {/* Stage Infographic */}
+        <StageInfographic 
+          deal={selectedDeal} 
+          token={token}
+          onRefresh={fetchDeals}
+        />
 
-        {/* Tab Content */}
-        {activeTab === 'files' ? renderFilesContent() : renderChatContent()}
+        {/* Legacy Files & Chat Section (collapsed by default) */}
+        <div className="bg-[#15191E] border border-[#27272A] rounded-lg overflow-hidden">
+          <div className="p-3 border-b border-[#27272A] flex items-center justify-between">
+            <p className="text-slate-400 text-sm">Все файлы и общий чат сделки</p>
+            <Select value={selectedStage} onValueChange={setSelectedStage}>
+              <SelectTrigger className="w-[180px] bg-[#0B0F14] border-[#27272A] h-8 text-sm">
+                <SelectValue placeholder="Фильтр по этапу" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#15191E] border-[#27272A]">
+                <SelectItem value="all">Все этапы</SelectItem>
+                {Object.entries(stageLabels).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex border-b border-[#27272A]">
+            <button
+              onClick={() => setActiveTab('files')}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                activeTab === 'files'
+                  ? 'text-[#00E5FF] border-b-2 border-[#00E5FF]'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Folder size={14} className="inline mr-2" />
+              Файлы ({filteredFiles.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('chat')}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                activeTab === 'chat'
+                  ? 'text-[#00E5FF] border-b-2 border-[#00E5FF]'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <MessageSquare size={14} className="inline mr-2" />
+              Чат ({filteredMessages.length})
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'files' ? renderFilesContent() : renderChatContent()}
+        </div>
       </div>
     );
   }
