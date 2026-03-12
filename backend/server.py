@@ -5665,6 +5665,52 @@ async def confirm_deal_stage(deal_id: str, stage: dict, current_user: dict = Dep
     
     return {"message": f"Этап '{stage_key}' подтверждён модератором"}
 
+# Moderator endpoints for viewing stage messages and files
+@api_router.get("/moderator/deals/{deal_id}/stages/{stage_key}/messages")
+async def get_moderator_stage_messages(deal_id: str, stage_key: str, current_user: dict = Depends(require_role(["admin", "moderator"]))):
+    """Get messages for a specific stage (moderator view)"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    messages = await db.deal_messages.find(
+        {"deal_id": deal_id, "stage_key": stage_key},
+        {"_id": 0}
+    ).sort("created_at", 1).to_list(500)
+    
+    return messages
+
+@api_router.get("/moderator/deals/{deal_id}/stages/{stage_key}/files")
+async def get_moderator_stage_files(deal_id: str, stage_key: str, current_user: dict = Depends(require_role(["admin", "moderator"]))):
+    """Get files for a specific stage (moderator view)"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    files = await db.deal_files.find(
+        {"deal_id": deal_id, "stage_key": stage_key},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return files
+
+@api_router.get("/moderator/deals/{deal_id}/files/{file_id}/download")
+async def download_moderator_deal_file(deal_id: str, file_id: str, current_user: dict = Depends(require_role(["admin", "moderator"]))):
+    """Download a file from a deal (moderator)"""
+    file_doc = await db.deal_files.find_one({"id": file_id, "deal_id": deal_id}, {"_id": 0})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+    
+    file_path = UPLOADS_DIR / deal_id / file_doc["saved_name"]
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Файл не найден на сервере")
+    
+    return FileResponse(
+        path=str(file_path),
+        filename=file_doc["original_name"],
+        media_type=file_doc.get("mime_type", "application/octet-stream")
+    )
+
 @api_router.get("/moderator/tenders")
 async def get_all_tenders_moderator(current_user: dict = Depends(require_role(["admin", "moderator"]))):
     """Get all tenders for moderator"""
