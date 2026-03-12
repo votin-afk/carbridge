@@ -425,41 +425,57 @@ const DealCars = () => {
 };
 
 // Leasing Calculator Dialog Component
-const LeasingDialog = ({ open, onClose, leasingData, leasingCompanies, onSubmit, processing }) => {
+const LeasingDialog = ({ open, onClose, leasingData, leasingCompanies, onSubmit, onSelectContractor, processing }) => {
   const [term, setTerm] = useState(36);
   const [downPayment, setDownPayment] = useState(20);
-  const [selectedCompanies, setSelectedCompanies] = useState([]);
+  const [selectedCompany, setSelectedCompany] = useState(null);
 
   const carPrice = leasingData?.carPrice || 0;
   const loanAmount = carPrice * (1 - downPayment / 100);
 
-  // Calculate monthly payment (simplified formula)
+  // Get leasing rate from contractor's service_prices
+  const getLeasingRate = (company) => {
+    const leasingPrice = company?.service_prices?.leasing;
+    if (typeof leasingPrice === 'object' && leasingPrice?.rate) {
+      return leasingPrice.rate;
+    }
+    // Fallback to old format
+    return company?.service_prices?.leasing_rate || 12;
+  };
+
+  // Calculate monthly payment
   const calculateMonthlyPayment = (company) => {
-    const rate = company?.service_prices?.leasing_rate || 12; // Annual rate %
+    const rate = getLeasingRate(company);
     const monthlyRate = rate / 100 / 12;
+    if (monthlyRate === 0) return Math.round(loanAmount / term);
     const payment = loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, term)) / (Math.pow(1 + monthlyRate, term) - 1);
     return Math.round(payment);
   };
 
-  const toggleCompany = (companyId) => {
-    setSelectedCompanies(prev =>
-      prev.includes(companyId)
-        ? prev.filter(id => id !== companyId)
-        : [...prev, companyId]
-    );
+  // Calculate total payment
+  const calculateTotalPayment = (company) => {
+    return calculateMonthlyPayment(company) * term;
   };
 
-  const handleSubmit = () => {
-    if (selectedCompanies.length === 0) {
-      toast.error('Выберите хотя бы одну лизинговую компанию');
+  // Calculate overpayment
+  const calculateOverpayment = (company) => {
+    return calculateTotalPayment(company) - loanAmount;
+  };
+
+  const handleSelectCompany = (company) => {
+    setSelectedCompany(company);
+  };
+
+  const handleAssignContractor = () => {
+    if (!selectedCompany) {
+      toast.error('Выберите лизинговую компанию');
       return;
     }
-    onSubmit(leasingData.dealId, {
-      term,
-      down_payment_percent: downPayment,
-      loan_amount: loanAmount,
-      selected_companies: selectedCompanies
-    });
+    
+    const rate = getLeasingRate(selectedCompany);
+    // Assign contractor to leasing stage
+    onSelectContractor(leasingData.dealId, 'leasing', selectedCompany.id, rate);
+    onClose();
   };
 
   return (
@@ -482,7 +498,7 @@ const LeasingDialog = ({ open, onClose, leasingData, leasingCompanies, onSubmit,
           {/* Term Selection */}
           <div>
             <Label className="text-white mb-2 block">Срок лизинга (месяцев)</Label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {LEASING_TERMS.map(t => (
                 <Button
                   key={t}
@@ -525,47 +541,78 @@ const LeasingDialog = ({ open, onClose, leasingData, leasingCompanies, onSubmit,
             <p className="text-white text-xl font-bold">${Math.round(loanAmount).toLocaleString()}</p>
           </div>
 
-          {/* Leasing Companies */}
+          {/* Leasing Companies - Updated to show real offers */}
           <div>
-            <Label className="text-white mb-3 block">Выберите лизинговые компании</Label>
+            <Label className="text-white mb-3 block">Предложения лизинговых компаний</Label>
             {leasingCompanies.length === 0 ? (
               <p className="text-slate-500 text-sm">Нет доступных лизинговых компаний</p>
             ) : (
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {leasingCompanies.map(company => {
+                  const rate = getLeasingRate(company);
                   const monthlyPayment = calculateMonthlyPayment(company);
-                  const isSelected = selectedCompanies.includes(company.id);
-                  const rate = company?.service_prices?.leasing_rate || 12;
+                  const totalPayment = calculateTotalPayment(company);
+                  const overpayment = calculateOverpayment(company);
+                  const isSelected = selectedCompany?.id === company.id;
 
                   return (
                     <div
                       key={company.id}
-                      onClick={() => toggleCompany(company.id)}
-                      className={`p-4 rounded-sm border cursor-pointer transition-all ${
+                      onClick={() => handleSelectCompany(company)}
+                      className={`p-4 rounded-lg border cursor-pointer transition-all ${
                         isSelected
-                          ? 'border-[#00E5FF] bg-[#00E5FF]/10'
-                          : 'border-[#27272A] bg-[#0B0F14] hover:border-[#00E5FF]/50'
+                          ? 'border-purple-500 bg-purple-500/10'
+                          : 'border-[#27272A] bg-[#0B0F14] hover:border-purple-500/50'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Checkbox checked={isSelected} />
-                          <div>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
                             <p className="text-white font-medium">{company.name}</p>
-                            <p className="text-slate-400 text-sm">Ставка: {rate}% годовых</p>
+                            {company.rating && (
+                              <span className="text-amber-400 text-xs">★ {company.rating.toFixed(1)}</span>
+                            )}
                           </div>
+                          <p className="text-purple-400 font-semibold">{rate}% годовых</p>
+                          <p className="text-slate-500 text-xs mt-1">{company.description || 'Лизинговая компания'}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-[#00E5FF] font-bold">${monthlyPayment}/мес</p>
-                          <p className="text-slate-500 text-xs">~${monthlyPayment * term} всего</p>
+                          <p className="text-[#00E5FF] font-bold text-lg">${monthlyPayment}/мес</p>
+                          <p className="text-slate-400 text-xs">Всего: ${totalPayment.toLocaleString()}</p>
+                          <p className="text-amber-400 text-xs">Переплата: ${overpayment.toLocaleString()}</p>
                         </div>
                       </div>
+                      {isSelected && (
+                        <div className="mt-3 pt-3 border-t border-purple-500/30">
+                          <div className="flex items-center gap-2 text-purple-400">
+                            <CheckCircle size={16} />
+                            <span className="text-sm">Выбрано</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
             )}
           </div>
+
+          {/* Selected Company Summary */}
+          {selectedCompany && (
+            <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+              <p className="text-purple-400 text-sm mb-2">Выбранная компания:</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-white font-semibold">{selectedCompany.name}</p>
+                  <p className="text-slate-400 text-sm">{getLeasingRate(selectedCompany)}% годовых</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[#00E5FF] font-bold">${calculateMonthlyPayment(selectedCompany)}/мес</p>
+                  <p className="text-slate-500 text-xs">{term} месяцев</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Submit Button */}
           <div className="flex gap-3">
@@ -577,12 +624,12 @@ const LeasingDialog = ({ open, onClose, leasingData, leasingCompanies, onSubmit,
               Отмена
             </Button>
             <Button
-              onClick={handleSubmit}
-              disabled={processing || selectedCompanies.length === 0}
-              className="flex-1 bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
+              onClick={handleAssignContractor}
+              disabled={processing || !selectedCompany}
+              className="flex-1 bg-purple-500 hover:bg-purple-600 text-white"
             >
-              {processing ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
-              Отправить заявки ({selectedCompanies.length})
+              {processing ? <Loader2 className="animate-spin mr-2" size={16} /> : <CreditCard size={16} className="mr-2" />}
+              Выбрать компанию
             </Button>
           </div>
         </div>
