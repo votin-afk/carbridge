@@ -1253,8 +1253,12 @@ const DealCard = ({
     if (stage.completed) return 'completed';
     if (stage.paid) return 'paid';
     if (stage.invoice_created) return 'invoice';
+    // Awaiting moderator approval
+    if (stage.awaiting_approval || stage.status === 'pending_moderation') return 'pending_moderation';
     // Locked stage with contractor from tender offer
     if (stage.locked && stage.contractor_id) return 'contractor_assigned';
+    // Moderator approved - ready for payment
+    if (stage.moderator_approved && stage.contractor_id) return 'approved';
     // Only mark as contractor_selected if both contractor_id AND price are set
     if (stage.contractor_id && stage.price > 0) return 'contractor_selected';
     if (stage.skipped) return 'skipped';
