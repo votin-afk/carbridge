@@ -513,6 +513,41 @@ const StageInfographic = ({ deal, token, onRefresh }) => {
                       {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                     </Button>
                   </div>
+                  
+                  {/* Complete Stage Button */}
+                  {canCompleteStage(selectedStage) && (
+                    <Button
+                      onClick={completeStage}
+                      disabled={completing}
+                      className="w-full mt-3 bg-emerald-500 hover:bg-emerald-600 text-white"
+                    >
+                      {completing ? (
+                        <Loader2 size={16} className="animate-spin mr-2" />
+                      ) : (
+                        <ClipboardCheck size={16} className="mr-2" />
+                      )}
+                      Завершить этап и отправить на проверку
+                    </Button>
+                  )}
+                  
+                  {/* Status messages */}
+                  {getStageStatus(selectedStage) === 'pending_review' && (
+                    <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                      <p className="text-amber-400 text-sm flex items-center gap-2">
+                        <Clock size={16} />
+                        Этап отправлен на проверку модератору
+                      </p>
+                    </div>
+                  )}
+                  
+                  {(getStageStatus(selectedStage) === 'completed' || getStageStatus(selectedStage) === 'paid') && (
+                    <div className="mt-3 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                      <p className="text-emerald-400 text-sm flex items-center gap-2">
+                        <CheckCircle2 size={16} />
+                        Этап успешно завершён
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
