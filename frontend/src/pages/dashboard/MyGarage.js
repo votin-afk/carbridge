@@ -1052,20 +1052,6 @@ const MyGarage = () => {
                         <Headphones size={14} className="mr-2" />
                         Помощь менеджера
                       </Button>
-                      
-                      {/* Select Contractor */}
-                      <Button
-                        data-testid={`select-contractor-${car.id}`}
-                        onClick={() => navigate('/dashboard/applications', { 
-                          state: { prefillCar: car, selectContractor: true } 
-                        })}
-                        disabled={!canPerformActions}
-                        variant="outline"
-                        className="w-full border-[#27272A] text-slate-300 hover:border-purple-500 hover:text-purple-400 disabled:opacity-50"
-                      >
-                        <Users size={14} className="mr-2" />
-                        Выбрать подрядчика
-                      </Button>
                     </>
                   )}
                   
