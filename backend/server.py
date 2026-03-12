@@ -1804,29 +1804,41 @@ async def add_car_to_deal(data: dict, current_user: dict = Depends(get_current_u
             # Try tender_offers collection
             offer = await db.tender_offers.find_one({"id": tender_offer_id})
         
+        # Also check mock offers inside tender
+        if not offer and tender_id:
+            tender_doc = await db.tenders.find_one({"id": tender_id})
+            if tender_doc:
+                mock_offers = tender_doc.get("offers", [])
+                for mock_offer in mock_offers:
+                    if mock_offer.get("id") == tender_offer_id:
+                        offer = mock_offer
+                        break
+        
         if offer:
-            # Get tender to extract car_request info (brand, model)
+            # Get tender to extract car_request info (brand, model) and car_info
             tender = await db.tenders.find_one({"id": tender_id or offer.get("tender_id")})
             car_request = tender.get("car_request", {}) if tender else {}
+            car_info = tender.get("car_info", {}) if tender else {}
             
-            # Create car info from offer data + tender car_request
+            # Create car info from offer data + tender car_request/car_info
             car = {
                 "id": str(uuid.uuid4()),
                 "user_id": current_user["id"],
-                "brand": offer.get("car_brand") or car_request.get("brand", "N/A"),
-                "model": offer.get("car_model") or car_request.get("model", ""),
-                "year": offer.get("car_year") or car_request.get("year_to") or car_request.get("year_from"),
-                "price_cny": offer.get("price_cny", 0),
-                "price_usd": offer.get("price_usd", 0),
-                "calculated_price_usd": offer.get("price_usd", 0),
-                "engine_type": offer.get("engine_type") or car_request.get("engine_type", "ice"),
-                "engine_volume": offer.get("engine_volume"),
-                "mileage": offer.get("mileage"),
-                "image_url": offer.get("car_photos", [""])[0] if offer.get("car_photos") else offer.get("image_url", ""),
-                "source_url": offer.get("car_link", offer.get("source_url", "")),
-                "description": offer.get("car_details", offer.get("description", "")),
+                "brand": offer.get("car_brand") or car_info.get("brand") or car_request.get("brand", "N/A"),
+                "model": offer.get("car_model") or car_info.get("model") or car_request.get("model", ""),
+                "year": offer.get("car_year") or car_info.get("year") or car_request.get("year_to") or car_request.get("year_from"),
+                "price_cny": offer.get("price_cny") or car_info.get("price_cny", 0),
+                "price_usd": offer.get("price_usd") or offer.get("price") or car_info.get("price_usd", 0),
+                "calculated_price_usd": offer.get("price_usd") or offer.get("price") or car_info.get("calculated_price_usd", 0),
+                "engine_type": offer.get("engine_type") or car_info.get("engine_type") or car_request.get("engine_type", "ice"),
+                "engine_volume": offer.get("engine_volume") or car_info.get("engine_volume"),
+                "mileage": offer.get("mileage") or car_info.get("mileage"),
+                "image_url": (offer.get("car_photos", [""])[0] if offer.get("car_photos") else None) or offer.get("image_url") or car_info.get("image_url", ""),
+                "source_url": offer.get("car_link") or offer.get("source_url") or car_info.get("source_url", ""),
+                "description": offer.get("car_details") or offer.get("description") or car_info.get("description", ""),
                 "from_tender_offer": True,
                 "tender_offer_id": tender_offer_id,
+                "contractor_name": offer.get("contractor_name"),
                 "status": "in_deal",
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
