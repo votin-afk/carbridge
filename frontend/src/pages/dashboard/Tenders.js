@@ -74,15 +74,16 @@ const Tenders = () => {
   };
 
   const handleAddToDeal = async (tender) => {
-    if (!tender.car_id) {
-      toast.error('Автомобиль не найден');
+    // Allow adding to deal if we have either car_id OR selected_offer_id (from application tender)
+    if (!tender.car_id && !tender.selected_offer_id) {
+      toast.error('Сначала выберите предложение подрядчика');
       return;
     }
     
     setAddingToDeal(tender.id);
     try {
       await axios.post(`${API}/deals/add-car`, {
-        car_id: tender.car_id,
+        car_id: tender.car_id || null,
         from_tender: true,
         tender_id: tender.id,
         tender_offer_id: tender.selected_offer_id
