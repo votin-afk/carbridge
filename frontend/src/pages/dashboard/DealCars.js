@@ -1583,8 +1583,31 @@ const DealCard = ({
                   </div>
                 )}
 
-                {/* Show invoice button if contractor selected (not locked) */}
-                {!isLocked && status === 'contractor_selected' && stageData?.price && (
+                {/* Show status for pending moderation */}
+                {status === 'pending_moderation' && (
+                  <span className="text-amber-400 text-sm flex items-center gap-1">
+                    <AlertCircle size={14} />
+                    Ожидает проверки модератора
+                  </span>
+                )}
+
+                {/* Show invoice button if approved by moderator */}
+                {status === 'approved' && stageData?.price && (
+                  <Button
+                    size="sm"
+                    onClick={() => onOpenInvoice(deal.id, stage.key, {
+                      service_price: stageData.price,
+                      car_price: stage.key === 'export' ? Math.round((deal.car_info?.price_cny || 0) / 7.2) : 0
+                    })}
+                    className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                  >
+                    <DollarSign size={16} className="mr-1" />
+                    Оплатить этап
+                  </Button>
+                )}
+
+                {/* Legacy: Show invoice button if contractor selected without moderation check */}
+                {!isLocked && status === 'contractor_selected' && stageData?.price && stageData?.moderator_approved && (
                   <Button
                     size="sm"
                     onClick={() => onOpenInvoice(deal.id, stage.key, {
