@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
@@ -23,7 +24,8 @@ import {
   X,
   SlidersHorizontal,
   Gauge,
-  Calendar
+  Calendar,
+  ExternalLink
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL;
