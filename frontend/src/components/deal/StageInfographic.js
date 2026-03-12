@@ -242,6 +242,8 @@ const StageInfographic = ({ deal, token, onRefresh }) => {
         return 'Подтверждён';
       case 'awaiting_approval':
         return 'На модерации';
+      case 'pending_review':
+        return 'На проверке';
       case 'skipped':
         return 'Пропущен';
       case 'pending':
