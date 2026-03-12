@@ -1562,8 +1562,10 @@ async def get_deals_pending_moderation_early(current_user: dict = Depends(requir
                     "contractor_id": stage_data.get("contractor_id"),
                     "contractor_name": stage_data.get("contractor_name"),
                     "price": stage_data.get("price"),
+                    "status": stage_data.get("status"),
                     "is_from_tender": stage_data.get("locked", False),
                     "assigned_at": stage_data.get("assigned_at"),
+                    "review_requested_at": stage_data.get("review_requested_at"),
                     "created_at": deal.get("created_at")
                 })
     
