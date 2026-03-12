@@ -1253,7 +1253,8 @@ const DealCard = ({
     if (stage.completed) return 'completed';
     if (stage.paid) return 'paid';
     if (stage.invoice_created) return 'invoice';
-    if (stage.contractor_id) return 'contractor_selected';
+    // Only mark as contractor_selected if both contractor_id AND price are set
+    if (stage.contractor_id && stage.price > 0) return 'contractor_selected';
     if (stage.skipped) return 'skipped';
     if (stage.requested) return 'requested';
     return 'pending';
