@@ -2010,7 +2010,7 @@ async def select_contractor_for_stage(deal_id: str, data: dict, current_user: di
     contractor_name = contractor.get("name", "") if contractor else ""
     contractor_email = contractor.get("email", "") if contractor else ""
     
-    # Update deal with contractor selection
+    # Update deal with contractor selection - requires moderator approval
     await db.deals.update_one(
         {"id": deal_id},
         {
@@ -2018,7 +2018,9 @@ async def select_contractor_for_stage(deal_id: str, data: dict, current_user: di
                 f"stages.{stage}.contractor_id": contractor_id,
                 f"stages.{stage}.contractor_name": contractor_name,
                 f"stages.{stage}.price": price,
-                f"stages.{stage}.status": "contractor_selected",
+                f"stages.{stage}.status": "pending_moderation",
+                f"stages.{stage}.awaiting_approval": True,
+                f"stages.{stage}.assigned_at": datetime.now(timezone.utc).isoformat(),
                 f"contractors.{stage}": contractor_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
