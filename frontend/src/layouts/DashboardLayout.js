@@ -198,10 +198,68 @@ const DashboardLayout = () => {
           <div className="flex-1 lg:flex-none" />
 
           <div className="flex items-center gap-4">
-            <button className="relative p-2 text-slate-400 hover:text-white transition-colors">
-              <Bell size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#00E5FF] rounded-full" />
-            </button>
+            {/* Notifications */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 text-slate-400 hover:text-white transition-colors"
+              >
+                <Bell size={20} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              
+              {/* Notifications Dropdown */}
+              {showNotifications && (
+                <div className="absolute right-0 top-12 w-80 bg-[#1C2128] border border-[#27272A] rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto">
+                  <div className="p-3 border-b border-[#27272A] flex justify-between items-center">
+                    <h4 className="text-white font-semibold">Уведомления</h4>
+                    {unreadCount > 0 && (
+                      <span className="text-xs text-[#00E5FF]">{unreadCount} новых</span>
+                    )}
+                  </div>
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-slate-400">
+                      Нет уведомлений
+                    </div>
+                  ) : (
+                    notifications.slice(0, 10).map(notification => (
+                      <div 
+                        key={notification.id}
+                        className={`p-3 border-b border-[#27272A] hover:bg-[#27272A] cursor-pointer ${!notification.is_read ? 'bg-[#27272A]/50' : ''}`}
+                        onClick={() => handleNotificationClick(notification)}
+                      >
+                        <div className="flex items-start gap-2">
+                          {notification.type === 'stage_approved' && (
+                            <CheckCircle2 size={16} className="text-emerald-400 mt-0.5" />
+                          )}
+                          {notification.type === 'payment_received' && (
+                            <DollarSign size={16} className="text-[#00E5FF] mt-0.5" />
+                          )}
+                          {!['stage_approved', 'payment_received'].includes(notification.type) && (
+                            <Bell size={16} className="text-amber-400 mt-0.5" />
+                          )}
+                          <div className="flex-1">
+                            <p className="text-white text-sm font-medium">{notification.title}</p>
+                            <p className="text-slate-400 text-xs">{notification.message}</p>
+                            <p className="text-slate-500 text-xs mt-1 flex items-center gap-1">
+                              <Clock size={10} />
+                              {new Date(notification.created_at).toLocaleString('ru-RU')}
+                            </p>
+                          </div>
+                          {!notification.is_read && (
+                            <div className="w-2 h-2 bg-[#00E5FF] rounded-full"></div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
