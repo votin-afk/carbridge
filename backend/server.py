@@ -5210,6 +5210,34 @@ async def confirm_deal_stage(deal_id: str, stage: dict, current_user: dict = Dep
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     
+    # Create notification for client
+    stage_labels = {
+        "leasing": "Лизинг",
+        "inspection": "Инспекция авто",
+        "export": "Выкуп и экспорт",
+        "logistics_china": "Доставка до порта (Китай)",
+        "insurance": "Страхование авто",
+        "delivery_rb": "Доставка в Беларусь",
+        "customs": "Таможенное оформление",
+        "completion": "Завершение сделки"
+    }
+    stage_label = stage_labels.get(stage_key, stage_key)
+    car_info = deal.get("car_info", {})
+    car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip() or "авто"
+    
+    notification = {
+        "id": str(uuid.uuid4()),
+        "user_id": deal["user_id"],
+        "type": "stage_approved",
+        "title": "Этап одобрен",
+        "message": f"Этап «{stage_label}» для {car_name} одобрен модератором. Теперь вы можете оплатить этап.",
+        "deal_id": deal_id,
+        "stage_key": stage_key,
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.user_notifications.insert_one(notification)
+    
     return {"message": f"Этап '{stage_key}' подтверждён модератором"}
 
 @api_router.get("/moderator/tenders")
