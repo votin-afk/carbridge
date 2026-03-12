@@ -619,6 +619,21 @@ const ContractorDialog = ({ open, onClose, dialogData, contractors, onSelect, pr
     if (stage === 'insurance') {
       return services.includes('insurance') || services.includes('страхов');
     }
+    if (stage === 'logistics_china') {
+      return services.includes('logistics_china') || services.includes('логистик') || services.includes('доставка');
+    }
+    if (stage === 'delivery_rb') {
+      return services.includes('delivery_rb') || services.includes('доставка') || services.includes('logistics');
+    }
+    if (stage === 'customs') {
+      return services.includes('customs') || services.includes('таможен') || services.includes('растамож');
+    }
+    if (stage === 'inspection') {
+      return services.includes('inspection') || services.includes('осмотр') || services.includes('проверк');
+    }
+    if (stage === 'export') {
+      return services.includes('export') || services.includes('экспорт') || services.includes('вывоз');
+    }
     return services.includes(serviceType);
   });
 
