@@ -307,9 +307,9 @@ const StageInfographic = ({ deal, token, onRefresh }) => {
                 
                 {/* Connector Line */}
                 {index < STAGES.length - 1 && (
-                  <div className={`absolute top-7 left-14 w-[calc(100%-56px)] h-1 ${
+                  <div className={`absolute top-7 left-14 h-1 z-0 ${
                     status === 'completed' || status === 'paid' ? 'bg-emerald-500' : 'bg-[#27272A]'
-                  }`} style={{ width: 'calc(100vw / 8 - 56px)', minWidth: '60px' }} />
+                  }`} style={{ width: 'calc(100vw / 8 - 56px)', minWidth: '60px', pointerEvents: 'none' }} />
                 )}
               </div>
             );
