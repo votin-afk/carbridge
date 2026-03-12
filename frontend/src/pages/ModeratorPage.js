@@ -110,6 +110,12 @@ const ModeratorPage = () => {
   const [newTenderDialog, setNewTenderDialog] = useState(false);
   const [newTenderData, setNewTenderData] = useState({ brand: '', model: '', budget: '' });
   
+  // Stage details dialog
+  const [stageDetailsDialog, setStageDetailsDialog] = useState(null);
+  const [stageMessages, setStageMessages] = useState([]);
+  const [stageFiles, setStageFiles] = useState([]);
+  const [loadingStageDetails, setLoadingStageDetails] = useState(false);
+  
   // Balance management states
   const [balanceDialogUser, setBalanceDialogUser] = useState(null);
   const [balanceAmount, setBalanceAmount] = useState('');
