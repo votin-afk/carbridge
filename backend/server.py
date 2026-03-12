@@ -2045,6 +2045,7 @@ async def select_contractor_for_stage(deal_id: str, data: dict, current_user: di
     
     # Create notification for contractor
     stage_labels = {
+        "leasing": "Лизинг",
         "inspection": "Инспекция авто",
         "export": "Выкуп и экспорт",
         "logistics_china": "Доставка до порта (Китай)",
