@@ -880,44 +880,40 @@ const ContractorDashboard = () => {
                     <p className="text-slate-400">Выберите сделку для просмотра чата и документов</p>
                   </div>
                 ) : (
-                  <div className="bg-[#15191E] border border-[#27272A] rounded-lg overflow-hidden">
+                  <div className="space-y-4">
                     {/* Deal Header */}
-                    <div className="p-4 border-b border-[#27272A]">
-                      <h3 className="text-white font-semibold">
-                        {selectedDeal.car_info?.brand} {selectedDeal.car_info?.model}
-                      </h3>
-                      <p className="text-slate-400 text-sm">
-                        Клиент: {selectedDeal.client?.name || selectedDeal.client?.email}
-                      </p>
+                    <div className="bg-[#15191E] border border-[#27272A] rounded-lg p-4">
+                      <div className="flex items-center gap-4">
+                        {selectedDeal.car_info?.image_url ? (
+                          <img src={selectedDeal.car_info.image_url} alt="" className="w-16 h-12 object-cover rounded" />
+                        ) : (
+                          <div className="w-16 h-12 bg-[#0B0F14] rounded flex items-center justify-center">
+                            <Car size={24} className="text-slate-600" />
+                          </div>
+                        )}
+                        <div>
+                          <h3 className="text-white font-semibold text-lg">
+                            {selectedDeal.car_info?.brand} {selectedDeal.car_info?.model}
+                          </h3>
+                          <p className="text-slate-400 text-sm">
+                            Клиент: {selectedDeal.client?.name || selectedDeal.client?.email}
+                          </p>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Tabs */}
-                    <div className="flex border-b border-[#27272A]">
-                      <button
-                        onClick={() => setDealActiveTab('chat')}
-                        className={`flex-1 py-3 text-sm font-medium transition-colors ${
-                          dealActiveTab === 'chat'
-                            ? 'text-emerald-400 border-b-2 border-emerald-500'
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        <MessageSquare size={16} className="inline mr-2" />
-                        Чат ({dealMessages.length})
-                      </button>
-                      <button
-                        onClick={() => setDealActiveTab('files')}
-                        className={`flex-1 py-3 text-sm font-medium transition-colors ${
-                          dealActiveTab === 'files'
-                            ? 'text-emerald-400 border-b-2 border-emerald-500'
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        <Folder size={16} className="inline mr-2" />
-                        Файлы ({dealFiles.length})
-                      </button>
-                    </div>
-
-                    {/* Tab Content */}
+                    {/* Stage-based Messenger */}
+                    <ContractorMessenger
+                      deal={selectedDeal}
+                      token={token}
+                      myStages={myStages}
+                      onRefresh={fetchMyDeals}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabsContent>
                     {dealActiveTab === 'chat' ? (
                       <div className="flex flex-col h-[400px]">
                         {/* Messages */}
