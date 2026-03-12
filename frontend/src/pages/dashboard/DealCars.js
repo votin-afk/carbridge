@@ -706,6 +706,7 @@ const ContractorDialog = ({ open, onClose, dialogData, contractors, onSelect, pr
           ) : (
             filteredContractors.map(contractor => {
               const price = getContractorPrice(contractor);
+              const currency = getPriceCurrency(contractor);
               if (!price) return null;
 
               return (
@@ -725,8 +726,12 @@ const ContractorDialog = ({ open, onClose, dialogData, contractors, onSelect, pr
                       )}
                     </div>
                     <div className="text-right">
-                      <p className="text-[#00E5FF] font-bold text-lg">${price}</p>
-                      <p className="text-slate-500 text-xs">за услугу</p>
+                      <p className="text-[#00E5FF] font-bold text-lg">
+                        {stage === 'leasing' ? `${price}%` : `${currency === 'BYN' ? '' : '$'}${price}${currency === 'BYN' ? ' BYN' : ''}`}
+                      </p>
+                      <p className="text-slate-500 text-xs">
+                        {stage === 'leasing' ? 'ставка годовых' : 'за услугу'}
+                      </p>
                     </div>
                   </div>
                 </div>
