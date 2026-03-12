@@ -170,8 +170,21 @@ const DashboardCatalog = () => {
   const addToGarage = async (car) => {
     setAddingToGarage(car.id);
     try {
-      await axios.post(`${API}/api/catalog/${car.id}/add-to-garage`, {}, { headers });
-      toast.success('Авто добавлено в гараж!');
+      const response = await axios.post(`${API}/api/catalog/${car.id}/add-to-garage`, {}, { headers });
+      toast.success(
+        <div className="flex flex-col gap-2">
+          <span>Авто добавлено в гараж!</span>
+          <Button 
+            size="sm" 
+            onClick={() => navigate('/dashboard/garage')}
+            className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
+          >
+            <ExternalLink size={14} className="mr-1" />
+            Перейти в гараж
+          </Button>
+        </div>,
+        { duration: 5000 }
+      );
     } catch (error) {
       toast.error('Ошибка при добавлении');
     } finally {
