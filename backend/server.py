@@ -148,9 +148,9 @@ class CarResponse(BaseModel):
     user_id: str
     brand: str
     model: str
-    year: int
-    price_cny: float
-    engine_type: str
+    year: Optional[int] = None
+    price_cny: Optional[float] = 0
+    engine_type: Optional[str] = "ice"
     engine_volume: Optional[int] = None
     mileage: Optional[int] = None
     image_url: Optional[str] = None
@@ -160,8 +160,8 @@ class CarResponse(BaseModel):
     calculated_price_byn: Optional[float] = None
     contractors: Optional[dict] = None
     notes: Optional[str] = None
-    status: str
-    created_at: str
+    status: Optional[str] = "saved"
+    created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
 class TenderCreate(BaseModel):
