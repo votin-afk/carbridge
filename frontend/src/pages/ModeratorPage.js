@@ -984,6 +984,7 @@ const ModeratorPage = () => {
                         </Button>
                         <Button
                           variant="outline"
+                          onClick={() => openStageDetails(item)}
                           className="border-slate-500 text-slate-400"
                         >
                           <Eye size={16} className="mr-2" />
