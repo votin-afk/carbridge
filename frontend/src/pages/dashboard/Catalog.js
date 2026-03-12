@@ -41,6 +41,7 @@ const getProxiedImageUrl = (url) => {
 
 const DashboardCatalog = () => {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [cars, setCars] = useState([]);
   const [brands, setBrands] = useState([]);
   const [models, setModels] = useState([]);
