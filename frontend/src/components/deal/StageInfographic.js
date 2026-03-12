@@ -179,6 +179,22 @@ const StageInfographic = ({ deal, token, onRefresh }) => {
     }
   };
 
+  const completeStage = async () => {
+    if (!selectedStage) return;
+    
+    setCompleting(true);
+    try {
+      await axios.post(`${API}/deals/${deal.id}/stages/${selectedStage}/complete`, {}, { headers });
+      toast.success('Этап отправлен на проверку модератору');
+      setSelectedStage(null);
+      onRefresh?.();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка завершения этапа');
+    } finally {
+      setCompleting(false);
+    }
+  };
+
   const getStageStatus = (stageKey) => {
     const stageData = deal?.stages?.[stageKey];
     if (!stageData) return 'pending';
@@ -188,6 +204,17 @@ const StageInfographic = ({ deal, token, onRefresh }) => {
   const getStageContractor = (stageKey) => {
     const stageData = deal?.stages?.[stageKey];
     return stageData?.contractor_name || null;
+  };
+
+  const canCompleteStage = (stageKey) => {
+    const stageData = deal?.stages?.[stageKey];
+    if (!stageData) return false;
+    // Can complete if contractor assigned and not already completed/pending_review
+    return stageData.contractor_id && 
+           stageData.status !== 'completed' && 
+           stageData.status !== 'paid' &&
+           stageData.status !== 'pending_review' &&
+           stageData.status !== 'skipped';
   };
 
   const getStatusColor = (status) => {
