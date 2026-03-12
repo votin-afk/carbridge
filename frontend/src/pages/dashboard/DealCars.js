@@ -1573,18 +1573,11 @@ const DealCard = ({
                         )}
                         <Button
                           size="sm"
-                          onClick={() => onOpenContractor(deal.id, stage.key)}
+                          onClick={() => onOpenLeasing(deal.id)}
                           className="bg-purple-500 hover:bg-purple-600 text-white"
                         >
-                          Выбрать лизинговую компанию
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => onOpenLeasing(deal.id)}
-                          className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
-                        >
                           <Calculator size={16} className="mr-1" />
-                          Калькулятор
+                          Калькулятор лизинга
                         </Button>
                       </>
                     )}
