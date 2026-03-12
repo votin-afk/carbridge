@@ -1805,17 +1805,21 @@ async def add_car_to_deal(data: dict, current_user: dict = Depends(get_current_u
             offer = await db.tender_offers.find_one({"id": tender_offer_id})
         
         if offer:
-            # Create car info from offer data
+            # Get tender to extract car_request info (brand, model)
+            tender = await db.tenders.find_one({"id": tender_id or offer.get("tender_id")})
+            car_request = tender.get("car_request", {}) if tender else {}
+            
+            # Create car info from offer data + tender car_request
             car = {
                 "id": str(uuid.uuid4()),
                 "user_id": current_user["id"],
-                "brand": offer.get("car_brand", offer.get("brand", "N/A")),
-                "model": offer.get("car_model", offer.get("model", "")),
-                "year": offer.get("car_year", offer.get("year")),
+                "brand": offer.get("car_brand") or car_request.get("brand", "N/A"),
+                "model": offer.get("car_model") or car_request.get("model", ""),
+                "year": offer.get("car_year") or car_request.get("year_to") or car_request.get("year_from"),
                 "price_cny": offer.get("price_cny", 0),
                 "price_usd": offer.get("price_usd", 0),
                 "calculated_price_usd": offer.get("price_usd", 0),
-                "engine_type": offer.get("engine_type", "ice"),
+                "engine_type": offer.get("engine_type") or car_request.get("engine_type", "ice"),
                 "engine_volume": offer.get("engine_volume"),
                 "mileage": offer.get("mileage"),
                 "image_url": offer.get("car_photos", [""])[0] if offer.get("car_photos") else offer.get("image_url", ""),
@@ -1829,7 +1833,7 @@ async def add_car_to_deal(data: dict, current_user: dict = Depends(get_current_u
             # Save to garage
             await db.garage.insert_one(car)
             car_id = car["id"]
-            logger.info(f"Created garage entry from tender offer: {car_id}")
+            logger.info(f"Created garage entry from tender offer: {car_id}, brand={car['brand']}, model={car['model']}")
     
     # If still no car, try to get from tender's car_info
     if not car and from_tender and tender_id:
