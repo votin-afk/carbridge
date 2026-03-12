@@ -2017,7 +2017,7 @@ async def select_contractor_for_stage(deal_id: str, data: dict, current_user: di
         raise HTTPException(status_code=404, detail="Сделка не найдена")
     
     # Allowed stages for contractor selection
-    allowed_stages = ["inspection", "export", "logistics_china", "insurance", "delivery_rb", "customs"]
+    allowed_stages = ["leasing", "inspection", "export", "logistics_china", "insurance", "delivery_rb", "customs"]
     if stage not in allowed_stages:
         raise HTTPException(status_code=400, detail="Неверный этап")
     
