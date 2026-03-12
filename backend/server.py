@@ -2958,6 +2958,374 @@ async def get_contractor_deals(current_user: dict = Depends(get_current_contract
     
     return my_deals
 
+# ==================== STAGE-SPECIFIC MESSAGES API ====================
+
+@api_router.get("/deals/{deal_id}/stages/{stage_key}/messages")
+async def get_stage_messages(deal_id: str, stage_key: str, current_user: dict = Depends(get_current_user)):
+    """Get messages for a specific stage of a deal"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    if deal.get("user_id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
+    
+    # Get messages for this stage
+    messages = await db.deal_messages.find(
+        {"deal_id": deal_id, "stage_key": stage_key},
+        {"_id": 0}
+    ).sort("created_at", 1).to_list(500)
+    
+    # Mark messages as read by client
+    await db.deal_messages.update_many(
+        {"deal_id": deal_id, "stage_key": stage_key, "sender_type": "contractor"},
+        {"$set": {"read_by_client": True}}
+    )
+    
+    return messages
+
+@api_router.post("/deals/{deal_id}/stages/{stage_key}/messages")
+async def send_stage_message(deal_id: str, stage_key: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Send a message in a stage-specific chat"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    if deal.get("user_id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
+    
+    # Get stage contractor info
+    stage_data = deal.get("stages", {}).get(stage_key, {})
+    contractor_id = stage_data.get("contractor_id")
+    
+    message_id = str(uuid.uuid4())
+    message = {
+        "id": message_id,
+        "deal_id": deal_id,
+        "stage_key": stage_key,
+        "sender_id": current_user["id"],
+        "sender_name": current_user.get("name", current_user.get("email", "Клиент")),
+        "sender_type": "client",
+        "recipient_contractor_id": contractor_id,
+        "content": data.get("content", ""),
+        "file_ids": data.get("file_ids", []),
+        "read_by_client": True,
+        "read_by_contractor": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.deal_messages.insert_one(message)
+    
+    # Create notification for contractor
+    if contractor_id:
+        await db.contractor_notifications.insert_one({
+            "id": str(uuid.uuid4()),
+            "contractor_id": contractor_id,
+            "type": "new_message",
+            "title": "Новое сообщение",
+            "message": f"Новое сообщение от клиента по сделке",
+            "deal_id": deal_id,
+            "stage_key": stage_key,
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    
+    return {"message": "Сообщение отправлено", "id": message_id}
+
+@api_router.get("/deals/{deal_id}/stages/{stage_key}/files")
+async def get_stage_files(deal_id: str, stage_key: str, current_user: dict = Depends(get_current_user)):
+    """Get files for a specific stage of a deal"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    if deal.get("user_id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
+    
+    files = await db.deal_files.find(
+        {"deal_id": deal_id, "stage_key": stage_key},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return files
+
+@api_router.post("/deals/{deal_id}/stages/{stage_key}/files")
+async def upload_stage_file(
+    deal_id: str,
+    stage_key: str,
+    file: UploadFile = File(...),
+    description: str = Form(""),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload a file to a specific stage"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    if deal.get("user_id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
+    
+    file_content = await file.read()
+    if len(file_content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="Файл слишком большой (макс. 50MB)")
+    
+    file_id = str(uuid.uuid4())
+    original_name = file.filename
+    file_ext = original_name.split('.')[-1] if '.' in original_name else ''
+    saved_name = f"{file_id}.{file_ext}" if file_ext else file_id
+    
+    # Determine category
+    mime_type = file.content_type or "application/octet-stream"
+    category = "document"
+    if mime_type.startswith("image/"):
+        category = "photo"
+    elif mime_type.startswith("video/"):
+        category = "video"
+    
+    # Save file
+    deal_dir = UPLOADS_DIR / deal_id
+    deal_dir.mkdir(parents=True, exist_ok=True)
+    file_path = deal_dir / saved_name
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+    
+    file_doc = {
+        "id": file_id,
+        "deal_id": deal_id,
+        "stage_key": stage_key,
+        "original_name": original_name,
+        "saved_name": saved_name,
+        "mime_type": mime_type,
+        "size": len(file_content),
+        "category": category,
+        "description": description,
+        "uploader_id": current_user["id"],
+        "uploader_name": current_user.get("name", "Клиент"),
+        "uploader_type": "client",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.deal_files.insert_one(file_doc)
+    
+    return {"message": "Файл загружен", "file_id": file_id}
+
+# Contractor stage-specific endpoints
+@api_router.get("/contractor/deals/{deal_id}/stages/{stage_key}/messages")
+async def get_contractor_stage_messages(deal_id: str, stage_key: str, current_user: dict = Depends(get_current_contractor)):
+    """Get messages for a specific stage (contractor view) - only for their assigned stages"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # Check if contractor is assigned to this specific stage
+    stage_data = deal.get("stages", {}).get(stage_key, {})
+    if stage_data.get("contractor_id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Вы не назначены на этот этап")
+    
+    messages = await db.deal_messages.find(
+        {"deal_id": deal_id, "stage_key": stage_key},
+        {"_id": 0}
+    ).sort("created_at", 1).to_list(500)
+    
+    # Mark messages as read by contractor
+    await db.deal_messages.update_many(
+        {"deal_id": deal_id, "stage_key": stage_key, "sender_type": "client"},
+        {"$set": {"read_by_contractor": True}}
+    )
+    
+    return messages
+
+@api_router.post("/contractor/deals/{deal_id}/stages/{stage_key}/messages")
+async def send_contractor_stage_message(deal_id: str, stage_key: str, data: dict, current_user: dict = Depends(get_current_contractor)):
+    """Send a message in a stage-specific chat (contractor) - only for their assigned stages"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # Check if contractor is assigned to this specific stage
+    stage_data = deal.get("stages", {}).get(stage_key, {})
+    if stage_data.get("contractor_id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Вы не назначены на этот этап")
+    
+    client_id = deal.get("user_id")
+    
+    message_id = str(uuid.uuid4())
+    message = {
+        "id": message_id,
+        "deal_id": deal_id,
+        "stage_key": stage_key,
+        "sender_id": current_user["id"],
+        "sender_name": current_user.get("company_name", "Подрядчик"),
+        "sender_type": "contractor",
+        "recipient_client_id": client_id,
+        "content": data.get("content", ""),
+        "file_ids": data.get("file_ids", []),
+        "read_by_client": False,
+        "read_by_contractor": True,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.deal_messages.insert_one(message)
+    
+    # Create notification for client
+    if client_id:
+        await db.user_notifications.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": client_id,
+            "type": "new_message",
+            "title": "Новое сообщение от подрядчика",
+            "message": f"Сообщение по этапу сделки",
+            "deal_id": deal_id,
+            "stage_key": stage_key,
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    
+    return {"message": "Сообщение отправлено", "id": message_id}
+
+@api_router.post("/contractor/deals/{deal_id}/stages/{stage_key}/files")
+async def upload_contractor_stage_file(
+    deal_id: str,
+    stage_key: str,
+    file: UploadFile = File(...),
+    description: str = Form(""),
+    current_user: dict = Depends(get_current_contractor)
+):
+    """Upload a file to a specific stage (contractor) - only for their assigned stages"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # Check if contractor is assigned to this specific stage
+    stage_data = deal.get("stages", {}).get(stage_key, {})
+    if stage_data.get("contractor_id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Вы не назначены на этот этап")
+    
+    file_content = await file.read()
+    if len(file_content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="Файл слишком большой (макс. 50MB)")
+    
+    file_id = str(uuid.uuid4())
+    original_name = file.filename
+    file_ext = original_name.split('.')[-1] if '.' in original_name else ''
+    saved_name = f"{file_id}.{file_ext}" if file_ext else file_id
+    
+    # Determine category
+    mime_type = file.content_type or "application/octet-stream"
+    category = "document"
+    if mime_type.startswith("image/"):
+        category = "photo"
+    elif mime_type.startswith("video/"):
+        category = "video"
+    
+    # Save file
+    deal_dir = UPLOADS_DIR / deal_id
+    deal_dir.mkdir(parents=True, exist_ok=True)
+    file_path = deal_dir / saved_name
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+    
+    file_doc = {
+        "id": file_id,
+        "deal_id": deal_id,
+        "stage_key": stage_key,
+        "original_name": original_name,
+        "saved_name": saved_name,
+        "mime_type": mime_type,
+        "size": len(file_content),
+        "category": category,
+        "description": description,
+        "uploader_id": current_user["id"],
+        "uploader_name": current_user.get("company_name", "Подрядчик"),
+        "uploader_type": "contractor",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.deal_files.insert_one(file_doc)
+    
+    return {"message": "Файл загружен", "file_id": file_id}
+
+# Get contractor's assigned stages for a deal
+@api_router.get("/contractor/deals/{deal_id}/my-stages")
+async def get_contractor_my_stages(deal_id: str, current_user: dict = Depends(get_current_contractor)):
+    """Get stages assigned to the current contractor for a specific deal"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    my_stages = []
+    stages = deal.get("stages", {})
+    for stage_key, stage_data in stages.items():
+        if stage_data.get("contractor_id") == current_user["id"]:
+            my_stages.append({
+                "stage_key": stage_key,
+                "status": stage_data.get("status", "pending"),
+                "price": stage_data.get("price"),
+                "assigned_at": stage_data.get("assigned_at")
+            })
+    
+    return my_stages
+
+# Get unread message counts
+@api_router.get("/deals/{deal_id}/unread-counts")
+async def get_deal_unread_counts(deal_id: str, current_user: dict = Depends(get_current_user)):
+    """Get unread message counts per stage for a deal"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    if deal.get("user_id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
+    
+    # Count unread messages per stage from contractors
+    pipeline = [
+        {"$match": {"deal_id": deal_id, "sender_type": "contractor", "read_by_client": {"$ne": True}}},
+        {"$group": {"_id": "$stage_key", "count": {"$sum": 1}}}
+    ]
+    
+    results = await db.deal_messages.aggregate(pipeline).to_list(100)
+    
+    unread_counts = {}
+    for r in results:
+        if r["_id"]:
+            unread_counts[r["_id"]] = r["count"]
+    
+    return unread_counts
+
+@api_router.get("/contractor/deals/{deal_id}/unread-counts")
+async def get_contractor_deal_unread_counts(deal_id: str, current_user: dict = Depends(get_current_contractor)):
+    """Get unread message counts per stage for contractor"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    # Get contractor's stages
+    my_stage_keys = []
+    stages = deal.get("stages", {})
+    for stage_key, stage_data in stages.items():
+        if stage_data.get("contractor_id") == current_user["id"]:
+            my_stage_keys.append(stage_key)
+    
+    if not my_stage_keys:
+        return {}
+    
+    # Count unread messages from client
+    pipeline = [
+        {"$match": {"deal_id": deal_id, "stage_key": {"$in": my_stage_keys}, "sender_type": "client", "read_by_contractor": {"$ne": True}}},
+        {"$group": {"_id": "$stage_key", "count": {"$sum": 1}}}
+    ]
+    
+    results = await db.deal_messages.aggregate(pipeline).to_list(100)
+    
+    unread_counts = {}
+    for r in results:
+        if r["_id"]:
+            unread_counts[r["_id"]] = r["count"]
+    
+    return unread_counts
+
+# ==================== END STAGE-SPECIFIC MESSAGES API ====================
+
 # ==================== END DEAL MESSAGES & FILES API ====================
 
 @api_router.delete("/deals/{deal_id}")
