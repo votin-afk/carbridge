@@ -1414,6 +1414,28 @@ const DealCard = ({
                         <span className="text-purple-300 text-xs ml-2">— готово к оплате</span>
                       </p>
                     )}
+                    {status === 'pending_moderation' && stageData?.contractor_name && (
+                      <div className="space-y-1">
+                        <p className="text-amber-400 text-sm">
+                          {stageData.contractor_name} • ${stageData.price || 'цена не указана'}
+                        </p>
+                        <p className="text-amber-300 text-xs flex items-center gap-1">
+                          <Clock size={12} />
+                          Ожидает проверки модератора
+                        </p>
+                      </div>
+                    )}
+                    {status === 'approved' && stageData?.contractor_name && (
+                      <div className="space-y-1">
+                        <p className="text-emerald-400 text-sm">
+                          {stageData.contractor_name} • ${stageData.price}
+                        </p>
+                        <p className="text-emerald-300 text-xs flex items-center gap-1">
+                          <CheckCircle2 size={12} />
+                          Одобрено модератором — готово к оплате
+                        </p>
+                      </div>
+                    )}
                     {status === 'contractor_selected' && stageData?.price && !isLocked && (
                       <p className="text-amber-400 text-sm">Подрядчик выбран • ${stageData.price}</p>
                     )}
