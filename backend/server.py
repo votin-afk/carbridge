@@ -1515,7 +1515,7 @@ async def verify_document(doc_id: str, data: dict, current_user: dict = Depends(
 @api_router.get("/moderator/deals/pending-stages")
 async def get_deals_pending_moderation_early(current_user: dict = Depends(require_role(["admin", "moderator"]))):
     """Get all deals with stages awaiting moderator confirmation"""
-    # Find all deals with locked stages that are not yet confirmed
+    # Find all deals with stages awaiting approval
     deals = await db.deals.find({"status": "active"}, {"_id": 0}).to_list(100)
     
     pending = []
@@ -1535,14 +1535,30 @@ async def get_deals_pending_moderation_early(current_user: dict = Depends(requir
         for stage_key, stage_data in stages.items():
             if not isinstance(stage_data, dict):
                 continue
+            
+            # Check for stages needing moderation:
+            # 1. Locked stages from tender offer that aren't confirmed yet
+            # 2. Stages with awaiting_approval flag (manually selected contractor)
+            needs_moderation = False
+            
             if stage_data.get("locked") and not stage_data.get("moderator_confirmed") and not stage_data.get("paid"):
+                needs_moderation = True
+            elif stage_data.get("awaiting_approval") and not stage_data.get("moderator_approved") and not stage_data.get("paid"):
+                needs_moderation = True
+            elif stage_data.get("status") == "pending_moderation" and not stage_data.get("paid"):
+                needs_moderation = True
+            
+            if needs_moderation and stage_data.get("contractor_id"):
                 pending.append({
                     "deal_id": deal["id"],
                     "car_info": deal.get("car_info", {}),
                     "user": user,
                     "stage_key": stage_key,
+                    "contractor_id": stage_data.get("contractor_id"),
                     "contractor_name": stage_data.get("contractor_name"),
                     "price": stage_data.get("price"),
+                    "is_from_tender": stage_data.get("locked", False),
+                    "assigned_at": stage_data.get("assigned_at"),
                     "created_at": deal.get("created_at")
                 })
     
