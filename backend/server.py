@@ -2943,12 +2943,13 @@ async def get_contractor_deals(current_user: dict = Depends(get_current_contract
         if deal.get("contractor", {}).get("id") == contractor_id:
             is_my_deal = True
         
-        # Check if contractor is assigned to any stage
+        # Check if contractor is assigned to any stage (handle both dict and list)
         stages = deal.get("stages", {})
-        for stage_data in stages.values():
-            if stage_data.get("contractor_id") == contractor_id:
-                is_my_deal = True
-                break
+        if isinstance(stages, dict):
+            for stage_data in stages.values():
+                if isinstance(stage_data, dict) and stage_data.get("contractor_id") == contractor_id:
+                    is_my_deal = True
+                    break
         
         if is_my_deal:
             # Get client info
