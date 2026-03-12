@@ -84,6 +84,7 @@ const Tenders = () => {
       await axios.post(`${API}/deals/add-car`, {
         car_id: tender.car_id,
         from_tender: true,
+        tender_id: tender.id,
         tender_offer_id: tender.selected_offer_id
       }, { headers });
       
