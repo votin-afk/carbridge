@@ -7254,6 +7254,41 @@ async def reject_contractor(contractor_id: str, data: dict, current_user: dict =
     
     return {"message": "Заявка отклонена"}
 
+# ==================== USER/CLIENT NOTIFICATIONS ====================
+
+@api_router.get("/user/notifications")
+async def get_user_notifications(current_user: dict = Depends(get_current_user)):
+    """Get notifications for the current user/client"""
+    notifications = await db.user_notifications.find(
+        {"user_id": current_user["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    unread_count = len([n for n in notifications if not n.get("is_read")])
+    
+    return {
+        "notifications": notifications,
+        "unread_count": unread_count
+    }
+
+@api_router.post("/user/notifications/{notification_id}/read")
+async def mark_user_notification_read(notification_id: str, current_user: dict = Depends(get_current_user)):
+    """Mark user notification as read"""
+    await db.user_notifications.update_one(
+        {"id": notification_id, "user_id": current_user["id"]},
+        {"$set": {"is_read": True, "read_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "Уведомление отмечено как прочитанное"}
+
+@api_router.post("/user/notifications/read-all")
+async def mark_all_user_notifications_read(current_user: dict = Depends(get_current_user)):
+    """Mark all notifications as read"""
+    await db.user_notifications.update_many(
+        {"user_id": current_user["id"], "is_read": False},
+        {"$set": {"is_read": True, "read_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "Все уведомления отмечены как прочитанные"}
+
 # ==================== CONTRACTOR NOTIFICATIONS ====================
 
 @api_router.get("/contractor-notifications")
