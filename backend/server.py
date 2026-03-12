@@ -1876,11 +1876,29 @@ async def add_car_to_deal(data: dict, current_user: dict = Depends(get_current_u
     
     # If from tender with selected offer, pre-fill stages from offer
     if from_tender and tender_offer_id:
+        # Search for offer in multiple places
         offer = await db.contractor_offers.find_one({"id": tender_offer_id})
+        if not offer:
+            offer = await db.tender_offers.find_one({"id": tender_offer_id})
+        
+        # Also check mock offers in tender
+        if not offer and tender_id:
+            tender_doc = await db.tenders.find_one({"id": tender_id})
+            if tender_doc:
+                for mock_offer in tender_doc.get("offers", []):
+                    if mock_offer.get("id") == tender_offer_id:
+                        offer = mock_offer
+                        break
+        
         if offer:
-            contractor = await db.contractors.find_one({"id": offer.get("contractor_id")})
-            contractor_name = contractor.get("company_name") if contractor else "Подрядчик"
             contractor_id = offer.get("contractor_id")
+            contractor_name = offer.get("contractor_name")
+            
+            # Get contractor info from DB if we have contractor_id
+            if contractor_id:
+                contractor = await db.contractors.find_one({"id": contractor_id})
+                if contractor:
+                    contractor_name = contractor.get("company_name", contractor_name)
             
             contractor_info = {
                 "id": contractor_id,
@@ -1892,7 +1910,9 @@ async def add_car_to_deal(data: dict, current_user: dict = Depends(get_current_u
             service_prices = offer.get("service_prices", {})
             services_list = offer.get("services", [])  # New format with array of services
             
-            # Process services from offer and lock those stages
+            logger.info(f"Processing offer services: included={included_services}, prices={service_prices}")
+            
+            # Process services from offer and assign contractor to those stages
             if services_list:
                 # New format: array of {stage, price} objects
                 for svc in services_list:
@@ -1902,16 +1922,20 @@ async def add_car_to_deal(data: dict, current_user: dict = Depends(get_current_u
                         stages[stage_key]["contractor_name"] = contractor_name
                         stages[stage_key]["price"] = float(svc.get("price", 0)) if svc.get("price") else None
                         stages[stage_key]["locked"] = True  # Cannot change contractor
-                        stages[stage_key]["status"] = "assigned"
-            else:
+                        stages[stage_key]["status"] = "contractor_assigned"
+                        stages[stage_key]["assigned_at"] = datetime.now(timezone.utc).isoformat()
+            elif included_services:
                 # Old format: included_services dict
                 for svc_key, is_included in included_services.items():
                     if is_included and svc_key in stages:
+                        price_val = service_prices.get(svc_key)
                         stages[svc_key]["contractor_id"] = contractor_id
                         stages[svc_key]["contractor_name"] = contractor_name
-                        stages[svc_key]["price"] = float(service_prices.get(svc_key, 0)) if service_prices.get(svc_key) else None
-                        stages[svc_key]["locked"] = True  # Cannot change contractor
-                        stages[svc_key]["status"] = "assigned"
+                        stages[svc_key]["price"] = float(price_val) if price_val else None
+                        stages[svc_key]["locked"] = True  # Cannot change contractor - from tender offer
+                        stages[svc_key]["status"] = "contractor_assigned"
+                        stages[svc_key]["assigned_at"] = datetime.now(timezone.utc).isoformat()
+                        logger.info(f"Assigned contractor {contractor_name} to stage {svc_key} with price {price_val}")
             
             # Create document exchange card for this deal
             doc_card = {
