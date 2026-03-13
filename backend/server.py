@@ -2163,6 +2163,22 @@ async def pay_deal_stage(deal_id: str, data: dict, current_user: dict = Depends(
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     
+    # Send Telegram notification to contractor about payment
+    stage_data = deal.get("stages", {}).get(stage, {})
+    contractor_id = stage_data.get("contractor_id")
+    if contractor_id:
+        contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0, "telegram_chat_id": 1, "company_name": 1})
+        if contractor and contractor.get("telegram_chat_id"):
+            car_info = deal.get("car_info", {})
+            car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip() or "Авто"
+            await telegram_service.notify_stage_status_change(
+                contractor["telegram_chat_id"],
+                car_name,
+                stage,
+                "paid",
+                None
+            )
+    
     return {"message": "Оплата прошла успешно", "new_balance": balance - amount}
 
 @api_router.post("/deals/{deal_id}/skip-leasing")
