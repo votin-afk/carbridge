@@ -73,6 +73,7 @@ const CatalogPage = () => {
   // State for excluded brands
   const [excludedBrands, setExcludedBrands] = useState([]);
   const [showExcludeBrands, setShowExcludeBrands] = useState(false);
+  const [brandsInResults, setBrandsInResults] = useState([]);
 
   // Fetch brands on mount
   useEffect(() => {
