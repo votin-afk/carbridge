@@ -8106,6 +8106,18 @@ telegram_pending_verifications = {}
 telegram_message_context = {}
 
 
+async def get_moderator_chat_ids() -> list:
+    """Get list of Telegram chat_ids for all moderators and admins"""
+    moderators = await db.users.find(
+        {
+            "role": {"$in": ["moderator", "admin"]},
+            "telegram_chat_id": {"$exists": True, "$ne": None}
+        },
+        {"_id": 0, "telegram_chat_id": 1}
+    ).to_list(50)
+    return [m["telegram_chat_id"] for m in moderators]
+
+
 async def get_user_active_chats(user_id: str, user_type: str = "user"):
     """Get list of active chats for user/contractor"""
     active_chats = []
