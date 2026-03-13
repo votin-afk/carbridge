@@ -590,10 +590,42 @@ const DashboardCatalog = () => {
         </div>
       ) : hasSearched && cars.length > 0 ? (
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-slate-400">
-              Найдено: <span className="text-white font-semibold">{total.toLocaleString()}</span> автомобилей
-            </p>
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-slate-400">
+                Найдено: <span className="text-white font-semibold">{total.toLocaleString()}</span> автомобилей
+              </p>
+              {excludedBrands.length > 0 && (
+                <button
+                  onClick={() => setExcludedBrands([])}
+                  className="text-sm text-[#00E5FF] hover:text-white transition-colors"
+                >
+                  Сбросить исключения ({excludedBrands.length})
+                </button>
+              )}
+            </div>
+            
+            {/* Brand badges from results */}
+            {brandsInResults.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {brandsInResults.map((brandName) => (
+                  <button
+                    key={brandName}
+                    onClick={() => toggleExcludeBrand(brandName)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      excludedBrands.includes(brandName)
+                        ? 'bg-red-900/40 text-red-400 border border-red-700 line-through opacity-60'
+                        : 'bg-[#1C2128] text-slate-300 border border-[#27272A] hover:border-[#00E5FF] hover:text-[#00E5FF]'
+                    }`}
+                  >
+                    {brandName}
+                    {excludedBrands.includes(brandName) && (
+                      <X size={14} className="inline ml-1" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
