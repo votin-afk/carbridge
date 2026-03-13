@@ -3041,6 +3041,20 @@ async def send_stage_message(deal_id: str, stage_key: str, data: dict, current_u
             "read": False,
             "created_at": datetime.now(timezone.utc).isoformat()
         })
+        
+        # Send Telegram notification to contractor
+        contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0, "telegram_chat_id": 1})
+        if contractor and contractor.get("telegram_chat_id"):
+            car_info = deal.get("car_info", {})
+            car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')}"
+            stage_label = telegram_service.STAGE_LABELS.get(stage_key, stage_key)
+            await telegram_service.notify_new_message(
+                contractor["telegram_chat_id"],
+                current_user.get("name", "Клиент"),
+                car_name,
+                stage_label,
+                data.get("content", "")
+            )
     
     return {"message": "Сообщение отправлено", "id": message_id}
 
