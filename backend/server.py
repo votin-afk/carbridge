@@ -1713,7 +1713,8 @@ async def create_deal(data: dict, current_user: dict = Depends(get_current_user)
             "model": car.get("model"),
             "year": car.get("year"),
             "price_cny": car.get("price_cny"),
-            "calculated_price_usd": car.get("calculated_price_usd")
+            "calculated_price_usd": car.get("calculated_price_usd"),
+            "image_url": car.get("image_url", "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800")
         },
         "status": "active",
         "current_stage": "verification",
