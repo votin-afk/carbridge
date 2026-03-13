@@ -8040,13 +8040,176 @@ import string
 # Store pending telegram verifications (in production, use Redis or DB)
 telegram_pending_verifications = {}
 
+# Store pending message context for two-way messaging
+# Format: {chat_id: {"deal_id": ..., "stage_key": ..., "user_id": ..., "user_type": ...}}
+telegram_message_context = {}
+
+
+async def get_user_active_chats(user_id: str, user_type: str = "user"):
+    """Get list of active chats for user/contractor"""
+    active_chats = []
+    
+    if user_type == "user":
+        # Get user's deals with assigned contractors
+        deals = await db.deals.find({"user_id": user_id}).to_list(50)
+        for deal in deals:
+            car_name = deal.get("car_info", {}).get("brand", "") + " " + deal.get("car_info", {}).get("model", "")
+            stages = deal.get("stages", {})
+            if isinstance(stages, dict):
+                for stage_key, stage_data in stages.items():
+                    if stage_data.get("contractor_id"):
+                        active_chats.append({
+                            "deal_id": deal["id"],
+                            "stage_key": stage_key,
+                            "car_name": car_name.strip() or "Авто",
+                            "contractor_name": stage_data.get("contractor_name", "")
+                        })
+    else:
+        # Get contractor's assigned stages
+        deals = await db.deals.find({}).to_list(100)
+        for deal in deals:
+            car_name = deal.get("car_info", {}).get("brand", "") + " " + deal.get("car_info", {}).get("model", "")
+            stages = deal.get("stages", {})
+            if isinstance(stages, dict):
+                for stage_key, stage_data in stages.items():
+                    if stage_data.get("contractor_id") == user_id:
+                        active_chats.append({
+                            "deal_id": deal["id"],
+                            "stage_key": stage_key,
+                            "car_name": car_name.strip() or "Авто",
+                            "client_id": deal.get("user_id")
+                        })
+    
+    return active_chats
+
+
+async def send_message_to_deal_chat(
+    deal_id: str,
+    stage_key: str,
+    sender_id: str,
+    sender_type: str,
+    sender_name: str,
+    content: str
+):
+    """Send a message to deal stage chat from Telegram"""
+    message_doc = {
+        "id": str(uuid.uuid4()),
+        "deal_id": deal_id,
+        "stage_key": stage_key,
+        "sender_id": sender_id,
+        "sender_name": sender_name,
+        "sender_type": sender_type,
+        "content": content,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "read_by_client": sender_type == "client",
+        "read_by_contractor": sender_type == "contractor",
+        "source": "telegram"
+    }
+    await db.deal_messages.insert_one(message_doc)
+    return message_doc
+
+
 @api_router.post("/telegram/webhook")
 async def telegram_webhook(request: Request):
-    """Webhook for Telegram bot updates"""
+    """Webhook for Telegram bot updates - handles two-way messaging"""
     try:
         data = await request.json()
+        logger.info(f"Telegram webhook received: {data.get('message', {}).get('text', '')[:50] if data.get('message') else 'callback'}")
         
-        # Handle /start command - user initiated conversation
+        # Handle callback queries (button presses)
+        if data.get("callback_query"):
+            callback = data["callback_query"]
+            callback_id = callback.get("id")
+            chat_id = callback.get("message", {}).get("chat", {}).get("id")
+            callback_data = callback.get("data", "")
+            
+            # Parse callback data
+            parts = callback_data.split(":")
+            action = parts[0] if parts else ""
+            
+            if action == "reply" and len(parts) >= 3:
+                # User clicked "Reply" button
+                deal_id = parts[1]
+                stage_key = parts[2]
+                
+                # Find user by chat_id
+                user = await db.users.find_one({"telegram_chat_id": chat_id})
+                contractor = await db.contractors.find_one({"telegram_chat_id": chat_id})
+                
+                if user:
+                    user_id = user["id"]
+                    user_type = "user"
+                    user_name = user.get("name", "Клиент")
+                elif contractor:
+                    user_id = contractor["id"]
+                    user_type = "contractor"
+                    user_name = contractor.get("company_name", "Подрядчик")
+                else:
+                    await telegram_service.answer_callback_query(callback_id, "Аккаунт не привязан")
+                    return {"ok": True}
+                
+                # Get deal info for confirmation
+                deal = await db.deals.find_one({"id": deal_id})
+                car_name = ""
+                if deal:
+                    car_name = deal.get("car_info", {}).get("brand", "") + " " + deal.get("car_info", {}).get("model", "")
+                
+                # Store context for next message
+                telegram_message_context[chat_id] = {
+                    "deal_id": deal_id,
+                    "stage_key": stage_key,
+                    "user_id": user_id,
+                    "user_type": user_type,
+                    "user_name": user_name,
+                    "car_name": car_name.strip() or "Авто"
+                }
+                
+                await telegram_service.answer_callback_query(callback_id, "Напишите ответ")
+                await telegram_service.send_awaiting_message_prompt(chat_id, car_name.strip() or "Авто", stage_key)
+                
+            elif action == "select" and len(parts) >= 3:
+                # User selected a chat from the list
+                deal_id = parts[1]
+                stage_key = parts[2]
+                
+                # Find user by chat_id
+                user = await db.users.find_one({"telegram_chat_id": chat_id})
+                contractor = await db.contractors.find_one({"telegram_chat_id": chat_id})
+                
+                if user:
+                    user_id = user["id"]
+                    user_type = "user"
+                    user_name = user.get("name", "Клиент")
+                elif contractor:
+                    user_id = contractor["id"]
+                    user_type = "contractor"
+                    user_name = contractor.get("company_name", "Подрядчик")
+                else:
+                    await telegram_service.answer_callback_query(callback_id, "Аккаунт не привязан")
+                    return {"ok": True}
+                
+                # Get deal info
+                deal = await db.deals.find_one({"id": deal_id})
+                car_name = ""
+                if deal:
+                    car_name = deal.get("car_info", {}).get("brand", "") + " " + deal.get("car_info", {}).get("model", "")
+                
+                # Store context
+                telegram_message_context[chat_id] = {
+                    "deal_id": deal_id,
+                    "stage_key": stage_key,
+                    "user_id": user_id,
+                    "user_type": user_type,
+                    "user_name": user_name,
+                    "car_name": car_name.strip() or "Авто"
+                }
+                
+                await telegram_service.answer_callback_query(callback_id, "Чат выбран")
+                await telegram_service.send_awaiting_message_prompt(chat_id, car_name.strip() or "Авто", stage_key)
+            
+            return {"ok": True}
+        
+        # Handle regular messages
         if data.get("message"):
             message = data["message"]
             chat_id = message.get("chat", {}).get("id")
@@ -8054,6 +8217,7 @@ async def telegram_webhook(request: Request):
             username = message.get("from", {}).get("username")
             first_name = message.get("from", {}).get("first_name", "")
             
+            # Handle commands
             if text.startswith("/start"):
                 # Check if there's a deep link parameter
                 parts = text.split(" ")
@@ -8092,7 +8256,10 @@ async def telegram_webhook(request: Request):
                     chat_id,
                     f"👋 Привет, {first_name}!\n\n"
                     "Для получения уведомлений привяжите Telegram в личном кабинете на сайте:\n"
-                    "Настройки → Привязать Telegram"
+                    "Настройки → Привязать Telegram\n\n"
+                    "<b>Команды:</b>\n"
+                    "/chats - Показать активные чаты\n"
+                    "/help - Справка"
                 )
             
             elif text.startswith("/help"):
@@ -8100,13 +8267,166 @@ async def telegram_webhook(request: Request):
                     chat_id,
                     "📋 <b>Команды бота:</b>\n\n"
                     "/start - Начать работу с ботом\n"
+                    "/chats - Показать активные чаты\n"
+                    "/cancel - Отменить выбор чата\n"
                     "/help - Показать справку\n\n"
-                    "Для получения уведомлений привяжите Telegram в личном кабинете."
+                    "Вы можете отвечать на уведомления о сообщениях прямо в Telegram."
                 )
+            
+            elif text.startswith("/chats"):
+                # Show list of active chats
+                user = await db.users.find_one({"telegram_chat_id": chat_id})
+                contractor = await db.contractors.find_one({"telegram_chat_id": chat_id})
+                
+                if user:
+                    active_chats = await get_user_active_chats(user["id"], "user")
+                elif contractor:
+                    active_chats = await get_user_active_chats(contractor["id"], "contractor")
+                else:
+                    await telegram_service.send_telegram_message(
+                        chat_id,
+                        "❌ Ваш Telegram не привязан к аккаунту.\n\n"
+                        "Привяжите Telegram в личном кабинете на сайте."
+                    )
+                    return {"ok": True}
+                
+                if active_chats:
+                    await telegram_service.send_chat_selection(chat_id, active_chats)
+                else:
+                    await telegram_service.send_no_active_chats(chat_id)
+            
+            elif text.startswith("/cancel"):
+                # Clear context
+                if chat_id in telegram_message_context:
+                    del telegram_message_context[chat_id]
+                await telegram_service.send_telegram_message(
+                    chat_id,
+                    "✖️ Выбор чата отменён.\n\nИспользуйте /chats для выбора чата."
+                )
+            
+            elif not text.startswith("/"):
+                # Regular message - check if we have context
+                if chat_id in telegram_message_context:
+                    ctx = telegram_message_context[chat_id]
+                    
+                    # Send message to deal chat
+                    await send_message_to_deal_chat(
+                        deal_id=ctx["deal_id"],
+                        stage_key=ctx["stage_key"],
+                        sender_id=ctx["user_id"],
+                        sender_type="client" if ctx["user_type"] == "user" else "contractor",
+                        sender_name=ctx["user_name"],
+                        content=text
+                    )
+                    
+                    # Send confirmation
+                    await telegram_service.send_message_confirmation(
+                        chat_id,
+                        ctx["car_name"],
+                        ctx["stage_key"]
+                    )
+                    
+                    # Notify the other party
+                    deal = await db.deals.find_one({"id": ctx["deal_id"]})
+                    if deal and ctx["user_type"] == "user":
+                        # User sent message, notify contractor
+                        stage_data = deal.get("stages", {}).get(ctx["stage_key"], {})
+                        contractor_id = stage_data.get("contractor_id")
+                        if contractor_id:
+                            contractor = await db.contractors.find_one({"id": contractor_id})
+                            if contractor and contractor.get("telegram_chat_id"):
+                                await telegram_service.notify_new_message(
+                                    contractor["telegram_chat_id"],
+                                    ctx["user_name"],
+                                    ctx["car_name"],
+                                    telegram_service.STAGE_LABELS.get(ctx["stage_key"], ctx["stage_key"]),
+                                    text,
+                                    ctx["deal_id"],
+                                    ctx["stage_key"]
+                                )
+                    elif deal and ctx["user_type"] == "contractor":
+                        # Contractor sent message, notify user
+                        client_id = deal.get("user_id")
+                        if client_id:
+                            client = await db.users.find_one({"id": client_id})
+                            if client and client.get("telegram_chat_id"):
+                                await telegram_service.notify_new_message(
+                                    client["telegram_chat_id"],
+                                    ctx["user_name"],
+                                    ctx["car_name"],
+                                    telegram_service.STAGE_LABELS.get(ctx["stage_key"], ctx["stage_key"]),
+                                    text,
+                                    ctx["deal_id"],
+                                    ctx["stage_key"]
+                                )
+                    
+                    # Keep context for continuous conversation
+                    # Clear only if user explicitly uses /cancel
+                    
+                else:
+                    # No context - show chat selection
+                    user = await db.users.find_one({"telegram_chat_id": chat_id})
+                    contractor = await db.contractors.find_one({"telegram_chat_id": chat_id})
+                    
+                    if user:
+                        active_chats = await get_user_active_chats(user["id"], "user")
+                    elif contractor:
+                        active_chats = await get_user_active_chats(contractor["id"], "contractor")
+                    else:
+                        await telegram_service.send_telegram_message(
+                            chat_id,
+                            "❌ Ваш Telegram не привязан к аккаунту.\n\n"
+                            "Привяжите Telegram в личном кабинете на сайте."
+                        )
+                        return {"ok": True}
+                    
+                    if active_chats:
+                        if len(active_chats) == 1:
+                            # Auto-select single chat
+                            chat = active_chats[0]
+                            user_id = user["id"] if user else contractor["id"]
+                            user_type = "user" if user else "contractor"
+                            user_name = user.get("name", "Клиент") if user else contractor.get("company_name", "Подрядчик")
+                            
+                            telegram_message_context[chat_id] = {
+                                "deal_id": chat["deal_id"],
+                                "stage_key": chat["stage_key"],
+                                "user_id": user_id,
+                                "user_type": user_type,
+                                "user_name": user_name,
+                                "car_name": chat["car_name"]
+                            }
+                            
+                            # Send message directly
+                            await send_message_to_deal_chat(
+                                deal_id=chat["deal_id"],
+                                stage_key=chat["stage_key"],
+                                sender_id=user_id,
+                                sender_type="client" if user_type == "user" else "contractor",
+                                sender_name=user_name,
+                                content=text
+                            )
+                            
+                            await telegram_service.send_message_confirmation(
+                                chat_id,
+                                chat["car_name"],
+                                chat["stage_key"]
+                            )
+                        else:
+                            # Multiple chats - ask user to select
+                            await telegram_service.send_chat_selection(
+                                chat_id,
+                                active_chats,
+                                "Выберите чат для отправки сообщения:"
+                            )
+                    else:
+                        await telegram_service.send_no_active_chats(chat_id)
         
         return {"ok": True}
     except Exception as e:
         logger.error(f"Telegram webhook error: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return {"ok": False}
 
 @api_router.post("/telegram/link")
