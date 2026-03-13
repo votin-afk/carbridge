@@ -468,7 +468,8 @@ async def search_catalog(
                 total=che168_result["total"],
                 page=page,
                 pages=che168_result["pages"],
-                search_links=search_links
+                search_links=search_links,
+                brands_in_results=unique_brands
             )
     except Exception as e:
         logger.error(f"Error fetching from Che168 API: {e}")
