@@ -555,6 +555,70 @@ const CatalogPage = () => {
               </div>
             </div>
 
+            {/* Excluded Brands Section */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-slate-400">Исключить марки</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowExcludeBrands(!showExcludeBrands)}
+                  className="text-[#00E5FF] hover:text-white text-sm"
+                >
+                  {showExcludeBrands ? 'Скрыть' : 'Показать список'}
+                </Button>
+              </div>
+              
+              {/* Excluded brands tags */}
+              {excludedBrands.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {excludedBrands.map(brand => (
+                    <span 
+                      key={brand}
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-red-900/30 text-red-400 border border-red-800 rounded-full text-sm"
+                    >
+                      <X size={12} />
+                      {brand}
+                      <button
+                        onClick={() => removeExcludedBrand(brand)}
+                        className="ml-1 hover:text-red-300"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Brand selection for exclusion */}
+              {showExcludeBrands && (
+                <div className="bg-[#0D1117] border border-[#27272A] rounded-lg p-3 max-h-48 overflow-y-auto">
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                    {brands.slice(0, 50).map((b) => (
+                      <label
+                        key={b.slug || b.name}
+                        className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
+                          excludedBrands.includes(b.name) 
+                            ? 'bg-red-900/30 border border-red-800' 
+                            : 'hover:bg-slate-800 border border-transparent'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={excludedBrands.includes(b.name)}
+                          onChange={() => toggleExcludeBrand(b.name)}
+                          className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-red-500 focus:ring-red-500"
+                        />
+                        <span className={`text-sm ${excludedBrands.includes(b.name) ? 'text-red-400' : 'text-slate-300'}`}>
+                          {b.name}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex justify-end">
               <Button
                 onClick={handleApplyFilters}
