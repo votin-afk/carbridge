@@ -587,3 +587,51 @@ logging.getLogger("passlib.handlers.bcrypt").setLevel(logging.ERROR)
 - **Emergent LLM Key**: Используется для AI чата
 - **MongoDB**: База данных
 - **ReportLab**: Генерация PDF контрактов
+- **Telegram Bot**: Уведомления пользователям
+  - Bot username: `@KARBRIDGE_Bot`
+  - Token: Хранится в `backend/.env`
+  - Webhook: `https://bitrix-car-import.preview.emergentagent.com/api/telegram/webhook`
+
+---
+
+## Исправлено (13.03.2026)
+
+### ✅ Telegram интеграция - ЗАВЕРШЕНО
+**Дата**: 13.03.2026
+
+**Реализовано:**
+- Сервис уведомлений `backend/services/telegram_service.py`
+- Endpoints для привязки/отвязки Telegram:
+  - `POST /api/telegram/link` - генерация ссылки для привязки
+  - `GET /api/telegram/status` - проверка статуса
+  - `POST /api/telegram/test` - тестовое уведомление
+  - `POST /api/telegram/unlink` - отвязка
+  - `POST /api/contractor/telegram/link` - для подрядчиков
+- Webhook для обработки сообщений бота
+- UI компонент `TelegramSettings.js` в dashboard
+
+**Уведомления отправляются при:**
+- Новых сообщениях в чатах сделок
+- Изменении статуса этапов
+- Действиях модератора
+- Новых тендерах (для подрядчиков)
+
+**Тестирование:** ✅ 100% (10/10 backend, все frontend тесты)
+
+### ✅ Исправлен z-index инфографики этапов
+**Дата**: 13.03.2026
+
+**Проблема:** Кнопки этапов в инфографике сделки были сложно кликабельны из-за перекрытия линией соединения.
+
+**Решение:** Добавлен `z-30` на кнопки этапов в `StageInfographic.js`
+
+### ✅ Исправлена загрузка .env для Telegram
+**Дата**: 13.03.2026
+
+**Проблема:** Токен Telegram бота не загружался из .env файла.
+
+**Решение:** 
+1. Исправлен формат .env (токен был склеен с другой переменной)
+2. Добавлен `python-dotenv` в `telegram_service.py`
+3. Обновлён webhook Telegram бота на актуальный URL
+
