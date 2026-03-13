@@ -124,7 +124,7 @@ const CatalogPage = () => {
     // Don't search if no filters are applied
     const hasFilters = filters.query || filters.brand || filters.engine_type || 
                        filters.body_type || filters.min_price || filters.max_price ||
-                       filters.min_year || filters.max_year || filters.model;
+                       filters.min_year || filters.max_year || filters.model || excludedBrands.length > 0;
     
     if (!hasFilters && !hasSearched) {
       setCars([]);
@@ -147,6 +147,7 @@ const CatalogPage = () => {
       if (filters.max_price) params.append('max_price', filters.max_price);
       if (filters.min_year) params.append('min_year', filters.min_year);
       if (filters.max_year) params.append('max_year', filters.max_year);
+      if (excludedBrands.length > 0) params.append('exclude_brands', excludedBrands.join(','));
       params.append('page', filters.page.toString());
       params.append('limit', '12');
 
@@ -161,7 +162,7 @@ const CatalogPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters, hasSearched]);
+  }, [filters, hasSearched, excludedBrands]);
 
   // Only search when page changes (for pagination)
   useEffect(() => {
