@@ -69,6 +69,10 @@ const CatalogPage = () => {
     max_year: searchParams.get('max_year') || '',
     page: parseInt(searchParams.get('page')) || 1
   });
+  
+  // State for excluded brands
+  const [excludedBrands, setExcludedBrands] = useState([]);
+  const [showExcludeBrands, setShowExcludeBrands] = useState(false);
 
   // Fetch brands on mount
   useEffect(() => {
