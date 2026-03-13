@@ -201,6 +201,15 @@ const DashboardLayout = () => {
           <div className="flex-1 lg:flex-none" />
 
           <div className="flex items-center gap-4">
+            {/* Telegram */}
+            <button 
+              onClick={() => setShowTelegramSettings(true)}
+              className="p-2 text-slate-400 hover:text-[#0088cc] transition-colors"
+              title="Telegram уведомления"
+            >
+              <Send size={20} />
+            </button>
+
             {/* Notifications */}
             <div className="relative">
               <button 
