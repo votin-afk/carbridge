@@ -8312,16 +8312,76 @@ async def telegram_webhook(request: Request):
                         await telegram_service.send_welcome_message(chat_id, user_name)
                         return {"ok": True}
                 
-                # Regular /start - show instructions
-                await telegram_service.send_telegram_message(
-                    chat_id,
-                    f"👋 Привет, {first_name}!\n\n"
-                    "Для получения уведомлений привяжите Telegram в личном кабинете на сайте:\n"
-                    "Настройки → Привязать Telegram\n\n"
-                    "<b>Команды:</b>\n"
-                    "/chats - Показать активные чаты\n"
-                    "/help - Справка"
-                )
+                # AUTO-LINK: Try to find user/contractor by Telegram username
+                auto_linked = False
+                if username:
+                    # Normalize username (remove @ if present)
+                    normalized_username = username.lstrip('@').lower()
+                    
+                    # Check if already linked
+                    existing_user = await db.users.find_one({"telegram_chat_id": chat_id})
+                    existing_contractor = await db.contractors.find_one({"telegram_chat_id": chat_id})
+                    
+                    if not existing_user and not existing_contractor:
+                        # Try to find user by telegram username
+                        user = await db.users.find_one({
+                            "$or": [
+                                {"telegram": {"$regex": f"^@?{normalized_username}$", "$options": "i"}},
+                                {"telegram_username": {"$regex": f"^@?{normalized_username}$", "$options": "i"}}
+                            ],
+                            "telegram_chat_id": {"$exists": False}
+                        })
+                        
+                        if user:
+                            await db.users.update_one(
+                                {"id": user["id"]},
+                                {"$set": {"telegram_chat_id": chat_id, "telegram_username": username}}
+                            )
+                            await telegram_service.send_welcome_message(chat_id, user.get("name", first_name))
+                            auto_linked = True
+                            logger.info(f"Auto-linked user {user.get('email')} to Telegram chat {chat_id}")
+                        else:
+                            # Try to find contractor by telegram username
+                            contractor = await db.contractors.find_one({
+                                "$or": [
+                                    {"telegram": {"$regex": f"^@?{normalized_username}$", "$options": "i"}},
+                                    {"telegram_username": {"$regex": f"^@?{normalized_username}$", "$options": "i"}}
+                                ],
+                                "telegram_chat_id": {"$exists": False}
+                            })
+                            
+                            if contractor:
+                                await db.contractors.update_one(
+                                    {"id": contractor["id"]},
+                                    {"$set": {"telegram_chat_id": chat_id, "telegram_username": username}}
+                                )
+                                await telegram_service.send_welcome_message(chat_id, contractor.get("company_name", first_name))
+                                auto_linked = True
+                                logger.info(f"Auto-linked contractor {contractor.get('email')} to Telegram chat {chat_id}")
+                    else:
+                        # Already linked
+                        auto_linked = True
+                        user_name = existing_user.get("name") if existing_user else existing_contractor.get("company_name", first_name)
+                        await telegram_service.send_telegram_message(
+                            chat_id,
+                            f"👋 С возвращением, {user_name}!\n\n"
+                            "Ваш Telegram уже привязан к аккаунту.\n\n"
+                            "<b>Команды:</b>\n"
+                            "/chats - Показать активные чаты\n"
+                            "/help - Справка"
+                        )
+                
+                if not auto_linked:
+                    # Regular /start - show instructions
+                    await telegram_service.send_telegram_message(
+                        chat_id,
+                        f"👋 Привет, {first_name}!\n\n"
+                        "Для получения уведомлений привяжите Telegram в личном кабинете на сайте:\n"
+                        "Настройки → Привязать Telegram\n\n"
+                        "<b>Команды:</b>\n"
+                        "/chats - Показать активные чаты\n"
+                        "/help - Справка"
+                    )
             
             elif text.startswith("/help"):
                 await telegram_service.send_telegram_message(
