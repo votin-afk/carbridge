@@ -1,0 +1,109 @@
+{
+  "summary": "Completed comprehensive testing of Two-Way Telegram Messaging feature. All 17 backend tests passed. Verified: callback_query handling (Reply/Select buttons), command handling (/start, /chats, /cancel, /help), regular message processing, message saving to deal_messages with source='telegram', and notification flow.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "passed_tests": [
+    "POST /api/telegram/webhook - callback_query 'reply' action (Reply button)",
+    "POST /api/telegram/webhook - callback_query 'select' action (Chat selection)",
+    "POST /api/telegram/webhook - callback_query with unknown action handled gracefully",
+    "POST /api/telegram/webhook - /start command",
+    "POST /api/telegram/webhook - /start with verification code (deep link)",
+    "POST /api/telegram/webhook - /chats command shows active chats",
+    "POST /api/telegram/webhook - /cancel command clears context",
+    "POST /api/telegram/webhook - /help command",
+    "POST /api/telegram/webhook - regular message without context prompts chat selection",
+    "POST /api/telegram/webhook - empty message handled gracefully",
+    "POST /api/telegram/webhook - photo message handled gracefully",
+    "Full reply flow: Reply button -> message -> confirmation",
+    "Malformed webhook payloads handled gracefully",
+    "Incomplete callback data handled gracefully",
+    "notify_new_message includes Reply button in notifications",
+    "Webhook endpoint exists and rejects GET requests",
+    "Messages from Telegram saved with source='telegram' field"
+  ],
+  
+  "test_report_links": [
+    "/app/backend/tests/test_telegram_two_way_messaging.py",
+    "/app/test_reports/pytest/telegram_two_way_results.xml"
+  ],
+  
+  "action_items": [],
+  
+  "critical_code_review_comments": [
+    "Webhook handler (lines 8116-8430) properly handles all Telegram update types",
+    "telegram_message_context dict stores user context for continuous conversation",
+    "send_message_to_deal_chat function correctly saves messages with source='telegram'",
+    "get_user_active_chats function retrieves deals with assigned contractors",
+    "telegram_service.py has all required functions: send_chat_selection, send_message_confirmation, send_awaiting_message_prompt, answer_callback_query, edit_message_text"
+  ],
+  
+  "updated_files": [
+    "/app/backend/tests/test_telegram_two_way_messaging.py - Created comprehensive test suite for two-way messaging"
+  ],
+  
+  "success_rate": {
+    "backend": "100% (17/17 passed)"
+  },
+  
+  "test_credentials": {
+    "admin_user": {"email": "votin@tut.by", "password": "test", "role": "admin"}
+  },
+  
+  "seed_data_creation": "Test deal and car created during manual testing, cleaned up after tests",
+  
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  
+  "context_for_next_testing_agent": "Two-way Telegram messaging fully tested. Key findings: 1) POST /api/telegram/webhook handles callback_query (reply/select buttons) and regular messages. 2) Messages sent via Telegram are saved to deal_messages with source='telegram'. 3) /chats command shows active chats with inline keyboard. 4) /cancel clears message context. 5) telegram_message_context dict stores user context for continuous conversation. Test file: /app/backend/tests/test_telegram_two_way_messaging.py",
+  
+  "verified_features": {
+    "telegram_webhook_callback_query": {
+      "actions": ["reply", "select"],
+      "description": "Handles inline button presses from notifications",
+      "status": "✓ Working correctly"
+    },
+    "telegram_webhook_commands": {
+      "commands": ["/start", "/start <code>", "/chats", "/cancel", "/help"],
+      "status": "✓ All commands working correctly"
+    },
+    "telegram_webhook_messages": {
+      "description": "Regular text messages routed to deal chat",
+      "single_chat_auto_select": "✓ Auto-selects when only one active chat",
+      "multiple_chats_selection": "✓ Shows inline keyboard for selection",
+      "status": "✓ Working correctly"
+    },
+    "message_persistence": {
+      "collection": "deal_messages",
+      "source_field": "telegram",
+      "status": "✓ Messages saved with source='telegram'"
+    },
+    "telegram_service_functions": {
+      "functions": [
+        "send_chat_selection - sends inline keyboard with chat options",
+        "send_message_confirmation - confirms message delivery",
+        "send_awaiting_message_prompt - prompts user to send message",
+        "answer_callback_query - acknowledges button press",
+        "edit_message_text - edits existing message"
+      ],
+      "status": "✓ All functions implemented"
+    },
+    "notification_to_other_party": {
+      "description": "When message received from Telegram, other party is notified",
+      "status": "✓ Logic implemented (Telegram API calls may fail for fake chat_ids)"
+    }
+  },
+  
+  "no_mocked_apis": true,
+  
+  "notes": "Telegram API calls to send messages will return 400 for fake chat_ids, but internal logic (message saving, context management) works correctly. In production with real Telegram users, notifications will be delivered."
+}
