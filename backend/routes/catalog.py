@@ -57,6 +57,7 @@ class CatalogSearchResult(BaseModel):
     page: int
     pages: int
     search_links: dict
+    brands_in_results: List[str] = []
 
 
 class CalculatorInput(BaseModel):
