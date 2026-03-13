@@ -132,9 +132,11 @@ async def notify_new_message(
     sender_name: str,
     car_name: str,
     stage_name: str,
-    message_preview: str
+    message_preview: str,
+    deal_id: str = None,
+    stage_key: str = None
 ) -> bool:
-    """Notify user about new message in deal chat"""
+    """Notify user about new message in deal chat with reply button"""
     text = f"""
 💬 <b>Новое сообщение</b>
 
@@ -143,8 +145,22 @@ async def notify_new_message(
 Этап: {stage_name}
 
 <i>{message_preview[:200]}{'...' if len(message_preview) > 200 else ''}</i>
+
+<i>Ответьте на это сообщение, чтобы отправить ответ в чат.</i>
 """
-    return await send_telegram_message(chat_id, text)
+    # Add reply button if deal_id and stage_key provided
+    reply_markup = None
+    if deal_id and stage_key:
+        reply_markup = {
+            "inline_keyboard": [[
+                {
+                    "text": "💬 Ответить",
+                    "callback_data": f"reply:{deal_id}:{stage_key}"
+                }
+            ]]
+        }
+    
+    return await send_telegram_message(chat_id, text, reply_markup=reply_markup)
 
 
 async def notify_stage_status_change(
