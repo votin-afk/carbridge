@@ -216,6 +216,7 @@ const CatalogPage = () => {
       page: 1
     });
     setExcludedBrands([]);
+    setBrandsInResults([]);
     setCars([]);
     setTotal(0);
     setPages(1);
