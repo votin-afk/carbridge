@@ -663,3 +663,40 @@ logging.getLogger("passlib.handlers.bcrypt").setLevel(logging.ERROR)
 1. Исправлен формат .env (токен был склеен с другой переменной)
 2. Добавлен `python-dotenv` в `telegram_service.py`
 3. Обновлён webhook Telegram бота на актуальный URL
+
+
+### ✅ Уведомления модераторам в Telegram - ЗАВЕРШЕНО
+**Дата**: 13.03.2026
+
+**Реализовано:**
+Модераторы получают уведомления в Telegram о:
+- 👤 Новых зарегистрированных пользователях
+- 🏢 Новых заявках подрядчиков (ожидающих одобрения)
+- 🔍 Этапах на проверке (pending_review)
+- 📋 Запросах верификации пользователей
+- 📝 Назначениях подрядчиков (ожидающих одобрения)
+- 🆘 Запросах помощи менеджера ($200)
+- 📄 Новых заявках на подбор авто
+- 📢 Новых тендерах
+
+**Новые функции в telegram_service.py:**
+- `notify_moderators_new_user()` - новый пользователь
+- `notify_moderators_contractor_approval()` - заявка подрядчика
+- `notify_moderators_stage_review()` - этап на проверке
+- `notify_moderators_verification_request()` - верификация
+- `notify_moderators_prepayment_request()` - предоплата
+- `notify_moderators_contractor_assignment()` - назначение подрядчика
+- `notify_moderators_manager_help_request()` - запрос менеджера
+- `notify_moderators_new_application()` - новая заявка
+- `notify_moderators_new_tender()` - новый тендер
+
+**Вспомогательная функция:**
+- `get_moderator_chat_ids()` - получение chat_id всех модераторов/админов
+
+### ✅ Автопривязка Telegram по username
+**Дата**: 13.03.2026
+
+**Реализовано:**
+- При /start в боте автоматически ищется пользователь/подрядчик по @username
+- Если найден — привязывается автоматически
+- Админские endpoints для статистики: `GET /api/admin/telegram/stats`
