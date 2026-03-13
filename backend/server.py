@@ -1105,6 +1105,20 @@ async def register(user: UserCreate):
         except Exception as e:
             logger.error(f"Bitrix24 contact creation error: {e}")
     
+    # Telegram: Notify moderators about new user
+    try:
+        moderator_chat_ids = await get_moderator_chat_ids()
+        if moderator_chat_ids:
+            await telegram_service.notify_moderators_new_user(
+                moderator_chat_ids,
+                full_name,
+                user.email,
+                user.phone or "Не указан",
+                "user"
+            )
+    except Exception as e:
+        logger.error(f"Telegram moderator notification error: {e}")
+    
     return TokenResponse(access_token=token, user=user_response)
 
 @api_router.post("/auth/login", response_model=TokenResponse)
