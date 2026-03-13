@@ -3447,7 +3447,20 @@ async def complete_stage_for_review(deal_id: str, stage_key: str, current_user: 
     
     # Notify moderators (create notification in admin notifications or similar)
     car_info = deal.get("car_info", {})
-    car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')}"
+    car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip() or "Авто"
+    
+    # Send Telegram notification to contractor about pending review
+    contractor_id = stage_data.get("contractor_id")
+    if contractor_id:
+        contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0, "telegram_chat_id": 1})
+        if contractor and contractor.get("telegram_chat_id"):
+            await telegram_service.notify_stage_status_change(
+                contractor["telegram_chat_id"],
+                car_name,
+                stage_key,
+                "pending_review",
+                None
+            )
     
     return {"message": "Этап отправлен на проверку модератору"}
 
