@@ -210,13 +210,24 @@ const LandingPage = () => {
       const response = await axios.post(`${API}/chat`, {
         message: userMessage,
         session_id: sessionId
+      }, {
+        timeout: 60000 // 60 second timeout for AI response
       });
       setSessionId(response.data.session_id);
       setChatMessages(prev => [...prev, { role: 'assistant', content: response.data.response }]);
     } catch (error) {
+      console.error('Chat error:', error);
+      let errorMessage = 'Извините, произошла ошибка. Попробуйте позже или свяжитесь с нами напрямую.';
+      
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Время ожидания истекло. AI обрабатывает ваш запрос дольше обычного. Попробуйте ещё раз.';
+      } else if (error.response?.status === 500) {
+        errorMessage = 'AI-сервис временно недоступен. Вы можете посмотреть каталог авто или создать заявку в личном кабинете.';
+      }
+      
       setChatMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'Извините, произошла ошибка. Попробуйте позже или свяжитесь с нами напрямую.' 
+        content: errorMessage
       }]);
     } finally {
       setChatLoading(false);
