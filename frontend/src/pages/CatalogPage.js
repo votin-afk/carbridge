@@ -209,10 +209,27 @@ const CatalogPage = () => {
       max_year: '',
       page: 1
     });
+    setExcludedBrands([]);
     setCars([]);
     setTotal(0);
     setPages(1);
     setHasSearched(false);
+  };
+
+  // Toggle brand exclusion
+  const toggleExcludeBrand = (brandName) => {
+    setExcludedBrands(prev => {
+      if (prev.includes(brandName)) {
+        return prev.filter(b => b !== brandName);
+      } else {
+        return [...prev, brandName];
+      }
+    });
+  };
+
+  // Remove excluded brand
+  const removeExcludedBrand = (brandName) => {
+    setExcludedBrands(prev => prev.filter(b => b !== brandName));
   };
 
   const handleAddToGarage = async (carId) => {
