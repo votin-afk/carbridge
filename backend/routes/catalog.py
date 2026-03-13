@@ -505,6 +505,9 @@ async def search_catalog(
     
     filtered.sort(key=lambda x: x["popularity"], reverse=True)
     
+    # Extract unique brands from filtered results
+    unique_brands = sorted(list(set(c["brand"] for c in filtered)))
+    
     total = len(filtered)
     pages = (total + limit - 1) // limit
     start = (page - 1) * limit
@@ -518,7 +521,8 @@ async def search_catalog(
         total=total,
         page=page,
         pages=pages,
-        search_links=search_links
+        search_links=search_links,
+        brands_in_results=unique_brands
     )
 
 
