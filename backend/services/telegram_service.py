@@ -1,11 +1,12 @@
 """
 Telegram Notification Service
-Handles sending notifications to users via Telegram bot
+Handles sending notifications and two-way messaging via Telegram bot
 """
 import os
 import httpx
 import asyncio
-from typing import Optional
+import json
+from typing import Optional, List, Dict
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 
@@ -28,25 +29,88 @@ STAGE_LABELS = {
 }
 
 
-async def send_telegram_message(chat_id: int, text: str, parse_mode: str = "HTML") -> bool:
-    """Send a message via Telegram bot"""
+async def send_telegram_message(
+    chat_id: int, 
+    text: str, 
+    parse_mode: str = "HTML",
+    reply_markup: Optional[dict] = None
+) -> bool:
+    """Send a message via Telegram bot with optional inline keyboard"""
     if not TELEGRAM_BOT_TOKEN or not chat_id:
         return False
     
     try:
         async with httpx.AsyncClient() as client:
+            payload = {
+                "chat_id": chat_id,
+                "text": text,
+                "parse_mode": parse_mode
+            }
+            if reply_markup:
+                payload["reply_markup"] = reply_markup
+            
             response = await client.post(
                 f"{TELEGRAM_API_URL}/sendMessage",
-                json={
-                    "chat_id": chat_id,
-                    "text": text,
-                    "parse_mode": parse_mode
-                },
+                json=payload,
                 timeout=10.0
             )
             return response.status_code == 200
     except Exception as e:
         print(f"Telegram send error: {e}")
+        return False
+
+
+async def answer_callback_query(callback_query_id: str, text: str = "") -> bool:
+    """Answer a callback query from inline keyboard"""
+    if not TELEGRAM_BOT_TOKEN:
+        return False
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{TELEGRAM_API_URL}/answerCallbackQuery",
+                json={
+                    "callback_query_id": callback_query_id,
+                    "text": text
+                },
+                timeout=10.0
+            )
+            return response.status_code == 200
+    except Exception as e:
+        print(f"Telegram callback answer error: {e}")
+        return False
+
+
+async def edit_message_text(
+    chat_id: int,
+    message_id: int,
+    text: str,
+    parse_mode: str = "HTML",
+    reply_markup: Optional[dict] = None
+) -> bool:
+    """Edit an existing message"""
+    if not TELEGRAM_BOT_TOKEN:
+        return False
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            payload = {
+                "chat_id": chat_id,
+                "message_id": message_id,
+                "text": text,
+                "parse_mode": parse_mode
+            }
+            if reply_markup:
+                payload["reply_markup"] = reply_markup
+            
+            response = await client.post(
+                f"{TELEGRAM_API_URL}/editMessageText",
+                json=payload,
+                timeout=10.0
+            )
+            return response.status_code == 200
+    except Exception as e:
+        print(f"Telegram edit message error: {e}")
         return False
 
 
