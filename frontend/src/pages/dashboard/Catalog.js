@@ -139,8 +139,13 @@ const DashboardCatalog = () => {
       params.append('limit', '20');
 
       const response = await axios.get(`${API}/api/catalog/search?${params}`);
-      setCars(response.data.cars || []);
-      setTotal(response.data.total || response.data.cars?.length || 0);
+      const carsData = response.data.cars || [];
+      setCars(carsData);
+      setTotal(response.data.total || carsData.length || 0);
+      
+      // Extract unique brands from results for exclusion filter
+      const uniqueBrands = [...new Set(carsData.map(car => car.brand))].sort();
+      setBrandsInResults(uniqueBrands);
     } catch (error) {
       console.error('Error searching cars:', error);
       toast.error('Ошибка поиска');
