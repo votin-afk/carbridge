@@ -153,10 +153,15 @@ const CatalogPage = () => {
       params.append('limit', '12');
 
       const response = await axios.get(`${API}/catalog/search?${params}`);
-      setCars(response.data.cars);
+      const carsData = response.data.cars;
+      setCars(carsData);
       setTotal(response.data.total);
       setPages(response.data.pages);
       setSearchLinks(response.data.search_links);
+      
+      // Extract unique brands from results for exclusion filter
+      const uniqueBrands = [...new Set(carsData.map(car => car.brand))].sort();
+      setBrandsInResults(uniqueBrands);
     } catch (error) {
       console.error('Error searching catalog:', error);
       toast.error('Ошибка при загрузке каталога');
