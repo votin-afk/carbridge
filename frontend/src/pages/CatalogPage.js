@@ -159,9 +159,8 @@ const CatalogPage = () => {
       setPages(response.data.pages);
       setSearchLinks(response.data.search_links);
       
-      // Extract unique brands from results for exclusion filter
-      const uniqueBrands = [...new Set(carsData.map(car => car.brand))].sort();
-      setBrandsInResults(uniqueBrands);
+      // Get brands from API response
+      setBrandsInResults(response.data.brands_in_results || []);
     } catch (error) {
       console.error('Error searching catalog:', error);
       toast.error('Ошибка при загрузке каталога');
