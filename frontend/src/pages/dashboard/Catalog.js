@@ -134,6 +134,7 @@ const DashboardCatalog = () => {
       if (filters.max_year) params.append('max_year', filters.max_year);
       if (filters.min_mileage) params.append('mileage_from', filters.min_mileage);
       if (filters.max_mileage) params.append('mileage_to', filters.max_mileage);
+      if (excludedBrands.length > 0) params.append('exclude_brands', excludedBrands.join(','));
       params.append('limit', '20');
 
       const response = await axios.get(`${API}/api/catalog/search?${params}`);
@@ -145,7 +146,7 @@ const DashboardCatalog = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, excludedBrands]);
 
   const handleSearch = (e) => {
     e.preventDefault();
