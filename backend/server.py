@@ -5701,6 +5701,16 @@ async def confirm_deal_stage(deal_id: str, stage: dict, current_user: dict = Dep
     }
     await db.user_notifications.insert_one(notification)
     
+    # Send Telegram notification to client
+    user = await db.users.find_one({"id": deal["user_id"]}, {"_id": 0, "telegram_chat_id": 1})
+    if user and user.get("telegram_chat_id"):
+        await telegram_service.notify_moderator_action(
+            user["telegram_chat_id"],
+            car_name,
+            stage_key,
+            "approved"
+        )
+    
     return {"message": f"Этап '{stage_key}' подтверждён модератором"}
 
 # Moderator endpoints for viewing stage messages and files
