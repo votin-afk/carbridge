@@ -342,3 +342,96 @@ async def send_welcome_message(chat_id: int, user_name: str) -> bool:
 Чтобы отписаться от уведомлений, измените настройки в личном кабинете.
 """
     return await send_telegram_message(chat_id, text)
+
+
+
+async def send_chat_selection(
+    chat_id: int,
+    active_chats: List[Dict],
+    prompt_text: str = "Выберите чат для отправки сообщения:"
+) -> bool:
+    """Send inline keyboard with active chat selection"""
+    text = f"""
+📋 <b>{prompt_text}</b>
+
+У вас несколько активных чатов. Выберите, куда отправить сообщение:
+"""
+    
+    # Build inline keyboard with chat options
+    keyboard = []
+    for chat in active_chats[:8]:  # Limit to 8 chats
+        car_name = chat.get('car_name', 'Авто')
+        stage_label = STAGE_LABELS.get(chat.get('stage_key', ''), chat.get('stage_key', ''))
+        deal_id = chat.get('deal_id', '')
+        stage_key = chat.get('stage_key', '')
+        
+        keyboard.append([{
+            "text": f"🚗 {car_name} - {stage_label}",
+            "callback_data": f"select:{deal_id}:{stage_key}"
+        }])
+    
+    reply_markup = {"inline_keyboard": keyboard}
+    return await send_telegram_message(chat_id, text, reply_markup=reply_markup)
+
+
+async def send_message_confirmation(
+    chat_id: int,
+    car_name: str,
+    stage_key: str
+) -> bool:
+    """Send confirmation that message was delivered to chat"""
+    stage_label = STAGE_LABELS.get(stage_key, stage_key)
+    text = f"""
+✅ <b>Сообщение отправлено</b>
+
+Ваше сообщение доставлено в чат:
+🚗 {car_name}
+📋 Этап: {stage_label}
+"""
+    return await send_telegram_message(chat_id, text)
+
+
+async def send_awaiting_message_prompt(
+    chat_id: int,
+    car_name: str,
+    stage_key: str
+) -> bool:
+    """Prompt user to send their message for the selected chat"""
+    stage_label = STAGE_LABELS.get(stage_key, stage_key)
+    text = f"""
+📝 <b>Выбран чат:</b>
+
+🚗 {car_name}
+📋 Этап: {stage_label}
+
+Напишите ваше сообщение, и оно будет отправлено в этот чат.
+Или нажмите /cancel для отмены.
+"""
+    return await send_telegram_message(chat_id, text)
+
+
+async def send_no_active_chats(chat_id: int) -> bool:
+    """Inform user they have no active chats"""
+    text = """
+❌ <b>Нет активных чатов</b>
+
+У вас пока нет активных сделок с чатами.
+
+Чтобы начать общение:
+1. Создайте сделку на сайте
+2. Выберите подрядчика для этапа
+3. После этого чат станет доступен
+"""
+    return await send_telegram_message(chat_id, text)
+
+
+async def send_error_message(chat_id: int, error_text: str) -> bool:
+    """Send error message to user"""
+    text = f"""
+⚠️ <b>Ошибка</b>
+
+{error_text}
+
+Попробуйте ещё раз или обратитесь в поддержку.
+"""
+    return await send_telegram_message(chat_id, text)
