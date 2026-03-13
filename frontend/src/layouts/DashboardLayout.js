@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
 import { Button } from '../components/ui/button';
+import TelegramSettings from '../components/TelegramSettings';
 import { 
   LayoutDashboard, 
   Car, 
@@ -24,7 +25,8 @@ import {
   Scale,
   CheckCircle2,
   DollarSign,
-  Clock
+  Clock,
+  Send
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -34,6 +36,7 @@ const DashboardLayout = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showTelegramSettings, setShowTelegramSettings] = useState(false);
   const { user, token, logout } = useAuth();
   const navigate = useNavigate();
 
