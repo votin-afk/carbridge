@@ -280,6 +280,13 @@ const DashboardLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Telegram Settings Dialog */}
+      <TelegramSettings 
+        token={token}
+        isOpen={showTelegramSettings}
+        onClose={() => setShowTelegramSettings(false)}
+      />
     </div>
   );
 };
