@@ -34,6 +34,9 @@ from routes import catalog as catalog_routes
 # Import Bitrix24 service
 from services.bitrix24 import init_bitrix24, get_bitrix24, Bitrix24Service
 
+# Import Telegram service
+from services import telegram_service
+
 # Uploads directory
 UPLOADS_DIR = Path(__file__).parent / "uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)
