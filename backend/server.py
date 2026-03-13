@@ -7983,6 +7983,167 @@ async def get_bitrix24_users(current_user: dict = Depends(require_role(["admin"]
     return result
 
 # Include router and configure app
+# ==================== TELEGRAM INTEGRATION ====================
+
+import random
+import string
+
+# Store pending telegram verifications (in production, use Redis or DB)
+telegram_pending_verifications = {}
+
+@api_router.post("/telegram/webhook")
+async def telegram_webhook(request: Request):
+    """Webhook for Telegram bot updates"""
+    try:
+        data = await request.json()
+        
+        # Handle /start command - user initiated conversation
+        if data.get("message"):
+            message = data["message"]
+            chat_id = message.get("chat", {}).get("id")
+            text = message.get("text", "")
+            username = message.get("from", {}).get("username")
+            first_name = message.get("from", {}).get("first_name", "")
+            
+            if text.startswith("/start"):
+                # Check if there's a deep link parameter
+                parts = text.split(" ")
+                if len(parts) > 1:
+                    verification_code = parts[1]
+                    # Try to verify user
+                    if verification_code in telegram_pending_verifications:
+                        user_id = telegram_pending_verifications[verification_code]["user_id"]
+                        user_type = telegram_pending_verifications[verification_code]["type"]
+                        
+                        # Update user's telegram_chat_id
+                        if user_type == "user":
+                            await db.users.update_one(
+                                {"id": user_id},
+                                {"$set": {"telegram_chat_id": chat_id, "telegram_username": username}}
+                            )
+                            user = await db.users.find_one({"id": user_id})
+                            user_name = user.get("name", first_name) if user else first_name
+                        else:
+                            await db.contractors.update_one(
+                                {"id": user_id},
+                                {"$set": {"telegram_chat_id": chat_id, "telegram_username": username}}
+                            )
+                            contractor = await db.contractors.find_one({"id": user_id})
+                            user_name = contractor.get("company_name", first_name) if contractor else first_name
+                        
+                        # Remove from pending
+                        del telegram_pending_verifications[verification_code]
+                        
+                        # Send welcome message
+                        await telegram_service.send_welcome_message(chat_id, user_name)
+                        return {"ok": True}
+                
+                # Regular /start - show instructions
+                await telegram_service.send_telegram_message(
+                    chat_id,
+                    f"👋 Привет, {first_name}!\n\n"
+                    "Для получения уведомлений привяжите Telegram в личном кабинете на сайте:\n"
+                    "Настройки → Привязать Telegram"
+                )
+            
+            elif text.startswith("/help"):
+                await telegram_service.send_telegram_message(
+                    chat_id,
+                    "📋 <b>Команды бота:</b>\n\n"
+                    "/start - Начать работу с ботом\n"
+                    "/help - Показать справку\n\n"
+                    "Для получения уведомлений привяжите Telegram в личном кабинете."
+                )
+        
+        return {"ok": True}
+    except Exception as e:
+        logger.error(f"Telegram webhook error: {e}")
+        return {"ok": False}
+
+@api_router.post("/telegram/link")
+async def link_telegram(current_user: dict = Depends(get_current_user)):
+    """Generate link for user to connect their Telegram"""
+    # Generate verification code
+    code = ''.join(random.choices(string.ascii_letters + string.digits, k=16))
+    
+    # Store pending verification
+    telegram_pending_verifications[code] = {
+        "user_id": current_user["id"],
+        "type": "user",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Get bot username
+    bot_info = await telegram_service.get_bot_info()
+    bot_username = bot_info.get("result", {}).get("username", "your_bot")
+    
+    return {
+        "link": f"https://t.me/{bot_username}?start={code}",
+        "code": code,
+        "bot_username": bot_username
+    }
+
+@api_router.post("/contractor/telegram/link")
+async def link_contractor_telegram(current_user: dict = Depends(get_current_contractor)):
+    """Generate link for contractor to connect their Telegram"""
+    # Generate verification code
+    code = ''.join(random.choices(string.ascii_letters + string.digits, k=16))
+    
+    # Store pending verification
+    telegram_pending_verifications[code] = {
+        "user_id": current_user["id"],
+        "type": "contractor",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Get bot username
+    bot_info = await telegram_service.get_bot_info()
+    bot_username = bot_info.get("result", {}).get("username", "your_bot")
+    
+    return {
+        "link": f"https://t.me/{bot_username}?start={code}",
+        "code": code,
+        "bot_username": bot_username
+    }
+
+@api_router.get("/telegram/status")
+async def get_telegram_status(current_user: dict = Depends(get_current_user)):
+    """Check if user has linked Telegram"""
+    user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0, "telegram_chat_id": 1, "telegram_username": 1})
+    return {
+        "linked": bool(user.get("telegram_chat_id")),
+        "username": user.get("telegram_username")
+    }
+
+@api_router.post("/telegram/unlink")
+async def unlink_telegram(current_user: dict = Depends(get_current_user)):
+    """Unlink Telegram from user account"""
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$unset": {"telegram_chat_id": "", "telegram_username": ""}}
+    )
+    return {"message": "Telegram отвязан"}
+
+@api_router.post("/telegram/test")
+async def test_telegram_notification(current_user: dict = Depends(get_current_user)):
+    """Send test notification to user's Telegram"""
+    user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0, "telegram_chat_id": 1, "name": 1})
+    
+    if not user.get("telegram_chat_id"):
+        raise HTTPException(status_code=400, detail="Telegram не привязан")
+    
+    success = await telegram_service.send_telegram_message(
+        user["telegram_chat_id"],
+        f"🔔 <b>Тестовое уведомление</b>\n\nПривет, {user.get('name', 'пользователь')}! Уведомления работают корректно."
+    )
+    
+    if success:
+        return {"message": "Тестовое уведомление отправлено"}
+    else:
+        raise HTTPException(status_code=500, detail="Ошибка отправки уведомления")
+
+# ==================== END TELEGRAM INTEGRATION ====================
+
 app.include_router(api_router)
 
 # Include modular routers (new refactored routes)
