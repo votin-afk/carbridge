@@ -3220,7 +3220,9 @@ async def send_contractor_stage_message(deal_id: str, stage_key: str, data: dict
                 current_user.get("company_name", "Подрядчик"),
                 car_name,
                 stage_label,
-                data.get("content", "")
+                data.get("content", ""),
+                deal_id,
+                stage_key
             )
     
     return {"message": "Сообщение отправлено", "id": message_id}
