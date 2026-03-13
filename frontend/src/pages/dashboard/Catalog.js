@@ -54,6 +54,7 @@ const DashboardCatalog = () => {
   // Excluded brands state
   const [excludedBrands, setExcludedBrands] = useState([]);
   const [showExcludeBrands, setShowExcludeBrands] = useState(false);
+  const [brandsInResults, setBrandsInResults] = useState([]);
   
   const [filters, setFilters] = useState({
     query: '',
