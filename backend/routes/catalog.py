@@ -366,10 +366,16 @@ async def search_catalog(
     engine_type: Optional[str] = None,
     body_type: Optional[str] = None,
     query: Optional[str] = None,
+    exclude_brands: Optional[str] = None,
     page: int = 1,
     limit: int = 20
 ):
     """Search cars in catalog with filters - fetches live data from Che168 API"""
+    
+    # Parse excluded brands
+    excluded_brands_list = []
+    if exclude_brands:
+        excluded_brands_list = [b.strip().lower() for b in exclude_brands.split(',') if b.strip()]
     
     # Support both parameter naming conventions
     actual_min_price = min_price or price_from
@@ -394,6 +400,10 @@ async def search_catalog(
         
         if che168_result["cars"]:
             cars = che168_result["cars"]
+            
+            # Apply excluded brands filter
+            if excluded_brands_list:
+                cars = [c for c in cars if c["brand"].lower() not in excluded_brands_list]
             
             # Apply query filter
             if query:
