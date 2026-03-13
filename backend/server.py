@@ -65,12 +65,12 @@ app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 # ==================== PRO-AUCTIONS PARSER CONFIG ====================
-PRO_AUCTIONS_BASE_URL = "https://demo.pro-auctions.ru/china-used/"
+PRO_AUCTIONS_BASE_URL = os.environ.get("PRO_AUCTIONS_BASE_URL", "https://demo.pro-auctions.ru/china-used/")
 CACHE_TTL_SECONDS = 300  # 5 minutes cache
 
 # ==================== CHE168 API CONFIG ====================
-CHE168_API_BASE_URL = "https://api1.auto-api.com/api/v2/che168"
-CHE168_API_KEY = "DQugK90Bo5ci1ZeDP6Wr"
+CHE168_API_BASE_URL = os.environ.get("CHE168_API_BASE_URL", "https://api1.auto-api.com/api/v2/che168")
+CHE168_API_KEY = os.environ.get("CHE168_API_KEY", "DQugK90Bo5ci1ZeDP6Wr")
 
 # Simple in-memory cache
 _cache: Dict[str, Any] = {}
