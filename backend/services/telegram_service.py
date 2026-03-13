@@ -435,3 +435,232 @@ async def send_error_message(chat_id: int, error_text: str) -> bool:
 Попробуйте ещё раз или обратитесь в поддержку.
 """
     return await send_telegram_message(chat_id, text)
+
+
+
+# ==================== MODERATOR NOTIFICATIONS ====================
+
+async def notify_moderators_new_user(
+    moderator_chat_ids: List[int],
+    user_name: str,
+    user_email: str,
+    user_phone: str,
+    user_type: str = "user"
+) -> int:
+    """Notify all moderators about new user registration"""
+    type_label = "Пользователь" if user_type == "user" else "Подрядчик"
+    text = f"""
+👤 <b>Новая регистрация</b>
+
+Тип: {type_label}
+Имя: {user_name}
+Email: {user_email}
+Телефон: {user_phone}
+
+Проверьте в панели модератора.
+"""
+    success_count = 0
+    for chat_id in moderator_chat_ids:
+        if await send_telegram_message(chat_id, text):
+            success_count += 1
+    return success_count
+
+
+async def notify_moderators_stage_review(
+    moderator_chat_ids: List[int],
+    client_name: str,
+    car_name: str,
+    stage_key: str,
+    contractor_name: str,
+    deal_id: str
+) -> int:
+    """Notify moderators about stage pending review"""
+    stage_label = STAGE_LABELS.get(stage_key, stage_key)
+    text = f"""
+🔍 <b>Этап на проверке</b>
+
+Клиент: {client_name}
+Авто: {car_name}
+Этап: {stage_label}
+Подрядчик: {contractor_name}
+
+Требуется проверка и одобрение.
+"""
+    success_count = 0
+    for chat_id in moderator_chat_ids:
+        if await send_telegram_message(chat_id, text):
+            success_count += 1
+    return success_count
+
+
+async def notify_moderators_verification_request(
+    moderator_chat_ids: List[int],
+    user_name: str,
+    user_email: str,
+    user_phone: str
+) -> int:
+    """Notify moderators about user verification request"""
+    text = f"""
+📋 <b>Запрос верификации</b>
+
+Пользователь: {user_name}
+Email: {user_email}
+Телефон: {user_phone}
+
+Проверьте документы и подтвердите верификацию.
+"""
+    success_count = 0
+    for chat_id in moderator_chat_ids:
+        if await send_telegram_message(chat_id, text):
+            success_count += 1
+    return success_count
+
+
+async def notify_moderators_prepayment_request(
+    moderator_chat_ids: List[int],
+    user_name: str,
+    user_email: str,
+    amount: float
+) -> int:
+    """Notify moderators about prepayment confirmation request"""
+    text = f"""
+💰 <b>Запрос подтверждения предоплаты</b>
+
+Пользователь: {user_name}
+Email: {user_email}
+Сумма: ${amount}
+
+Проверьте оплату и подтвердите.
+"""
+    success_count = 0
+    for chat_id in moderator_chat_ids:
+        if await send_telegram_message(chat_id, text):
+            success_count += 1
+    return success_count
+
+
+async def notify_moderators_contractor_approval(
+    moderator_chat_ids: List[int],
+    company_name: str,
+    contractor_type: str,
+    email: str,
+    services: str
+) -> int:
+    """Notify moderators about new contractor pending approval"""
+    text = f"""
+🏢 <b>Новый подрядчик ожидает одобрения</b>
+
+Компания: {company_name}
+Тип: {contractor_type}
+Email: {email}
+Услуги: {services}
+
+Проверьте и одобрите в панели модератора.
+"""
+    success_count = 0
+    for chat_id in moderator_chat_ids:
+        if await send_telegram_message(chat_id, text):
+            success_count += 1
+    return success_count
+
+
+async def notify_moderators_contractor_assignment(
+    moderator_chat_ids: List[int],
+    client_name: str,
+    car_name: str,
+    stage_key: str,
+    contractor_name: str,
+    price: float
+) -> int:
+    """Notify moderators about contractor assignment awaiting approval"""
+    stage_label = STAGE_LABELS.get(stage_key, stage_key)
+    text = f"""
+📝 <b>Назначение подрядчика</b>
+
+Клиент: {client_name}
+Авто: {car_name}
+Этап: {stage_label}
+Подрядчик: {contractor_name}
+Стоимость: ${price}
+
+Требуется одобрение назначения.
+"""
+    success_count = 0
+    for chat_id in moderator_chat_ids:
+        if await send_telegram_message(chat_id, text):
+            success_count += 1
+    return success_count
+
+
+async def notify_moderators_new_tender(
+    moderator_chat_ids: List[int],
+    client_name: str,
+    car_brand: str,
+    car_model: str,
+    budget: str
+) -> int:
+    """Notify moderators about new tender created"""
+    text = f"""
+📢 <b>Новый тендер</b>
+
+Клиент: {client_name}
+Авто: {car_brand} {car_model}
+Бюджет: {budget}
+
+Новый тендер создан в системе.
+"""
+    success_count = 0
+    for chat_id in moderator_chat_ids:
+        if await send_telegram_message(chat_id, text):
+            success_count += 1
+    return success_count
+
+
+async def notify_moderators_new_application(
+    moderator_chat_ids: List[int],
+    client_name: str,
+    car_brand: str,
+    car_model: str,
+    budget: str
+) -> int:
+    """Notify moderators about new application"""
+    text = f"""
+📄 <b>Новая заявка на подбор</b>
+
+Клиент: {client_name}
+Авто: {car_brand} {car_model}
+Бюджет: {budget}
+
+Новая заявка на подбор автомобиля.
+"""
+    success_count = 0
+    for chat_id in moderator_chat_ids:
+        if await send_telegram_message(chat_id, text):
+            success_count += 1
+    return success_count
+
+
+async def notify_moderators_manager_help_request(
+    moderator_chat_ids: List[int],
+    client_name: str,
+    client_email: str,
+    client_phone: str,
+    car_info: str
+) -> int:
+    """Notify moderators about manager help request"""
+    text = f"""
+🆘 <b>Запрос помощи менеджера</b>
+
+Клиент: {client_name}
+Email: {client_email}
+Телефон: {client_phone}
+Авто: {car_info}
+
+Клиент запросил помощь менеджера ($200).
+Свяжитесь с клиентом.
+"""
+    success_count = 0
+    for chat_id in moderator_chat_ids:
+        if await send_telegram_message(chat_id, text):
+            success_count += 1
+    return success_count
