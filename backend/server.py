@@ -3465,16 +3465,35 @@ async def complete_stage_for_review(deal_id: str, stage_key: str, current_user: 
     
     # Send Telegram notification to contractor about pending review
     contractor_id = stage_data.get("contractor_id")
+    contractor_name = stage_data.get("contractor_name", "")
     if contractor_id:
-        contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0, "telegram_chat_id": 1})
-        if contractor and contractor.get("telegram_chat_id"):
-            await telegram_service.notify_stage_status_change(
-                contractor["telegram_chat_id"],
+        contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0, "telegram_chat_id": 1, "company_name": 1})
+        if contractor:
+            contractor_name = contractor.get("company_name", contractor_name)
+            if contractor.get("telegram_chat_id"):
+                await telegram_service.notify_stage_status_change(
+                    contractor["telegram_chat_id"],
+                    car_name,
+                    stage_key,
+                    "pending_review",
+                    None
+                )
+    
+    # Send Telegram notification to moderators
+    try:
+        moderator_chat_ids = await get_moderator_chat_ids()
+        if moderator_chat_ids:
+            client_name = current_user.get("name", "Клиент")
+            await telegram_service.notify_moderators_stage_review(
+                moderator_chat_ids,
+                client_name,
                 car_name,
                 stage_key,
-                "pending_review",
-                None
+                contractor_name,
+                deal_id
             )
+    except Exception as e:
+        logger.error(f"Telegram moderator notification error: {e}")
     
     return {"message": "Этап отправлен на проверку модератору"}
 
