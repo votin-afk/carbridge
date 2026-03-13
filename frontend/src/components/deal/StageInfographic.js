@@ -286,12 +286,12 @@ const StageInfographic = ({ deal, token, onRefresh }) => {
             const isSelected = selectedStage === stage.key;
             
             return (
-              <div key={stage.key} className="relative z-10 flex flex-col items-center">
+              <div key={stage.key} className="relative z-20 flex flex-col items-center">
                 {/* Stage Circle */}
                 <button
                   onClick={() => setSelectedStage(stage.key)}
                   data-testid={`stage-${stage.key}`}
-                  className={`relative w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                  className={`relative z-30 w-14 h-14 rounded-full flex items-center justify-center transition-all cursor-pointer ${
                     isSelected 
                       ? 'bg-[#00E5FF] text-black scale-110 shadow-lg shadow-[#00E5FF]/30' 
                       : status === 'completed' || status === 'paid'
