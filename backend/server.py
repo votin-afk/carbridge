@@ -7446,6 +7446,21 @@ async def start_tender_from_application(application_id: str, current_user: dict 
     
     logger.info(f"Tender {tender_id} created, notifications sent to {len(approved_contractors)} contractors")
     
+    # Telegram: Notify moderators about new tender
+    try:
+        moderator_chat_ids = await get_moderator_chat_ids()
+        if moderator_chat_ids:
+            budget = f"${app.get('budget_min', 0)} - ${app.get('budget_max', 0)}"
+            await telegram_service.notify_moderators_new_tender(
+                moderator_chat_ids,
+                current_user.get("name", "Клиент"),
+                app.get('brand', 'Не указано'),
+                app.get('model', ''),
+                budget
+            )
+    except Exception as e:
+        logger.error(f"Telegram moderator notification error: {e}")
+    
     return {"message": "Тендер запущен", "tender_id": tender_id}
 
 @api_router.post("/applications/{application_id}/select-contractor")
