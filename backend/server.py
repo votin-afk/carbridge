@@ -2076,6 +2076,18 @@ async def select_contractor_for_stage(deal_id: str, data: dict, current_user: di
     }
     await db.notifications.insert_one(notification)
     
+    # Send Telegram notification to contractor
+    if contractor and contractor.get("telegram_chat_id"):
+        car_info = deal.get("car_info", {})
+        car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip() or "Авто"
+        client_name = current_user.get("name", "Клиент")
+        await telegram_service.notify_contractor_assigned(
+            contractor["telegram_chat_id"],
+            car_name,
+            stage,
+            client_name
+        )
+    
     # Bitrix24: Create task for contractor assignment
     b24 = get_bitrix24()
     if b24:
