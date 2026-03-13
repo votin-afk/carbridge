@@ -8632,6 +8632,94 @@ async def test_telegram_notification(current_user: dict = Depends(get_current_us
     else:
         raise HTTPException(status_code=500, detail="Ошибка отправки уведомления")
 
+@api_router.get("/admin/telegram/stats")
+async def get_telegram_stats(current_user: dict = Depends(require_role(["admin"]))):
+    """Get statistics about Telegram connections"""
+    # Count users
+    total_users = await db.users.count_documents({})
+    linked_users = await db.users.count_documents({"telegram_chat_id": {"$exists": True, "$ne": None}})
+    users_with_telegram_field = await db.users.count_documents({"telegram": {"$exists": True, "$ne": None, "$ne": ""}})
+    
+    # Count contractors
+    total_contractors = await db.contractors.count_documents({})
+    linked_contractors = await db.contractors.count_documents({"telegram_chat_id": {"$exists": True, "$ne": None}})
+    contractors_with_telegram_field = await db.contractors.count_documents({"telegram": {"$exists": True, "$ne": None, "$ne": ""}})
+    
+    # Get users with telegram username but not linked
+    unlinked_users = await db.users.find(
+        {"telegram": {"$exists": True, "$ne": None, "$ne": ""}, "telegram_chat_id": {"$exists": False}},
+        {"_id": 0, "id": 1, "name": 1, "email": 1, "telegram": 1}
+    ).to_list(100)
+    
+    unlinked_contractors = await db.contractors.find(
+        {"telegram": {"$exists": True, "$ne": None, "$ne": ""}, "telegram_chat_id": {"$exists": False}},
+        {"_id": 0, "id": 1, "company_name": 1, "email": 1, "telegram": 1}
+    ).to_list(100)
+    
+    return {
+        "users": {
+            "total": total_users,
+            "linked": linked_users,
+            "with_telegram_username": users_with_telegram_field,
+            "unlinked_with_username": len(unlinked_users)
+        },
+        "contractors": {
+            "total": total_contractors,
+            "linked": linked_contractors,
+            "with_telegram_username": contractors_with_telegram_field,
+            "unlinked_with_username": len(unlinked_contractors)
+        },
+        "unlinked_users": unlinked_users,
+        "unlinked_contractors": unlinked_contractors
+    }
+
+@api_router.post("/admin/telegram/send-invites")
+async def send_telegram_invites(current_user: dict = Depends(require_role(["admin"]))):
+    """Send invitation messages to all linked Telegram users to verify their accounts are working"""
+    results = {"users_notified": 0, "contractors_notified": 0, "errors": []}
+    
+    # Get all linked users
+    linked_users = await db.users.find(
+        {"telegram_chat_id": {"$exists": True, "$ne": None}},
+        {"_id": 0, "telegram_chat_id": 1, "name": 1}
+    ).to_list(500)
+    
+    for user in linked_users:
+        try:
+            success = await telegram_service.send_telegram_message(
+                user["telegram_chat_id"],
+                f"👋 Привет, {user.get('name', 'пользователь')}!\n\n"
+                "Это напоминание о том, что ваш Telegram подключен к CarBridge.\n"
+                "Вы будете получать уведомления о сделках и сообщениях.\n\n"
+                "/chats - Показать активные чаты"
+            )
+            if success:
+                results["users_notified"] += 1
+        except Exception as e:
+            results["errors"].append(f"User {user.get('name')}: {str(e)}")
+    
+    # Get all linked contractors
+    linked_contractors = await db.contractors.find(
+        {"telegram_chat_id": {"$exists": True, "$ne": None}},
+        {"_id": 0, "telegram_chat_id": 1, "company_name": 1}
+    ).to_list(500)
+    
+    for contractor in linked_contractors:
+        try:
+            success = await telegram_service.send_telegram_message(
+                contractor["telegram_chat_id"],
+                f"👋 Привет, {contractor.get('company_name', 'подрядчик')}!\n\n"
+                "Это напоминание о том, что ваш Telegram подключен к CarBridge.\n"
+                "Вы будете получать уведомления о тендерах и сообщениях клиентов.\n\n"
+                "/chats - Показать активные чаты"
+            )
+            if success:
+                results["contractors_notified"] += 1
+        except Exception as e:
+            results["errors"].append(f"Contractor {contractor.get('company_name')}: {str(e)}")
+    
+    return results
+
 # ==================== END TELEGRAM INTEGRATION ====================
 
 app.include_router(api_router)
