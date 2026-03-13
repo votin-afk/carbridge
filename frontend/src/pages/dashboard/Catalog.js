@@ -174,6 +174,7 @@ const DashboardCatalog = () => {
       max_mileage: ''
     });
     setExcludedBrands([]);
+    setBrandsInResults([]);
     setCars([]);
     setTotal(0);
     setHasSearched(false);
