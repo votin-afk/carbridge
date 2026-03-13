@@ -6641,6 +6641,19 @@ async def submit_verification(data: ClientVerificationCreate, current_user: dict
         upsert=True
     )
     
+    # Telegram: Notify moderators about verification request
+    try:
+        moderator_chat_ids = await get_moderator_chat_ids()
+        if moderator_chat_ids:
+            await telegram_service.notify_moderators_verification_request(
+                moderator_chat_ids,
+                data.full_name,
+                data.email,
+                data.phone
+            )
+    except Exception as e:
+        logger.error(f"Telegram moderator notification error: {e}")
+    
     return {
         "message": "Данные верификации отправлены",
         "verification_id": verification_id,
