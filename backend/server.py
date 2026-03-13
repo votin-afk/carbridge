@@ -5220,6 +5220,21 @@ async def request_manager_help(car_id: str, current_user: dict = Depends(get_cur
         {"$set": {"manager_help_requested": True, "manager_help_request_id": request_id}}
     )
     
+    # Telegram: Notify moderators about manager help request
+    try:
+        moderator_chat_ids = await get_moderator_chat_ids()
+        if moderator_chat_ids:
+            car_info = f"{car.get('brand', '')} {car.get('model', '')}".strip() or "Авто"
+            await telegram_service.notify_moderators_manager_help_request(
+                moderator_chat_ids,
+                current_user.get("name", "Клиент"),
+                current_user.get("email", ""),
+                current_user.get("phone", ""),
+                car_info
+            )
+    except Exception as e:
+        logger.error(f"Telegram moderator notification error: {e}")
+    
     return {
         "message": "Запрос на помощь менеджера отправлен",
         "request_id": request_id,
