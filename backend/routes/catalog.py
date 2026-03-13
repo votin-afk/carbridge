@@ -429,6 +429,9 @@ async def search_catalog(
             
             search_links = generate_search_links(brand, model, query)
             
+            # Extract unique brands from all results (before pagination filtering)
+            unique_brands = sorted(list(set(c["brand"] for c in cars)))
+            
             cars_for_response = []
             for c in cars:
                 car_dict = {
