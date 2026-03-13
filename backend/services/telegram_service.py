@@ -7,6 +7,10 @@ import httpx
 import asyncio
 from typing import Optional
 from datetime import datetime, timezone
+from dotenv import load_dotenv
+
+# Load .env file
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
