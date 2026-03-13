@@ -7629,6 +7629,21 @@ async def register_contractor(data: ContractorRegister):
     
     await db.contractor_applications.insert_one(contractor_doc)
     
+    # Telegram: Notify moderators about new contractor
+    try:
+        moderator_chat_ids = await get_moderator_chat_ids()
+        if moderator_chat_ids:
+            services_text = ", ".join(data.services) if data.services else "Не указаны"
+            await telegram_service.notify_moderators_contractor_approval(
+                moderator_chat_ids,
+                data.company_name,
+                data.services[0] if data.services else "Не указан",
+                data.email,
+                services_text
+            )
+    except Exception as e:
+        logger.error(f"Telegram moderator notification error: {e}")
+    
     return {
         "message": "Заявка на регистрацию подрядчика отправлена. После одобрения вы сможете войти с указанным паролем.",
         "contractor_id": contractor_id
