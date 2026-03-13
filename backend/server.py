@@ -7250,6 +7250,21 @@ async def create_car_application(data: CarApplicationCreate, current_user: dict 
         except Exception as e:
             logger.error(f"Bitrix24 lead creation error: {e}")
     
+    # Telegram: Notify moderators about new application
+    try:
+        moderator_chat_ids = await get_moderator_chat_ids()
+        if moderator_chat_ids:
+            budget = f"${data.budget_china_from or data.budget_min or 0} - ${data.budget_china_to or data.budget_max or 0}"
+            await telegram_service.notify_moderators_new_application(
+                moderator_chat_ids,
+                data.full_name or current_user.get("name", "Клиент"),
+                data.brand or "Не указано",
+                data.model or "",
+                budget
+            )
+    except Exception as e:
+        logger.error(f"Telegram moderator notification error: {e}")
+    
     return {
         "message": "Заявка успешно создана",
         "application_id": application_id,
