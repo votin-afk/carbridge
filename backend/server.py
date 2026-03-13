@@ -7278,6 +7278,17 @@ async def start_tender_from_application(application_id: str, current_user: dict 
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.notifications.insert_one(notification_doc)
+        
+        # Send Telegram notification to contractor
+        if contractor.get("telegram_chat_id"):
+            await telegram_service.notify_new_tender(
+                contractor["telegram_chat_id"],
+                app.get('brand', 'Авто'),
+                app.get('model', ''),
+                app.get('budget_min'),
+                app.get('budget_max'),
+                app.get('stages', [])
+            )
     
     logger.info(f"Tender {tender_id} created, notifications sent to {len(approved_contractors)} contractors")
     
