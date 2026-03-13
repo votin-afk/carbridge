@@ -2102,6 +2102,23 @@ async def select_contractor_for_stage(deal_id: str, data: dict, current_user: di
             client_name
         )
     
+    # Send Telegram notification to moderators about pending approval
+    try:
+        moderator_chat_ids = await get_moderator_chat_ids()
+        if moderator_chat_ids:
+            car_info = deal.get("car_info", {})
+            car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip() or "Авто"
+            await telegram_service.notify_moderators_contractor_assignment(
+                moderator_chat_ids,
+                current_user.get("name", "Клиент"),
+                car_name,
+                stage,
+                contractor_name,
+                price
+            )
+    except Exception as e:
+        logger.error(f"Telegram moderator notification error: {e}")
+    
     # Bitrix24: Create task for contractor assignment
     b24 = get_bitrix24()
     if b24:
