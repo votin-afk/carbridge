@@ -2005,7 +2005,7 @@ async def add_car_to_deal(data: dict, current_user: dict = Depends(get_current_u
             "year": car.get("year"),
             "price_cny": car.get("price_cny"),
             "price_usd": car.get("calculated_price_usd") or car.get("price_usd"),
-            "image_url": car.get("image_url")
+            "image_url": car.get("image_url") or "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800"
         },
         "status": "active",
         "current_stage": "leasing",
