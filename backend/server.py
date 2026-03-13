@@ -4513,6 +4513,22 @@ async def select_offer(tender_id: str, offer_id: str, current_user: dict = Depen
             {"id": offer_id},
             {"$set": {"status": "accepted"}}
         )
+        
+        # Send Telegram notification to contractor about accepted offer
+        contractor_id = real_offer.get("contractor_id")
+        if contractor_id:
+            contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0, "telegram_chat_id": 1})
+            if contractor and contractor.get("telegram_chat_id"):
+                car_info = tender.get("car_info", {}) or tender.get("car_request", {})
+                car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip() or "Авто"
+                stages = real_offer.get("services", [])
+                client_name = current_user.get("name", "Клиент")
+                await telegram_service.notify_tender_offer_accepted(
+                    contractor["telegram_chat_id"],
+                    car_name,
+                    stages,
+                    client_name
+                )
     
     # Update car status
     if tender.get("car_id"):
