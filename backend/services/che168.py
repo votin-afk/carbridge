@@ -1,18 +1,22 @@
 """Che168 API service for car catalog"""
 import httpx
 import logging
+import os
 from typing import Dict, Any, List, Optional
+from dotenv import load_dotenv
 
 import sys
 sys.path.insert(0, '/app/backend')
+
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
 
 from utils.cache import get_cached, set_cache
 
 logger = logging.getLogger(__name__)
 
-# Che168 API Configuration
-CHE168_API_BASE_URL = "https://api1.auto-api.com/api/v2/che168"
-CHE168_API_KEY = "DQugK90Bo5ci1ZeDP6Wr"
+# Che168 API Configuration - from environment
+CHE168_API_BASE_URL = os.environ.get("CHE168_API_BASE_URL", "https://api1.auto-api.com/api/v2/che168")
+CHE168_API_KEY = os.environ.get("CHE168_API_KEY", "DQugK90Bo5ci1ZeDP6Wr")
 
 
 class Che168API:
