@@ -51,6 +51,10 @@ const DashboardCatalog = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [addingToGarage, setAddingToGarage] = useState(null);
   
+  // Excluded brands state
+  const [excludedBrands, setExcludedBrands] = useState([]);
+  const [showExcludeBrands, setShowExcludeBrands] = useState(false);
+  
   const [filters, setFilters] = useState({
     query: '',
     brand: '',
