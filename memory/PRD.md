@@ -445,7 +445,7 @@ CONSULTANT_FEE = 200    # $200 за помощь консультанта/мен
 
 - **Admin User**: test@test.com / test
 - **Contractor**: Все подрядчики имеют пароль `contractor123`
-- **API URL**: https://bitrix-car-import.preview.emergentagent.com/api
+- **API URL**: https://china-cars-crm.preview.emergentagent.com/api
 
 ---
 
@@ -590,7 +590,35 @@ logging.getLogger("passlib.handlers.bcrypt").setLevel(logging.ERROR)
 - **Telegram Bot**: Уведомления пользователям
   - Bot username: `@KARBRIDGE_Bot`
   - Token: Хранится в `backend/.env`
-  - Webhook: `https://bitrix-car-import.preview.emergentagent.com/api/telegram/webhook`
+  - Webhook: `https://china-cars-crm.preview.emergentagent.com/api/telegram/webhook`
+
+---
+
+## Исправлено (17.03.2026)
+
+### ✅ Загрузка файлов для этапов сделок - ПРОВЕРЕНО
+**Дата**: 17.03.2026
+
+**Статус**: Полностью реализовано и работает
+
+**Бэкенд эндпоинты:**
+- `GET /api/deals/{deal_id}/stages/{stage_key}/files` - получение файлов этапа
+- `POST /api/deals/{deal_id}/stages/{stage_key}/files` - загрузка файла клиентом
+- `POST /api/contractor/deals/{deal_id}/stages/{stage_key}/files` - загрузка файла подрядчиком
+- `GET /api/deals/{deal_id}/files/{file_id}/download` - скачивание файла
+
+**Фронтенд:**
+- Модальное окно этапа (`StageInfographic.js`) с секцией файлов
+- Кнопка "Загрузить" для добавления файлов
+- Отображение списка файлов с иконками по типу (документ/фото/видео)
+- Кнопка скачивания для каждого файла
+
+**Тестирование:** ✅ Протестировано (загрузка, получение, UI)
+
+### ✅ z-index на инфографике этапов - ИСПРАВЛЕН
+**Дата**: 13.03.2026 (подтверждено 17.03.2026)
+
+Кнопки этапов имеют `z-30`, линии соединения - `z-0`. Кнопки кликабельны.
 
 ---
 
