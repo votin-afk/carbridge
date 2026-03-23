@@ -256,3 +256,202 @@ input[type="number"] {
     display: contents !important;
   }
 }
+
+/* ========== HERO BRIDGE ANIMATION ========== */
+
+/* Hero section with deep graphite gradient */
+.hero-bridge-section {
+  position: relative;
+  min-height: 100vh;
+  background: linear-gradient(180deg, 
+    #0a0c0f 0%, 
+    #0d1117 30%, 
+    #111820 60%,
+    #0a0c0f 100%
+  );
+  overflow: hidden;
+}
+
+/* City skyline background */
+.hero-city-bg {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: 
+    linear-gradient(to top, rgba(10, 12, 15, 0.9) 0%, transparent 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 200'%3E%3Crect x='50' y='80' width='30' height='120' fill='%231a1f26'/%3E%3Crect x='90' y='100' width='25' height='100' fill='%23151a20'/%3E%3Crect x='130' y='60' width='40' height='140' fill='%231a1f26'/%3E%3Crect x='180' y='90' width='35' height='110' fill='%23151a20'/%3E%3Crect x='230' y='50' width='50' height='150' fill='%231a1f26'/%3E%3Crect x='300' y='70' width='30' height='130' fill='%23151a20'/%3E%3Crect x='350' y='40' width='60' height='160' fill='%231a1f26'/%3E%3Crect x='430' y='85' width='35' height='115' fill='%23151a20'/%3E%3Crect x='480' y='55' width='45' height='145' fill='%231a1f26'/%3E%3Crect x='540' y='75' width='30' height='125' fill='%23151a20'/%3E%3Crect x='590' y='45' width='55' height='155' fill='%231a1f26'/%3E%3Crect x='660' y='65' width='40' height='135' fill='%23151a20'/%3E%3Crect x='720' y='35' width='65' height='165' fill='%231a1f26'/%3E%3Crect x='800' y='80' width='30' height='120' fill='%23151a20'/%3E%3Crect x='850' y='50' width='50' height='150' fill='%231a1f26'/%3E%3Crect x='920' y='70' width='35' height='130' fill='%23151a20'/%3E%3Crect x='970' y='40' width='55' height='160' fill='%231a1f26'/%3E%3Crect x='1040' y='90' width='30' height='110' fill='%23151a20'/%3E%3Crect x='1090' y='60' width='45' height='140' fill='%231a1f26'/%3E%3Crect x='1150' y='80' width='35' height='120' fill='%23151a20'/%3E%3C/svg%3E");
+  background-size: cover;
+  background-position: bottom center;
+  opacity: 0.6;
+  z-index: 1;
+}
+
+/* Bridge container */
+.hero-bridge-container {
+  position: absolute;
+  bottom: 15%;
+  left: 0;
+  right: 0;
+  height: 200px;
+  z-index: 2;
+}
+
+/* Bridge SVG styling */
+.hero-bridge-svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Animated glow line on the bridge road */
+.bridge-glow-line {
+  stroke: #00E5FF;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 8px #00E5FF) drop-shadow(0 0 20px rgba(0, 229, 255, 0.6));
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;
+  animation: bridgeLineGlow 3s ease-in-out infinite;
+}
+
+@keyframes bridgeLineGlow {
+  0% {
+    stroke-dashoffset: 2000;
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0.3;
+  }
+}
+
+/* Bridge support cables with glow */
+.bridge-cable {
+  stroke: #00E5FF;
+  stroke-width: 1;
+  filter: drop-shadow(0 0 4px #00E5FF);
+  opacity: 0.6;
+}
+
+.bridge-cable-animated {
+  animation: cableGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes cableGlow {
+  0% { opacity: 0.4; }
+  100% { opacity: 0.8; }
+}
+
+/* Car animation on the bridge */
+.hero-car {
+  position: absolute;
+  bottom: 22%;
+  animation: carDrive 8s linear infinite;
+  z-index: 3;
+}
+
+@keyframes carDrive {
+  0% {
+    left: -10%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    left: 110%;
+    opacity: 0;
+  }
+}
+
+/* Car headlight glow */
+.car-headlight {
+  position: absolute;
+  width: 100px;
+  height: 20px;
+  background: linear-gradient(90deg, rgba(0, 229, 255, 0.8), transparent);
+  filter: blur(8px);
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Text highlight for hero */
+.hero-text-glow {
+  text-shadow: 0 0 40px rgba(0, 229, 255, 0.3);
+}
+
+/* Vertical light beams from city */
+.light-beam {
+  position: absolute;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to top, rgba(0, 229, 255, 0.3), transparent);
+  animation: beamPulse 3s ease-in-out infinite;
+}
+
+@keyframes beamPulse {
+  0%, 100% {
+    height: 100px;
+    opacity: 0.3;
+  }
+  50% {
+    height: 200px;
+    opacity: 0.6;
+  }
+}
+
+/* Process step icons styling */
+.process-step-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 2px solid #00E5FF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 229, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.process-step-icon:hover {
+  background: rgba(0, 229, 255, 0.15);
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+}
+
+/* Connecting line between steps */
+.process-connector {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  background: #00E5FF;
+  margin: 0 -10px;
+  opacity: 0.5;
+}
+
+.process-connector::after {
+  content: '';
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 8px solid #00E5FF;
+}
+
+/* Inter font for hero */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+.font-inter {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}

@@ -235,12 +235,13 @@ const LandingPage = () => {
   };
 
   const processSteps = [
-    { num: "01", title: "Подбор", desc: "AI-ассистент помогает определить потребности и подобрать авто", icon: Search },
-    { num: "02", title: "Тендер", desc: "Запрос рассылается верифицированным подрядчикам в Китае", icon: Users },
-    { num: "03", title: "Инспекция", desc: "Видеообзор, фото и профессиональный отчет о состоянии", icon: FileCheck },
-    { num: "04", title: "Оплата", desc: "Безопасная сделка с гарантией возврата средств", icon: Shield },
-    { num: "05", title: "Логистика", desc: "GPS-трекинг и фото/видео отчеты на каждом этапе", icon: Truck },
-    { num: "06", title: "Выдача", desc: "Таможенное оформление и передача авто с документами", icon: CheckCircle2 },
+    { num: "1", title: "Заявка", desc: "Заполните параметры авто", icon: FileCheck },
+    { num: "2", title: "Тендер", desc: "Получайте предложения от подрядчиков", icon: Search },
+    { num: "3", title: "Выбор", desc: "Выбирайте лучшее предложение", icon: Car },
+    { num: "4", title: "Эскроу", desc: "Безопасное хранение средств", icon: Shield },
+    { num: "5", title: "Оплата", desc: "Поэтапная оплата", icon: Shield },
+    { num: "6", title: "Логистика", desc: "GPS-трекинг доставки", icon: Truck },
+    { num: "7", title: "Таможня", desc: "Оформление и выдача", icon: CheckCircle2 },
   ];
 
   const advantages = [
@@ -334,118 +335,178 @@ const LandingPage = () => {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-16 topo-bg overflow-hidden">
+      {/* Hero Section with Bridge Animation */}
+      <section className="hero-bridge-section relative pt-24 pb-16 overflow-hidden" data-testid="hero-section">
+        {/* City skyline background */}
+        <div className="hero-city-bg" />
+        
+        {/* Vertical light beams */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-1">
+          {[10, 25, 40, 55, 70, 85].map((left, i) => (
+            <div 
+              key={i} 
+              className="light-beam" 
+              style={{ 
+                left: `${left}%`, 
+                animationDelay: `${i * 0.5}s`,
+                height: `${100 + i * 20}px`
+              }} 
+            />
+          ))}
+        </div>
+
+        {/* Animated Bridge SVG */}
+        <div className="hero-bridge-container">
+          <svg className="hero-bridge-svg" viewBox="0 0 1200 200" preserveAspectRatio="xMidYMax slice">
+            {/* Bridge towers */}
+            <rect x="200" y="20" width="8" height="180" fill="#1a2030" />
+            <rect x="992" y="20" width="8" height="180" fill="#1a2030" />
+            
+            {/* Main bridge road */}
+            <rect x="0" y="150" width="1200" height="12" fill="#1a2030" />
+            
+            {/* Glowing road line */}
+            <line x1="0" y1="156" x2="1200" y2="156" className="bridge-glow-line" fill="none" />
+            
+            {/* Support cables left tower */}
+            {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+              <line 
+                key={`left-${i}`}
+                x1="204" 
+                y1="30" 
+                x2={50 + i * 25} 
+                y2="150" 
+                className={`bridge-cable ${i % 2 === 0 ? 'bridge-cable-animated' : ''}`}
+                style={{ animationDelay: `${i * 0.2}s` }}
+              />
+            ))}
+            
+            {/* Support cables right tower */}
+            {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+              <line 
+                key={`right-${i}`}
+                x1="996" 
+                y1="30" 
+                x2={1150 - i * 25} 
+                y2="150" 
+                className={`bridge-cable ${i % 2 === 0 ? 'bridge-cable-animated' : ''}`}
+                style={{ animationDelay: `${i * 0.2}s` }}
+              />
+            ))}
+            
+            {/* Middle cables */}
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+              <line 
+                key={`mid-left-${i}`}
+                x1="204" 
+                y1="30" 
+                x2={250 + i * 50} 
+                y2="150" 
+                className="bridge-cable"
+                style={{ opacity: 0.3 + (i * 0.05) }}
+              />
+            ))}
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+              <line 
+                key={`mid-right-${i}`}
+                x1="996" 
+                y1="30" 
+                x2={950 - i * 50} 
+                y2="150" 
+                className="bridge-cable"
+                style={{ opacity: 0.3 + (i * 0.05) }}
+              />
+            ))}
+            
+            {/* Top cable curve */}
+            <path 
+              d="M 200 30 Q 600 -50 1000 30" 
+              fill="none" 
+              stroke="#00E5FF" 
+              strokeWidth="2"
+              opacity="0.5"
+              style={{ filter: 'drop-shadow(0 0 6px #00E5FF)' }}
+            />
+          </svg>
+        </div>
+
+        {/* Animated car */}
+        <div className="hero-car">
+          <div className="relative">
+            <svg width="60" height="25" viewBox="0 0 60 25" fill="none">
+              <path d="M5 20 L10 12 L20 8 L45 8 L55 14 L55 20 Z" fill="#1a2030" stroke="#00E5FF" strokeWidth="1" />
+              <circle cx="15" cy="22" r="4" fill="#1a2030" stroke="#00E5FF" strokeWidth="1" />
+              <circle cx="45" cy="22" r="4" fill="#1a2030" stroke="#00E5FF" strokeWidth="1" />
+              <rect x="52" y="12" width="8" height="4" fill="#00E5FF" opacity="0.8" />
+            </svg>
+            <div className="car-headlight" />
+          </div>
+        </div>
+
+        {/* Hero content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="fade-in">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#00E5FF]/10 border border-[#00E5FF]/20 rounded-full mb-6">
-                <span className="w-2 h-2 bg-[#00E5FF] rounded-full animate-pulse" />
-                <span className="text-[#00E5FF] text-sm font-medium">Импорт авто из Китая</span>
-              </div>
-              
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
-                Ваш прямой мост к автомобилям из{' '}
-                <span className="text-[#00E5FF]">Китая</span>
-              </h1>
-              
-              <p className="text-lg text-slate-400 mb-8 max-w-lg">
-                Прозрачная платформа с тендером среди дилеров. Без скрытых наценок, под контролем AI и модераторов.
-              </p>
+          <div className="text-center pt-16 pb-32 md:pb-48">
+            {/* Main heading */}
+            <h1 className="font-inter font-bold text-[28px] md:text-[48px] lg:text-[56px] text-white leading-tight mb-6 hero-text-glow max-w-4xl mx-auto">
+              Мы не продаём автомобили.{' '}
+              <br className="hidden sm:block" />
+              Мы создаём <span className="text-[#00E5FF]">честные сделки</span>.
+            </h1>
+            
+            {/* Subtitle */}
+            <p className="font-inter font-normal text-[14px] md:text-[18px] text-[#B0B0B0] mb-10 max-w-2xl mx-auto">
+              Первая прозрачная система импорта авто из Китая в Беларусь
+            </p>
 
-              <div className="flex flex-wrap gap-4">
-                <Link to="/catalog">
-                  <Button data-testid="hero-catalog-btn" className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black font-semibold px-8 py-6 rounded-sm btn-glow">
-                    <Car className="mr-2" size={20} />
-                    Каталог авто
-                  </Button>
-                </Link>
-                <a href="#ai-agent">
-                  <Button data-testid="hero-cta-btn" variant="outline" className="border-[#27272A] text-white hover:border-[#00E5FF] hover:text-[#00E5FF] px-8 py-6 rounded-sm">
-                    <Sparkles className="mr-2" size={20} />
-                    AI Подбор
-                  </Button>
-                </a>
-                <Link to="/calculator">
-                  <Button data-testid="hero-calc-btn" variant="outline" className="border-[#27272A] text-white hover:border-[#00E5FF] hover:text-[#00E5FF] px-8 py-6 rounded-sm">
-                    Калькулятор
-                  </Button>
-                </Link>
-              </div>
-
-              <div className="flex items-center gap-8 mt-10 pt-8 border-t border-[#27272A]">
-                <div>
-                  <p className="text-3xl font-bold text-white">500+</p>
-                  <p className="text-slate-500 text-sm">Доставленных авто</p>
-                </div>
-                <div>
-                  <p className="text-3xl font-bold text-white">4.9</p>
-                  <p className="text-slate-500 text-sm">Рейтинг клиентов</p>
-                </div>
-                <div>
-                  <p className="text-3xl font-bold text-white">3%</p>
-                  <p className="text-slate-500 text-sm">Комиссия</p>
-                </div>
-              </div>
+            {/* CTA Buttons */}
+            <div className="flex flex-wrap justify-center gap-4 mb-12">
+              <Link to="/catalog">
+                <Button data-testid="hero-catalog-btn" className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black font-semibold px-8 py-6 rounded-sm btn-glow text-base">
+                  <Car className="mr-2" size={20} />
+                  Каталог авто
+                </Button>
+              </Link>
+              <a href="#ai-agent">
+                <Button data-testid="hero-cta-btn" variant="outline" className="border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 px-8 py-6 rounded-sm text-base">
+                  <Sparkles className="mr-2" size={20} />
+                  AI Подбор
+                </Button>
+              </a>
+              <Link to="/calculator">
+                <Button data-testid="hero-calc-btn" variant="outline" className="border-[#27272A] text-white hover:border-[#00E5FF] hover:text-[#00E5FF] px-8 py-6 rounded-sm text-base">
+                  <Calculator className="mr-2" size={20} />
+                  Калькулятор
+                </Button>
+              </Link>
             </div>
 
-            <div className="relative fade-in fade-in-delay-2">
-              <div className="relative rounded-lg overflow-hidden border border-[#27272A] glow-cyan">
-                {/* Carousel Navigation Arrows */}
-                <button
-                  onClick={prevSlide}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-black/50 hover:bg-[#00E5FF]/30 rounded-full flex items-center justify-center transition-all"
-                  data-testid="carousel-prev"
-                >
-                  <ChevronLeft className="text-white" size={24} />
-                </button>
-                <button
-                  onClick={nextSlide}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-black/50 hover:bg-[#00E5FF]/30 rounded-full flex items-center justify-center transition-all"
-                  data-testid="carousel-next"
-                >
-                  <ChevronRight className="text-white" size={24} />
-                </button>
-
-                {/* Car Image with Fade Animation */}
-                <div className={`transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-                  <img 
-                    src={popularCars[currentCarIndex].image}
-                    alt={popularCars[currentCarIndex].name}
-                    className="w-full h-[400px] object-cover"
-                  />
-                </div>
-                
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0B0F14] via-transparent to-transparent" />
-                
-                {/* Car Info Overlay */}
-                <div className={`absolute bottom-0 left-0 right-0 p-6 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-                  <p className="text-slate-400 text-sm mb-1">Популярный выбор</p>
-                  <p className="text-white text-xl font-semibold mb-2">{popularCars[currentCarIndex].name}</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[#00E5FF] text-2xl font-bold">
-                      ${popularCars[currentCarIndex].priceUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                    <span className="text-slate-500 text-sm">под ключ в Беларуси</span>
-                  </div>
-                </div>
-
-                {/* Dots Navigation */}
-                <div className="absolute bottom-24 left-0 right-0 flex justify-center gap-2 z-20">
-                  {popularCars.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => goToSlide(index)}
-                      data-testid={`carousel-dot-${index}`}
-                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                        index === currentCarIndex 
-                          ? 'bg-[#00E5FF] w-6' 
-                          : 'bg-white/30 hover:bg-white/50'
-                      }`}
-                    />
-                  ))}
-                </div>
+            {/* Stats row */}
+            <div className="flex items-center justify-center gap-8 md:gap-16 pt-8 border-t border-[#27272A]/50 max-w-xl mx-auto">
+              <div className="text-center">
+                <p className="text-2xl md:text-3xl font-bold text-white">500+</p>
+                <p className="text-slate-500 text-xs md:text-sm">Доставленных авто</p>
               </div>
+              <div className="text-center">
+                <p className="text-2xl md:text-3xl font-bold text-white">4.9</p>
+                <p className="text-slate-500 text-xs md:text-sm">Рейтинг клиентов</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl md:text-3xl font-bold text-white">3%</p>
+                <p className="text-slate-500 text-xs md:text-sm">Комиссия</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* "7 steps without risk" badge with animated car */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20">
+          <div className="flex items-center gap-4 bg-[#0d1117]/80 backdrop-blur-sm border border-[#00E5FF]/30 rounded-full px-6 py-3">
+            <span className="text-white font-inter font-medium text-sm md:text-base">7 шагов без риска</span>
+            <div className="w-32 h-1 bg-[#27272A] rounded-full relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-[#00E5FF] to-transparent animate-pulse" style={{ width: '70%' }} />
+            </div>
+            <div className="w-8 h-8 rounded-full border border-[#00E5FF] flex items-center justify-center">
+              <Car size={16} className="text-[#00E5FF]" />
             </div>
           </div>
         </div>
@@ -632,34 +693,58 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Process Section */}
-      <section id="process" className="py-24">
+      {/* Process Section - "Why CarBridge" */}
+      <section id="process" className="py-16 bg-[#0d1117]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">Как это работает</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white">Процесс покупки</h2>
+          <div className="mb-12">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white font-inter">Why CarBridge</h2>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* 7 Steps with connected icons - Desktop */}
+          <div className="hidden lg:flex items-center justify-between mb-8">
             {processSteps.map((step, idx) => (
-              <div 
-                key={idx}
-                className="bg-[#15191E] border border-[#27272A] rounded-sm p-6 card-hover group"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-[#00E5FF]/10 rounded-sm flex items-center justify-center text-[#00E5FF] group-hover:bg-[#00E5FF] group-hover:text-black transition-colors">
-                    <step.icon size={24} />
+              <div key={idx} className="flex items-center">
+                {/* Step icon */}
+                <div className="flex flex-col items-center">
+                  <div className="process-step-icon mb-3">
+                    <step.icon size={28} className="text-[#00E5FF]" />
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[#00E5FF] font-mono text-sm">{step.num}</span>
-                      <h3 className="text-white font-semibold">{step.title}</h3>
-                    </div>
-                    <p className="text-slate-400 text-sm">{step.desc}</p>
-                  </div>
+                  <p className="text-white font-medium text-sm text-center mb-1">{step.num}. {step.title}</p>
+                  <p className="text-slate-500 text-xs text-center max-w-[100px]">{step.desc}</p>
                 </div>
+                
+                {/* Connector arrow */}
+                {idx < processSteps.length - 1 && (
+                  <div className="flex items-center mx-3">
+                    <div className="w-10 h-0.5 bg-[#00E5FF] opacity-50" />
+                    <svg width="10" height="12" viewBox="0 0 10 12" className="text-[#00E5FF] opacity-50">
+                      <path d="M0 0 L10 6 L0 12 Z" fill="currentColor" />
+                    </svg>
+                  </div>
+                )}
               </div>
             ))}
+          </div>
+
+          {/* 7 Steps - Mobile Grid */}
+          <div className="lg:hidden grid grid-cols-2 sm:grid-cols-4 gap-6">
+            {processSteps.map((step, idx) => (
+              <div key={idx} className="flex flex-col items-center text-center">
+                <div className="process-step-icon mb-3">
+                  <step.icon size={24} className="text-[#00E5FF]" />
+                </div>
+                <p className="text-white font-medium text-sm mb-1">{step.num}. {step.title}</p>
+                <p className="text-slate-500 text-xs">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA Link */}
+          <div className="mt-8 pt-6 border-t border-[#27272A]/50">
+            <Link to="/dashboard" className="inline-flex items-center gap-2 text-[#00E5FF] hover:underline text-sm">
+              <div className="w-2 h-2 rounded-full bg-[#00E5FF]" />
+              Посмотреть весь процесс в личном кабинете
+            </Link>
           </div>
         </div>
       </section>
