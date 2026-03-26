@@ -742,3 +742,23 @@ AI-ассистент теперь:
 - `/app/frontend/src/components/deal/StageInfographic.js` — чат без подрядчика, TG индикатор, файлы
 - `/app/frontend/src/components/deal/ContractorMessenger.js` — TG индикатор, файлы
 - `/app/frontend/src/pages/dashboard/Documents.js` — Telegram бейдж, файлы
+
+
+### ✅ Помощь менеджера — назначение и чат
+**Дата**: 26.03.2026
+
+**Реализовано:**
+1. **Клиент**: Кнопка "Создать запрос" во вкладке "Помощь менеджера" (Документы) с описанием проблемы
+2. **Администратор**: Вкладка "Помощь менеджера" в панели модератора — список всех запросов, назначение менеджера из модераторов/админов, чат с клиентом, закрытие запроса
+3. **Чат**: Двусторонний обмен сообщениями между клиентом и назначенным менеджером
+4. **Telegram-уведомления**: При создании запроса, назначении менеджера и новых сообщениях
+
+**API эндпоинты:**
+- `POST /api/help-requests` — создание запроса
+- `GET /api/help-requests` — запросы пользователя
+- `POST /api/help-requests/{id}/messages` — сообщение клиента
+- `GET /api/moderator/help-requests` — все запросы (модератор)
+- `GET /api/moderator/available-managers` — список менеджеров
+- `POST /api/moderator/help-requests/{id}/assign` — назначение менеджера
+- `POST /api/moderator/help-requests/{id}/messages` — сообщение менеджера
+- `POST /api/moderator/help-requests/{id}/close` — закрытие запроса
