@@ -161,29 +161,9 @@ const StageInfographic = ({ deal, token, onRefresh }) => {
     }
   };
 
-  const downloadFile = async (fileId, filename) => {
-    try {
-      const response = await fetch(
-        `${API}/deals/${deal.id}/files/${fileId}/download`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-      if (!response.ok) throw new Error('Download failed');
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = filename || 'file';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }, 1000);
-    } catch (error) {
-      console.error('Download error:', error);
-      toast.error('Ошибка скачивания файла');
-    }
+  const downloadFile = (fileId, filename) => {
+    const url = `${API}/files/${fileId}/public-download?token=${encodeURIComponent(token)}`;
+    window.open(url, '_blank');
   };
 
   const completeStage = async () => {

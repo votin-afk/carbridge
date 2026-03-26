@@ -77,30 +77,15 @@ const statusConfig = {
 };
 
 // Image preview component that loads images with auth headers
-const FileImagePreview = ({ api, dealId, fileId, fileName, headers }) => {
-  const [src, setSrc] = useState(null);
-  useEffect(() => {
-    let revoked = false;
-    (async () => {
-      try {
-        const res = await fetch(`${api}/moderator/deals/${dealId}/files/${fileId}/download`, { headers });
-        if (res.ok) {
-          const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
-          if (!revoked) setSrc(url);
-        }
-      } catch {}
-    })();
-    return () => { revoked = true; if (src) URL.revokeObjectURL(src); };
-  }, [api, dealId, fileId]);
-  
-  if (!src) return <div className="w-16 h-16 bg-[#27272A] rounded flex items-center justify-center"><Loader2 size={14} className="animate-spin text-slate-500" /></div>;
+const FileImagePreview = ({ api, dealId, fileId, fileName, token }) => {
+  const publicUrl = `${api}/files/${fileId}/public-download?token=${encodeURIComponent(token)}`;
   return (
     <img
-      src={src}
+      src={publicUrl}
       alt={fileName}
       className="w-16 h-16 object-cover rounded cursor-pointer border border-[#27272A] hover:border-purple-500 transition-colors"
-      onClick={() => window.open(src, '_blank')}
+      onClick={() => window.open(publicUrl, '_blank')}
+      onError={(e) => { e.target.style.display = 'none'; }}
     />
   );
 };
@@ -347,29 +332,9 @@ const ModeratorPage = () => {
     }
   };
 
-  const downloadStageFile = async (dealId, fileId, filename) => {
-    try {
-      const response = await fetch(
-        `${API}/moderator/deals/${dealId}/files/${fileId}/download`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-      if (!response.ok) throw new Error('Download failed');
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = filename || 'file';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }, 1000);
-    } catch (error) {
-      console.error('Download error:', error);
-      toast.error('Ошибка скачивания файла');
-    }
+  const downloadStageFile = (dealId, fileId, filename) => {
+    const url = `${API}/files/${fileId}/public-download?token=${encodeURIComponent(token)}`;
+    window.open(url, '_blank');
   };
 
   const refreshStageMessages = async () => {
@@ -2199,7 +2164,7 @@ const ModeratorPage = () => {
                               dealId={stageDetailsDialog.deal_id}
                               fileId={file.id}
                               fileName={file.original_name}
-                              headers={headers}
+                              token={token}
                             />
                           ) : (
                             <div className="w-12 h-12 bg-[#27272A] rounded flex items-center justify-center flex-shrink-0">

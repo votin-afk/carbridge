@@ -2776,41 +2776,42 @@ async def public_download_file(file_id: str, token: str = None):
         raise HTTPException(status_code=401, detail="Токен обязателен")
     
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload.get("sub")
-        if not user_id:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        subject_id = payload.get("sub")
+        token_type = payload.get("type")
+        if not subject_id:
             raise HTTPException(status_code=401, detail="Неверный токен")
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Неверный токен")
-    
-    user = await db.users.find_one({"id": user_id})
-    if not user:
-        raise HTTPException(status_code=401, detail="Пользователь не найден")
     
     file_doc = await db.deal_files.find_one({"id": file_id}, {"_id": 0})
     if not file_doc:
         raise HTTPException(status_code=404, detail="Файл не найден")
     
     deal_id = file_doc["deal_id"]
-    
-    # Check access: owner, moderator/admin, or contractor
     deal = await db.deals.find_one({"id": deal_id})
     if not deal:
         raise HTTPException(status_code=404, detail="Сделка не найдена")
     
-    is_owner = deal.get("user_id") == user_id
-    is_mod = user.get("role") in ["moderator", "admin"]
-    is_contractor = False
-    if not is_owner and not is_mod:
-        contractor = await db.contractors.find_one({"user_id": user_id})
+    has_access = False
+    
+    if token_type == "contractor":
+        contractor = await db.contractors.find_one({"id": subject_id})
         if contractor:
             stages = deal.get("stages", {})
-            for sk, sv in stages.items():
+            for sv in stages.values():
                 if sv.get("contractor_id") == contractor["id"]:
-                    is_contractor = True
+                    has_access = True
                     break
+    else:
+        user = await db.users.find_one({"id": subject_id})
+        if not user:
+            raise HTTPException(status_code=401, detail="Пользователь не найден")
+        is_owner = deal.get("user_id") == subject_id
+        is_mod = user.get("role") in ["moderator", "admin"]
+        has_access = is_owner or is_mod
     
-    if not is_owner and not is_mod and not is_contractor:
+    if not has_access:
         raise HTTPException(status_code=403, detail="Нет доступа")
     
     file_path = UPLOADS_DIR / deal_id / file_doc["saved_name"]
