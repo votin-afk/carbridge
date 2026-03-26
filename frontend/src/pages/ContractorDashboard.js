@@ -543,7 +543,7 @@ const ContractorDashboard = () => {
           <StatCard icon={Gavel} label="Активные тендеры" value={dashboardData?.active_tenders || 0} color="cyan" />
           <StatCard icon={Send} label="Мои предложения" value={dashboardData?.my_offers || 0} color="blue" />
           <StatCard icon={CheckCircle2} label="Завершённые сделки" value={dashboardData?.completed_deals || 0} color="emerald" />
-          <StatCard icon={Users} label="Новые заявки" value={dashboardData?.new_applications || 0} color="amber" />
+          <StatCard icon={Folder} label="Активные сделки" value={dashboardData?.active_deals || 0} color="amber" />
         </div>
 
         {/* Main Content */}
@@ -558,11 +558,6 @@ const ContractorDashboard = () => {
               <Gavel size={16} className="mr-1 sm:mr-2" />
               <span className="hidden sm:inline">Тендеры</span>
               <span className="sm:hidden">Тендеры</span>
-            </TabsTrigger>
-            <TabsTrigger value="applications" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black text-xs sm:text-sm">
-              <FileText size={16} className="mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Заявки клиентов</span>
-              <span className="sm:hidden">Заявки</span>
             </TabsTrigger>
             <TabsTrigger value="deals" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white text-xs sm:text-sm">
               <Folder size={16} className="mr-1 sm:mr-2" />
@@ -623,12 +618,15 @@ const ContractorDashboard = () => {
           <TabsContent value="tenders">
             {dashboardData?.tenders?.length > 0 ? (
               <div className="space-y-4">
-                {dashboardData.tenders.map(tender => (
+                {dashboardData.tenders.map(tender => {
+                  const cr = tender.car_request || {};
+                  const ci = tender.car_info || {};
+                  return (
                   <div key={tender.id} className="bg-[#15191E] border border-[#27272A] rounded-sm p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <h4 className="text-white font-medium">
-                          {(tender.car_info?.brand || tender.car_request?.brand || 'Любая марка').toUpperCase()} {tender.car_info?.model || tender.car_request?.model || ''}
+                        <h4 className="text-white font-medium text-lg">
+                          {(ci.brand || cr.brand || 'Любая марка').toUpperCase()} {ci.model || cr.model || ''}
                         </h4>
                         <p className="text-slate-400 text-sm">
                           Тендер #{tender.id.slice(0, 8)} • {new Date(tender.created_at).toLocaleDateString('ru-RU')}
@@ -641,22 +639,94 @@ const ContractorDashboard = () => {
                       </span>
                     </div>
                     
-                    <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
-                      <div>
-                        <p className="text-slate-500">Бюджет</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Бюджет в Китае</p>
                         <p className="text-[#00E5FF] font-medium">
-                          ${tender.budget?.toLocaleString() || tender.car_request?.budget_max?.toLocaleString() || '—'}
+                          {cr.budget_china_from || cr.budget_min ? `$${(cr.budget_china_from || cr.budget_min)?.toLocaleString()}` : '—'} - {cr.budget_china_to || cr.budget_max ? `$${(cr.budget_china_to || cr.budget_max)?.toLocaleString()}` : '—'}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-slate-500">Предложений</p>
-                        <p className="text-white">{tender.offers?.length || 0}</p>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Общий бюджет</p>
+                        <p className="text-emerald-400 font-medium">
+                          {cr.budget_total ? `$${cr.budget_total.toLocaleString()}` : '—'}
+                        </p>
                       </div>
-                      <div>
-                        <p className="text-slate-500">Срок</p>
-                        <p className="text-white">{tender.delivery_days || '—'} дней</p>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Год выпуска</p>
+                        <p className="text-white">{cr.year_from || '—'} - {cr.year_to || '—'}</p>
+                      </div>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Предложений</p>
+                        <p className="text-white">{tender.offers_count || tender.offers?.length || 0}</p>
                       </div>
                     </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Двигатель</p>
+                        <p className="text-white">{engineLabels[cr.engine_type] || cr.engine_type || 'Любой'}</p>
+                      </div>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Кузов</p>
+                        <p className="text-white">{bodyLabels[cr.body_type] || cr.body_type || 'Любой'}</p>
+                      </div>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Привод</p>
+                        <p className="text-white">{driveLabels[cr.drive_type] || cr.drive_type || 'Любой'}</p>
+                      </div>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Пробег</p>
+                        <p className="text-white">{mileageLabels[cr.mileage_max] || cr.mileage_max || 'Любой'}</p>
+                      </div>
+                    </div>
+
+                    {(cr.purchase_timeline || cr.payment_method || cr.delivery_city) && (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 text-sm">
+                        {cr.delivery_city && (
+                          <div className="bg-[#0B0F14] p-2 rounded">
+                            <p className="text-slate-500 text-xs">Город доставки</p>
+                            <p className="text-white">{cr.delivery_city}</p>
+                          </div>
+                        )}
+                        {cr.purchase_timeline && (
+                          <div className="bg-[#0B0F14] p-2 rounded">
+                            <p className="text-slate-500 text-xs">Сроки</p>
+                            <p className="text-white">{timelineLabels[cr.purchase_timeline] || cr.purchase_timeline}</p>
+                          </div>
+                        )}
+                        {cr.payment_method && (
+                          <div className="bg-[#0B0F14] p-2 rounded">
+                            <p className="text-slate-500 text-xs">Оплата</p>
+                            <p className="text-white">{paymentLabels[cr.payment_method] || cr.payment_method}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {cr.additional_requirements && (
+                      <div className="mb-3 p-2 bg-[#0B0F14] rounded">
+                        <p className="text-slate-500 text-xs mb-1">Дополнительные требования</p>
+                        <p className="text-slate-300 text-sm">{cr.additional_requirements}</p>
+                      </div>
+                    )}
+
+                    {(cr.options_comfort?.length > 0 || cr.options_electronic?.length > 0 || cr.options_exterior?.length > 0) && (
+                      <div className="mb-3 p-2 bg-[#0B0F14] rounded">
+                        <p className="text-slate-500 text-xs mb-2">Желаемые опции</p>
+                        <div className="flex flex-wrap gap-1">
+                          {cr.options_comfort?.map(opt => (
+                            <span key={opt} className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-xs rounded">{optionLabels[opt] || opt}</span>
+                          ))}
+                          {cr.options_electronic?.map(opt => (
+                            <span key={opt} className="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-xs rounded">{optionLabels[opt] || opt}</span>
+                          ))}
+                          {cr.options_exterior?.map(opt => (
+                            <span key={opt} className="px-2 py-0.5 bg-purple-500/10 text-purple-400 text-xs rounded">{optionLabels[opt] || opt}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     <Button
                       onClick={() => {
@@ -664,166 +734,17 @@ const ContractorDashboard = () => {
                         setOfferDialog(true);
                       }}
                       className="w-full bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
+                      data-testid={`tender-offer-btn-${tender.id}`}
                     >
                       <Send size={16} className="mr-2" />
                       Сделать предложение
                     </Button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <EmptyState text="Нет активных тендеров" icon={Gavel} />
-            )}
-          </TabsContent>
-
-          {/* Applications Tab */}
-          <TabsContent value="applications">
-            {dashboardData?.applications?.length > 0 ? (
-              <div className="space-y-4">
-                {dashboardData.applications.map(app => (
-                  <div key={app.id} className="bg-[#15191E] border border-[#27272A] rounded-sm p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h4 className="text-white font-medium text-lg">
-                          {app.brand ? `${app.brand.toUpperCase()} ${app.model || ''}` : 'Любой автомобиль'}
-                        </h4>
-                        <p className="text-slate-400 text-sm">
-                          Заявка {app.application_number} • {new Date(app.created_at).toLocaleDateString('ru-RU')}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {app.urgent && (
-                          <span className="px-2 py-0.5 bg-red-500/10 text-red-400 text-xs rounded">Срочно</span>
-                        )}
-                        <span className={`px-3 py-1 rounded-full text-xs ${
-                          app.status === 'new' ? 'bg-blue-500/10 text-blue-400' : 'bg-amber-500/10 text-amber-400'
-                        }`}>
-                          {app.status === 'new' ? 'Новая' : 'В работе'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Basic Info Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Бюджет в Китае</p>
-                        <p className="text-[#00E5FF] font-medium">
-                          ${app.budget_china_from?.toLocaleString() || '—'} - ${app.budget_china_to?.toLocaleString() || '—'}
-                        </p>
-                      </div>
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Общий бюджет</p>
-                        <p className="text-emerald-400 font-medium">
-                          ${app.budget_total?.toLocaleString() || app.budget_max?.toLocaleString() || '—'}
-                        </p>
-                      </div>
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Год выпуска</p>
-                        <p className="text-white">{app.year_from || '—'} - {app.year_to || '—'}</p>
-                      </div>
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Тип двигателя</p>
-                        <p className="text-white">{engineLabels[app.engine_type] || app.engine_type || 'Любой'}</p>
-                      </div>
-                    </div>
-
-                    {/* Extended Info Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Кузов</p>
-                        <p className="text-white">{bodyLabels[app.body_type] || app.body_type || 'Любой'}</p>
-                      </div>
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Привод</p>
-                        <p className="text-white">{driveLabels[app.drive_type] || app.drive_type || 'Любой'}</p>
-                      </div>
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Пробег</p>
-                        <p className="text-white">{mileageLabels[app.mileage_max] || app.mileage_max || 'Любой'}</p>
-                      </div>
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Оплата</p>
-                        <p className="text-white">{paymentLabels[app.payment_method] || app.payment_method || '—'}</p>
-                      </div>
-                    </div>
-
-                    {/* Color and timeline */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 text-sm">
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Цвет кузова</p>
-                        <p className="text-white">{colorLabels[app.body_color] || app.body_color || 'Любой'}</p>
-                      </div>
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Сроки покупки</p>
-                        <p className="text-white">{timelineLabels[app.purchase_timeline] || app.purchase_timeline || '—'}</p>
-                      </div>
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Клиент</p>
-                        <p className="text-white">{app.full_name || '—'}</p>
-                      </div>
-                    </div>
-
-                    {/* Additional requirements */}
-                    {app.additional_requirements && (
-                      <div className="mb-3 p-2 bg-[#0B0F14] rounded">
-                        <p className="text-slate-500 text-xs mb-1">Дополнительные требования</p>
-                        <p className="text-slate-300 text-sm">{app.additional_requirements}</p>
-                      </div>
-                    )}
-
-                    {/* Options if any */}
-                    {(app.options_comfort?.length > 0 || app.options_electronic?.length > 0 || app.options_exterior?.length > 0) && (
-                      <div className="mb-3 p-2 bg-[#0B0F14] rounded">
-                        <p className="text-slate-500 text-xs mb-2">Желаемые опции</p>
-                        <div className="flex flex-wrap gap-1">
-                          {app.options_comfort?.map(opt => (
-                            <span key={opt} className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-xs rounded">
-                              {optionLabels[opt] || opt}
-                            </span>
-                          ))}
-                          {app.options_electronic?.map(opt => (
-                            <span key={opt} className="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-xs rounded">
-                              {optionLabels[opt] || opt}
-                            </span>
-                          ))}
-                          {app.options_exterior?.map(opt => (
-                            <span key={opt} className="px-2 py-0.5 bg-purple-500/10 text-purple-400 text-xs rounded">
-                              {optionLabels[opt] || opt}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Buttons */}
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedApplication(app);
-                          setDetailsDialog(true);
-                        }}
-                        className="flex-1 border-[#27272A] hover:bg-[#27272A]"
-                      >
-                        <Eye size={16} className="mr-2" />
-                        Все детали
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setSelectedTender({ id: app.id, type: 'application', ...app });
-                          setOfferDialog(true);
-                        }}
-                        className="flex-1 bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
-                      >
-                        <Send size={16} className="mr-2" />
-                        Откликнуться
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyState text="Нет активных заявок" icon={FileText} />
             )}
           </TabsContent>
 

@@ -7755,7 +7755,30 @@ async def start_tender_from_application(application_id: str, current_user: dict 
             "year_to": app.get("year_to"),
             "budget_min": app.get("budget_min"),
             "budget_max": app.get("budget_max"),
-            "budget_currency": app.get("budget_currency")
+            "budget_currency": app.get("budget_currency"),
+            "budget_china_from": app.get("budget_china_from"),
+            "budget_china_to": app.get("budget_china_to"),
+            "budget_total": app.get("budget_total"),
+            "drive_type": app.get("drive_type"),
+            "transmission": app.get("transmission"),
+            "mileage_max": app.get("mileage_max"),
+            "car_condition": app.get("car_condition"),
+            "body_color": app.get("body_color"),
+            "interior_color": app.get("interior_color"),
+            "interior_material": app.get("interior_material"),
+            "purchase_timeline": app.get("purchase_timeline"),
+            "payment_method": app.get("payment_method"),
+            "customs_clearance": app.get("customs_clearance"),
+            "delivery_city": app.get("delivery_city"),
+            "full_name": app.get("full_name"),
+            "additional_requirements": app.get("additional_requirements"),
+            "options_electronic": app.get("options_electronic", []),
+            "options_comfort": app.get("options_comfort", []),
+            "options_exterior": app.get("options_exterior", []),
+            "options_other": app.get("options_other", []),
+            "power_from": app.get("power_from"),
+            "power_to": app.get("power_to"),
+            "engine_volume": app.get("engine_volume"),
         },
         "offers": [],
         "created_at": datetime.now(timezone.utc).isoformat()
@@ -8172,11 +8195,20 @@ async def get_contractor_dashboard(contractor: dict = Depends(get_current_contra
         {"_id": 0}
     ).to_list(100)
     
-    # Get applications looking for contractors
-    applications = await db.applications.find(
-        {"status": {"$in": ["new", "in_progress"]}},
+    # Get active deals for this contractor
+    active_deals_cursor = db.deals.find(
+        {"status": {"$ne": "completed"}},
         {"_id": 0}
-    ).sort("created_at", -1).to_list(50)
+    )
+    all_active_deals = await active_deals_cursor.to_list(200)
+    active_deals_count = 0
+    for d in all_active_deals:
+        stages = d.get("stages", {})
+        if isinstance(stages, dict):
+            for sv in stages.values():
+                if sv.get("contractor_id") == contractor["id"]:
+                    active_deals_count += 1
+                    break
     
     return {
         "contractor": {
@@ -8190,10 +8222,9 @@ async def get_contractor_dashboard(contractor: dict = Depends(get_current_contra
         "active_tenders": len(tenders),
         "my_offers": len(my_offers),
         "completed_deals": len(completed_deals),
-        "new_applications": len([a for a in applications if a.get("status") == "new"]),
+        "active_deals": active_deals_count,
         "tenders": tenders[:10],
-        "recent_offers": my_offers[:10],
-        "applications": applications[:10]
+        "recent_offers": my_offers[:10]
     }
 
 @api_router.post("/contractor-offers")
