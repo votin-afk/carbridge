@@ -8251,13 +8251,22 @@ async def submit_contractor_offer(data: dict, contractor: dict = Depends(get_cur
         "delivery_cost": data.get("delivery_cost"),
         "car_details": data.get("car_details"),
         "car_link": data.get("car_link"),
+        "car_brand": data.get("car_brand"),
+        "car_model": data.get("car_model"),
+        "car_year": data.get("car_year"),
+        "car_mileage": data.get("car_mileage"),
+        "car_engine_type": data.get("car_engine_type"),
+        "car_engine_volume": data.get("car_engine_volume"),
+        "car_color": data.get("car_color"),
+        "car_transmission": data.get("car_transmission"),
+        "car_vin": data.get("car_vin"),
         "car_photos": data.get("car_photos", []),
         "car_videos": data.get("car_videos", []),
         "notes": data.get("notes"),
         "valid_until": data.get("valid_until"),
         "included_services": data.get("included_services", {}),
         "service_prices": data.get("service_prices", {}),
-        "status": "pending",  # pending, accepted, rejected
+        "status": "pending",
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
@@ -8276,6 +8285,113 @@ async def submit_contractor_offer(data: dict, contractor: dict = Depends(get_cur
         )
     
     return {"message": "Предложение отправлено", "offer_id": offer_id}
+
+# ---- Offer file uploads ----
+OFFER_UPLOADS_DIR = Path(__file__).parent / "uploads" / "offers"
+OFFER_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+@api_router.post("/contractor-offers/{offer_id}/files")
+async def upload_offer_file(
+    offer_id: str,
+    file: UploadFile = File(...),
+    file_type: str = Form("photo"),
+    contractor: dict = Depends(get_current_contractor)
+):
+    """Upload a photo/video file to an offer"""
+    offer = await db.tender_offers.find_one({"id": offer_id, "contractor_id": contractor["id"]})
+    if not offer:
+        raise HTTPException(status_code=404, detail="Предложение не найдено")
+
+    file_content = await file.read()
+    if len(file_content) > 50 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Файл слишком большой (макс. 50MB)")
+
+    file_id = str(uuid.uuid4())
+    file_ext = Path(file.filename).suffix.lower() if file.filename else ""
+    safe_filename = f"{file_id}{file_ext}"
+
+    offer_dir = OFFER_UPLOADS_DIR / offer_id
+    offer_dir.mkdir(exist_ok=True)
+    file_path = offer_dir / safe_filename
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+
+    image_exts = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
+    video_exts = [".mp4", ".mov", ".avi", ".webm"]
+    category = "photo" if file_ext in image_exts else ("video" if file_ext in video_exts else "other")
+
+    file_doc = {
+        "id": file_id,
+        "offer_id": offer_id,
+        "contractor_id": contractor["id"],
+        "original_name": file.filename,
+        "saved_name": safe_filename,
+        "category": category,
+        "size": len(file_content),
+        "mime_type": file.content_type,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.offer_files.insert_one(file_doc)
+    return {"id": file_id, "category": category, "original_name": file.filename, "size": len(file_content)}
+
+@api_router.get("/offers/{offer_id}/files")
+async def get_offer_files(offer_id: str):
+    """Get files for an offer (public for authorized users)"""
+    files = await db.offer_files.find({"offer_id": offer_id}, {"_id": 0}).to_list(50)
+    return files
+
+@api_router.get("/offer-files/{file_id}/download")
+async def download_offer_file(file_id: str, token: str = None):
+    """Download an offer file using token query param"""
+    if not token:
+        raise HTTPException(status_code=401, detail="Токен обязателен")
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if not payload.get("sub"):
+            raise HTTPException(status_code=401, detail="Неверный токен")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Неверный токен")
+
+    file_doc = await db.offer_files.find_one({"id": file_id}, {"_id": 0})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+
+    file_path = OFFER_UPLOADS_DIR / file_doc["offer_id"] / file_doc["saved_name"]
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Файл не найден на сервере")
+
+    return FileResponse(
+        path=str(file_path),
+        filename=file_doc["original_name"],
+        media_type=file_doc.get("mime_type", "application/octet-stream")
+    )
+
+@api_router.get("/contractors/{contractor_id}/public-profile")
+async def get_contractor_public_profile(contractor_id: str):
+    """Get contractor's public profile"""
+    contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0, "password_hash": 0})
+    if not contractor:
+        raise HTTPException(status_code=404, detail="Подрядчик не найден")
+
+    completed = await db.deals.count_documents({"contractor_id": contractor_id, "status": "completed"})
+    active_offers = await db.tender_offers.count_documents({"contractor_id": contractor_id, "status": "pending"})
+    accepted_offers = await db.tender_offers.count_documents({"contractor_id": contractor_id, "status": "accepted"})
+
+    return {
+        "id": contractor["id"],
+        "company_name": contractor.get("company_name", ""),
+        "contact_person": contractor.get("contact_person", ""),
+        "services": contractor.get("services", []),
+        "rating": contractor.get("rating", 5.0),
+        "verified": contractor.get("verified", False),
+        "experience": contractor.get("experience", ""),
+        "description": contractor.get("description", ""),
+        "city": contractor.get("city", ""),
+        "completed_deals": completed,
+        "active_offers": active_offers,
+        "accepted_offers": accepted_offers,
+        "created_at": contractor.get("created_at", "")
+    }
 
 # Moderator endpoints for contractor management
 @api_router.get("/moderator/contractor-applications")

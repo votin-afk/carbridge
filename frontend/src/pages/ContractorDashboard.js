@@ -60,7 +60,8 @@ import {
   Video,
   File,
   Trash2,
-  Bell
+  Bell,
+  Camera
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -104,11 +105,19 @@ const ContractorDashboard = () => {
     delivery_cost: '',
     car_details: '',
     car_link: '',
+    car_brand: '',
+    car_model: '',
+    car_year: '',
+    car_mileage: '',
+    car_engine_type: '',
+    car_engine_volume: '',
+    car_color: '',
+    car_transmission: '',
+    car_vin: '',
     car_photos: [],
     car_videos: [],
     notes: '',
     valid_until: '',
-    // Services included in offer
     included_services: {
       inspection: false,
       export: false,
@@ -116,7 +125,6 @@ const ContractorDashboard = () => {
       delivery_rb: false,
       insurance: false
     },
-    // Service prices breakdown
     service_prices: {
       inspection: '',
       export: '',
@@ -125,6 +133,8 @@ const ContractorDashboard = () => {
       insurance: ''
     }
   });
+  const [offerFiles, setOfferFiles] = useState([]);
+  const [uploadingOfferFiles, setUploadingOfferFiles] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -344,7 +354,6 @@ const ContractorDashboard = () => {
   const submitOffer = async () => {
     if (!selectedTender) return;
     
-    // Validate at least one service is selected
     const hasServices = Object.values(offerData.included_services).some(v => v);
     if (!hasServices) {
       toast.error('Выберите хотя бы одну услугу');
@@ -353,7 +362,6 @@ const ContractorDashboard = () => {
     
     setSubmitting(true);
     try {
-      // Calculate total from individual service prices
       let calculatedTotal = 0;
       Object.entries(offerData.included_services).forEach(([service, included]) => {
         if (included && offerData.service_prices[service]) {
@@ -361,7 +369,7 @@ const ContractorDashboard = () => {
         }
       });
       
-      await axios.post(`${API}/contractor-offers`, {
+      const response = await axios.post(`${API}/contractor-offers`, {
         tender_id: selectedTender.id,
         price_usd: parseFloat(offerData.price_usd) || calculatedTotal,
         price_cny: parseFloat(offerData.price_cny) || null,
@@ -369,6 +377,15 @@ const ContractorDashboard = () => {
         delivery_cost: parseFloat(offerData.delivery_cost) || null,
         car_details: offerData.car_details,
         car_link: offerData.car_link,
+        car_brand: offerData.car_brand,
+        car_model: offerData.car_model,
+        car_year: offerData.car_year,
+        car_mileage: offerData.car_mileage,
+        car_engine_type: offerData.car_engine_type,
+        car_engine_volume: offerData.car_engine_volume,
+        car_color: offerData.car_color,
+        car_transmission: offerData.car_transmission,
+        car_vin: offerData.car_vin,
         car_photos: offerData.car_photos,
         car_videos: offerData.car_videos,
         notes: offerData.notes,
@@ -377,6 +394,26 @@ const ContractorDashboard = () => {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      const offerId = response.data.offer_id;
+      
+      // Upload files if any
+      if (offerFiles.length > 0) {
+        setUploadingOfferFiles(true);
+        for (const f of offerFiles) {
+          const fd = new FormData();
+          fd.append('file', f);
+          fd.append('file_type', f.type.startsWith('video') ? 'video' : 'photo');
+          try {
+            await axios.post(`${API}/contractor-offers/${offerId}/files`, fd, {
+              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+            });
+          } catch (err) {
+            console.error('File upload error:', err);
+          }
+        }
+        setUploadingOfferFiles(false);
+      }
       
       toast.success('Предложение отправлено');
       setOfferDialog(false);
@@ -398,6 +435,15 @@ const ContractorDashboard = () => {
       delivery_cost: '',
       car_details: '',
       car_link: '',
+      car_brand: '',
+      car_model: '',
+      car_year: '',
+      car_mileage: '',
+      car_engine_type: '',
+      car_engine_volume: '',
+      car_color: '',
+      car_transmission: '',
+      car_vin: '',
       car_photos: [],
       car_videos: [],
       notes: '',
@@ -417,6 +463,7 @@ const ContractorDashboard = () => {
         insurance: ''
       }
     });
+    setOfferFiles([]);
   };
 
   if (loading) {
@@ -896,7 +943,7 @@ const ContractorDashboard = () => {
 
               {/* Car Link */}
               <div>
-                <Label className="text-slate-300">🔗 Ссылка на автомобиль</Label>
+                <Label className="text-slate-300">Ссылка на автомобиль</Label>
                 <Input
                   type="url"
                   value={offerData.car_link}
@@ -904,48 +951,128 @@ const ContractorDashboard = () => {
                   placeholder="https://che168.com/car/123..."
                   className="mt-1 bg-[#0B0F14] border-[#27272A]"
                 />
-                <p className="text-slate-500 text-xs mt-1">Ссылка на объявление, если авто в общем доступе</p>
               </div>
 
-              {/* Car Details */}
+              {/* Car structured info */}
               <div>
-                <Label className="text-slate-300">📋 Детали автомобиля</Label>
+                <Label className="text-slate-300 mb-2 block">Характеристики автомобиля</Label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-3 bg-[#0B0F14] rounded-sm">
+                  <div>
+                    <Label className="text-slate-500 text-xs">Марка *</Label>
+                    <Input value={offerData.car_brand} onChange={(e) => setOfferData(p => ({ ...p, car_brand: e.target.value }))} placeholder="BYD" className="mt-0.5 bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-slate-500 text-xs">Модель *</Label>
+                    <Input value={offerData.car_model} onChange={(e) => setOfferData(p => ({ ...p, car_model: e.target.value }))} placeholder="Han EV" className="mt-0.5 bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-slate-500 text-xs">Год выпуска</Label>
+                    <Input type="number" value={offerData.car_year} onChange={(e) => setOfferData(p => ({ ...p, car_year: e.target.value }))} placeholder="2024" className="mt-0.5 bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-slate-500 text-xs">Пробег (км)</Label>
+                    <Input type="number" value={offerData.car_mileage} onChange={(e) => setOfferData(p => ({ ...p, car_mileage: e.target.value }))} placeholder="15000" className="mt-0.5 bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-slate-500 text-xs">Двигатель</Label>
+                    <select value={offerData.car_engine_type} onChange={(e) => setOfferData(p => ({ ...p, car_engine_type: e.target.value }))} className="mt-0.5 w-full bg-[#15191E] border border-[#27272A] rounded-sm px-2 h-8 text-sm text-white">
+                      <option value="">—</option>
+                      <option value="gasoline">Бензин</option>
+                      <option value="diesel">Дизель</option>
+                      <option value="electric">Электро</option>
+                      <option value="hybrid">Гибрид</option>
+                      <option value="phev">Плагин-гибрид</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-slate-500 text-xs">Объём (л)</Label>
+                    <Input value={offerData.car_engine_volume} onChange={(e) => setOfferData(p => ({ ...p, car_engine_volume: e.target.value }))} placeholder="2.0" className="mt-0.5 bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-slate-500 text-xs">Цвет</Label>
+                    <Input value={offerData.car_color} onChange={(e) => setOfferData(p => ({ ...p, car_color: e.target.value }))} placeholder="Чёрный" className="mt-0.5 bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-slate-500 text-xs">КПП</Label>
+                    <select value={offerData.car_transmission} onChange={(e) => setOfferData(p => ({ ...p, car_transmission: e.target.value }))} className="mt-0.5 w-full bg-[#15191E] border border-[#27272A] rounded-sm px-2 h-8 text-sm text-white">
+                      <option value="">—</option>
+                      <option value="automatic">АКПП</option>
+                      <option value="manual">МКПП</option>
+                      <option value="robot">Робот</option>
+                      <option value="cvt">Вариатор</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-slate-500 text-xs">VIN</Label>
+                    <Input value={offerData.car_vin} onChange={(e) => setOfferData(p => ({ ...p, car_vin: e.target.value }))} placeholder="LGXC..." className="mt-0.5 bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Car Details free text */}
+              <div>
+                <Label className="text-slate-300">Дополнительное описание</Label>
                 <textarea
                   value={offerData.car_details}
                   onChange={(e) => setOfferData(p => ({ ...p, car_details: e.target.value }))}
-                  placeholder="VIN, год, комплектация, пробег, цвет, состояние..."
-                  rows={3}
-                  className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500"
+                  placeholder="Комплектация, состояние, особенности..."
+                  rows={2}
+                  className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500 text-sm"
                 />
               </div>
 
-              {/* Photo/Video Links */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-slate-300">📷 Фото (ссылки)</Label>
-                  <textarea
-                    value={offerData.car_photos.join('\n')}
-                    onChange={(e) => setOfferData(p => ({ ...p, car_photos: e.target.value.split('\n').filter(l => l.trim()) }))}
-                    placeholder="Ссылки на фото (по одной на строку)"
-                    rows={2}
-                    className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500 text-xs"
+              {/* File Upload */}
+              <div>
+                <Label className="text-slate-300 mb-2 block">Фото и видео автомобиля</Label>
+                <div className="p-3 bg-[#0B0F14] rounded-sm">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,video/*"
+                    onChange={(e) => {
+                      const newFiles = Array.from(e.target.files);
+                      setOfferFiles(prev => [...prev, ...newFiles]);
+                      e.target.value = '';
+                    }}
+                    className="hidden"
+                    id="offer-file-input"
                   />
-                </div>
-                <div>
-                  <Label className="text-slate-300">🎥 Видео (ссылки)</Label>
-                  <textarea
-                    value={offerData.car_videos.join('\n')}
-                    onChange={(e) => setOfferData(p => ({ ...p, car_videos: e.target.value.split('\n').filter(l => l.trim()) }))}
-                    placeholder="Ссылки на видео (по одной на строку)"
-                    rows={2}
-                    className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500 text-xs"
-                  />
+                  <label
+                    htmlFor="offer-file-input"
+                    className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-[#27272A] rounded cursor-pointer hover:border-[#00E5FF]/50 transition-colors"
+                  >
+                    <Camera size={20} className="text-slate-400" />
+                    <span className="text-slate-400 text-sm">Нажмите для загрузки фото/видео</span>
+                  </label>
+                  {offerFiles.length > 0 && (
+                    <div className="mt-3 grid grid-cols-4 gap-2">
+                      {offerFiles.map((f, i) => (
+                        <div key={i} className="relative group">
+                          {f.type.startsWith('image') ? (
+                            <img src={URL.createObjectURL(f)} alt="" className="w-full h-16 object-cover rounded border border-[#27272A]" />
+                          ) : (
+                            <div className="w-full h-16 bg-[#15191E] rounded border border-[#27272A] flex items-center justify-center">
+                              <Video size={16} className="text-slate-400" />
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setOfferFiles(prev => prev.filter((_, idx) => idx !== i))}
+                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            x
+                          </button>
+                          <p className="text-slate-500 text-[10px] truncate mt-0.5">{f.name}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Services Selection */}
               <div>
-                <Label className="text-slate-300 mb-2 block">🛠️ Этапы сделки в предложении</Label>
+                <Label className="text-slate-300 mb-2 block">Этапы сделки в предложении</Label>
                 <div className="space-y-3 p-3 bg-[#0B0F14] rounded-sm">
                   {[
                     { key: 'inspection', label: 'Инспекция авто', desc: 'Проверка технического состояния' },
@@ -1006,7 +1133,7 @@ const ContractorDashboard = () => {
               {/* Pricing */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-slate-300">💵 Общая цена (USD) *</Label>
+                  <Label className="text-slate-300">Общая цена (USD) *</Label>
                   <Input
                     type="number"
                     value={offerData.price_usd}
@@ -1017,7 +1144,7 @@ const ContractorDashboard = () => {
                   <p className="text-slate-500 text-xs mt-1">Полная стоимость с доставкой</p>
                 </div>
                 <div>
-                  <Label className="text-slate-300">💴 Цена авто (CNY)</Label>
+                  <Label className="text-slate-300">Цена авто (CNY)</Label>
                   <Input
                     type="number"
                     value={offerData.price_cny}
@@ -1030,7 +1157,7 @@ const ContractorDashboard = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-slate-300">📅 Срок доставки (дней)</Label>
+                  <Label className="text-slate-300">Срок доставки (дней)</Label>
                   <Input
                     type="number"
                     value={offerData.delivery_days}
@@ -1040,7 +1167,7 @@ const ContractorDashboard = () => {
                   />
                 </div>
                 <div>
-                  <Label className="text-slate-300">🚚 Отдельно доставка ($)</Label>
+                  <Label className="text-slate-300">Отдельно доставка ($)</Label>
                   <Input
                     type="number"
                     value={offerData.delivery_cost}
@@ -1052,7 +1179,7 @@ const ContractorDashboard = () => {
               </div>
 
               <div>
-                <Label className="text-slate-300">📝 Примечания</Label>
+                <Label className="text-slate-300">Примечания</Label>
                 <textarea
                   value={offerData.notes}
                   onChange={(e) => setOfferData(p => ({ ...p, notes: e.target.value }))}
@@ -1064,11 +1191,11 @@ const ContractorDashboard = () => {
 
               <Button
                 onClick={submitOffer}
-                disabled={submitting || !offerData.price_usd}
+                disabled={submitting || uploadingOfferFiles || !offerData.price_usd || !offerData.car_brand}
                 className="w-full bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
               >
-                {submitting ? <Loader2 className="animate-spin mr-2" size={16} /> : <Send size={16} className="mr-2" />}
-                Отправить предложение
+                {submitting || uploadingOfferFiles ? <Loader2 className="animate-spin mr-2" size={16} /> : <Send size={16} className="mr-2" />}
+                {uploadingOfferFiles ? `Загрузка файлов...` : submitting ? 'Отправка...' : 'Отправить предложение'}
               </Button>
             </div>
           )}
