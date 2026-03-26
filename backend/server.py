@@ -6212,7 +6212,7 @@ async def send_moderator_stage_message(
 
 @api_router.get("/moderator/tenders")
 async def get_all_tenders_moderator(current_user: dict = Depends(require_role(["admin", "moderator"]))):
-    """Get all tenders for moderator"""
+    """Get all tenders for moderator with full details and offers"""
     tenders = await db.tenders.find({}, {"_id": 0}).to_list(100)
     
     result = []
@@ -6222,17 +6222,38 @@ async def get_all_tenders_moderator(current_user: dict = Depends(require_role(["
         if car_id:
             car = await db.garage.find_one({"id": car_id}, {"_id": 0})
         
+        # Get user info
+        user = None
+        if tender.get("user_id"):
+            user = await db.users.find_one({"id": tender["user_id"]}, {"_id": 0, "password_hash": 0})
+        
+        # Get offers with files
+        offers = await db.tender_offers.find({"tender_id": tender["id"]}, {"_id": 0}).sort("created_at", -1).to_list(50)
+        for offer in offers:
+            files = await db.offer_files.find({"offer_id": offer["id"]}, {"_id": 0}).to_list(20)
+            offer["files"] = files
+        
+        cr = tender.get("car_request", {})
+        
         result.append({
             "id": tender["id"],
             "car_id": car_id,
-            "car_brand": car["brand"] if car else tender.get("brand", "Unknown"),
-            "car_model": car["model"] if car else tender.get("model", "Unknown"),
+            "car_brand": car["brand"] if car else (cr.get("brand") or tender.get("brand", "")),
+            "car_model": car["model"] if car else (cr.get("model") or tender.get("model", "")),
             "budget": car.get("calculated_price_usd", 0) if car else tender.get("budget", 0),
-            "offers_count": len(tender.get("offers", [])),
+            "car_request": cr,
+            "car_info": {"brand": car["brand"], "model": car["model"]} if car else None,
+            "user_name": f"{user.get('first_name', '')} {user.get('last_name', '')}".strip() if user else "",
+            "user_email": user.get("email", "") if user else "",
+            "offers": offers,
+            "offers_count": len(offers),
             "status": tender.get("status", "active"),
+            "type": tender.get("type", ""),
+            "application_id": tender.get("application_id"),
             "created_at": tender.get("created_at", "")
         })
     
+    result.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     return result
 
 class ModeratorTenderCreate(BaseModel):

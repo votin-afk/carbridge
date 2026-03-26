@@ -62,7 +62,20 @@ import {
   ExternalLink,
   Trash2,
   Headphones,
-  Send
+  Send,
+  Star,
+  Truck,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  Gauge,
+  Palette,
+  Settings,
+  BadgeCheck,
+  MapPin,
+  Package,
+  Ship
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -87,6 +100,148 @@ const FileImagePreview = ({ api, dealId, fileId, fileName, token }) => {
       onClick={() => window.open(publicUrl, '_blank')}
       onError={(e) => { e.target.style.display = 'none'; }}
     />
+  );
+};
+
+
+// Moderator Offer Card - displays contractor offer as a car card
+const ModeratorOfferCard = ({ offer, photos, isFirst, serviceLabelsMap, engineLabelsMap, transLabelsMap, token }) => {
+  const [currentPhoto, setCurrentPhoto] = useState(0);
+  const [showProfile, setShowProfile] = useState(false);
+  const [profile, setProfile] = useState(null);
+  
+  const photoUrl = (fileId) => `${API}/offer-files/${fileId}/download?token=${encodeURIComponent(token)}`;
+
+  const loadProfile = async () => {
+    if (profile) { setShowProfile(!showProfile); return; }
+    try {
+      const res = await axios.get(`${API}/contractors/${offer.contractor_id}/public-profile`);
+      setProfile(res.data);
+      setShowProfile(true);
+    } catch { toast.error('Ошибка загрузки профиля'); }
+  };
+
+  return (
+    <div className={`bg-[#0B0F14] border rounded-sm overflow-hidden ${isFirst ? 'border-[#00E5FF]/40' : 'border-[#27272A]'}`}>
+      {isFirst && (
+        <div className="bg-[#00E5FF]/10 px-2 py-1 text-center">
+          <span className="text-[#00E5FF] text-xs font-medium">Лучшее предложение</span>
+        </div>
+      )}
+      
+      {/* Photo Gallery */}
+      {photos.length > 0 ? (
+        <div className="relative h-36 bg-[#15191E]">
+          <img src={photoUrl(photos[currentPhoto]?.id)} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+          {photos.length > 1 && (
+            <>
+              <button onClick={() => setCurrentPhoto(p => p > 0 ? p - 1 : photos.length - 1)} className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center text-white"><ChevronLeft size={14} /></button>
+              <button onClick={() => setCurrentPhoto(p => p < photos.length - 1 ? p + 1 : 0)} className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center text-white"><ChevronRight size={14} /></button>
+              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-black/60 px-2 py-0.5 rounded-full text-white text-[10px]">{currentPhoto + 1}/{photos.length}</div>
+            </>
+          )}
+          <div className="absolute top-1 right-1 bg-black/70 px-2 py-1 rounded">
+            <p className="text-[#00E5FF] font-bold text-sm">${offer.price_usd?.toLocaleString()}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="h-20 bg-[#15191E] flex items-center justify-center relative">
+          <Car size={28} className="text-slate-700" />
+          <div className="absolute top-1 right-1 bg-black/70 px-2 py-1 rounded">
+            <p className="text-[#00E5FF] font-bold text-sm">${offer.price_usd?.toLocaleString()}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="p-3">
+        <h5 className="text-white font-medium text-sm mb-1">
+          {(offer.car_brand || '').toUpperCase()} {offer.car_model || ''}
+        </h5>
+        
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-400 mb-2">
+          {offer.car_year && <span>{offer.car_year} г.</span>}
+          {offer.car_mileage && <span>{Number(offer.car_mileage).toLocaleString()} км</span>}
+          {offer.car_engine_type && <span>{engineLabelsMap[offer.car_engine_type] || offer.car_engine_type}</span>}
+          {offer.car_color && <span>{offer.car_color}</span>}
+          {offer.car_transmission && <span>{transLabelsMap[offer.car_transmission] || offer.car_transmission}</span>}
+        </div>
+
+        {offer.car_vin && <p className="text-slate-600 text-[10px] mb-1 font-mono">VIN: {offer.car_vin}</p>}
+        
+        {offer.car_details && <p className="text-slate-400 text-xs mb-2 line-clamp-2">{offer.car_details}</p>}
+
+        {offer.car_link && (
+          <a href={offer.car_link} target="_blank" rel="noopener noreferrer" className="text-[#00E5FF] text-xs hover:underline flex items-center gap-1 mb-2">
+            <ExternalLink size={10} /> Ссылка на авто
+          </a>
+        )}
+
+        {/* Services */}
+        {offer.included_services && Object.values(offer.included_services).some(v => v) && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {Object.entries(offer.included_services).map(([key, inc]) => {
+              if (!inc) return null;
+              const svc = serviceLabelsMap[key];
+              if (!svc) return null;
+              const SvcIcon = svc.icon;
+              return (
+                <span key={key} className="flex items-center gap-0.5 px-1.5 py-0.5 bg-[#15191E] rounded text-[10px]">
+                  <SvcIcon size={8} className={svc.color} />
+                  <span className="text-slate-300">{svc.label}</span>
+                  {offer.service_prices?.[key] && <span className="text-slate-500">${offer.service_prices[key]}</span>}
+                </span>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 text-xs text-slate-400 mb-2">
+          {offer.delivery_days && <span><Clock size={10} className="inline mr-0.5" />{offer.delivery_days} дн.</span>}
+          {offer.price_cny && <span className="text-amber-400">¥{offer.price_cny.toLocaleString()}</span>}
+        </div>
+
+        {/* Contractor */}
+        <div className="border-t border-[#27272A] pt-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Building2 size={12} className="text-slate-500" />
+              <span className="text-white text-xs font-medium">{offer.contractor_name}</span>
+              <div className="flex items-center gap-0.5">
+                {[1,2,3,4,5].map(s => (
+                  <Star key={s} size={8} className={s <= (offer.contractor_rating || 5) ? 'text-amber-400 fill-amber-400' : 'text-slate-700'} />
+                ))}
+              </div>
+            </div>
+            <button onClick={loadProfile} className="text-[#00E5FF] text-[10px] hover:underline" data-testid={`mod-view-profile-${offer.id}`}>
+              Профиль
+            </button>
+          </div>
+          
+          {showProfile && profile && (
+            <div className="mt-2 p-2 bg-[#15191E] rounded text-xs">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-white font-medium flex items-center gap-1">
+                  {profile.company_name}
+                  {profile.verified && <BadgeCheck size={10} className="text-[#00E5FF]" />}
+                </span>
+                <button onClick={() => setShowProfile(false)} className="text-slate-500 hover:text-white text-[10px]">x</button>
+              </div>
+              {profile.city && <p className="text-slate-400 text-[10px] mb-1"><MapPin size={8} className="inline mr-0.5" />{profile.city}</p>}
+              <div className="flex flex-wrap gap-1 mb-1">
+                {profile.services?.map(s => <span key={s} className="px-1 py-0.5 bg-[#0B0F14] text-[#00E5FF] text-[9px] rounded">{s}</span>)}
+              </div>
+              <div className="grid grid-cols-3 gap-1 text-center">
+                <div className="p-1 bg-[#0B0F14] rounded"><p className="text-emerald-400 font-bold">{profile.completed_deals}</p><p className="text-slate-600 text-[9px]">Сделок</p></div>
+                <div className="p-1 bg-[#0B0F14] rounded"><p className="text-amber-400 font-bold">{profile.accepted_offers}</p><p className="text-slate-600 text-[9px]">Принято</p></div>
+                <div className="p-1 bg-[#0B0F14] rounded"><p className="text-[#00E5FF] font-bold">{profile.rating}</p><p className="text-slate-600 text-[9px]">Рейтинг</p></div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <p className="text-slate-600 text-[10px] mt-2">{new Date(offer.created_at).toLocaleDateString('ru-RU')}</p>
+      </div>
+    </div>
   );
 };
 
@@ -1144,52 +1299,156 @@ const ModeratorPage = () => {
             {loading ? (
               <LoadingState />
             ) : tenders.length > 0 ? (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {tenders.map(tender => (
-                  <div key={tender.id} className="bg-[#15191E] border border-[#27272A] rounded-sm p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[#00E5FF] text-xs">#{tender.id?.slice(0, 8)}</span>
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        tender.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' :
-                        tender.status === 'closed' ? 'bg-slate-500/10 text-slate-400' :
-                        'bg-amber-500/10 text-amber-400'
-                      }`}>
-                        {tender.status === 'active' ? 'Активен' : 
-                         tender.status === 'closed' ? 'Закрыт' : tender.status}
-                      </span>
+              <div className="space-y-6">
+                {tenders.map(tender => {
+                  const cr = tender.car_request || {};
+                  const engineLabelsMap = { gasoline: 'Бензин', diesel: 'Дизель', electric: 'Электро', hybrid: 'Гибрид', phev: 'Плагин-гибрид' };
+                  const bodyLabelsMap = { sedan: 'Седан', suv: 'Кроссовер/Внедорожник', hatchback: 'Хэтчбек', wagon: 'Универсал', coupe: 'Купе', minivan: 'Минивэн', pickup: 'Пикап', convertible: 'Кабриолет', any: 'Любой' };
+                  const driveLabelsMap = { fwd: 'Передний', rwd: 'Задний', awd: 'Полный', any: 'Любой' };
+                  const transLabelsMap = { automatic: 'АКПП', manual: 'МКПП', robot: 'Робот', cvt: 'Вариатор' };
+                  const serviceLabelsMap = {
+                    inspection: { label: 'Осмотр', icon: Search, color: 'text-blue-400' },
+                    export: { label: 'Выкуп/Экспорт', icon: Package, color: 'text-purple-400' },
+                    logistics_china: { label: 'Логистика Китай', icon: Ship, color: 'text-cyan-400' },
+                    delivery_rb: { label: 'Доставка РБ', icon: Truck, color: 'text-emerald-400' },
+                    insurance: { label: 'Страхование', icon: Shield, color: 'text-amber-400' }
+                  };
+                  
+                  return (
+                  <div key={tender.id} className="bg-[#15191E] border border-[#27272A] rounded-sm overflow-hidden">
+                    {/* Tender Header */}
+                    <div className="p-4 border-b border-[#27272A]">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <span className="text-[#00E5FF] text-xs font-mono">#{tender.id?.slice(0, 8)}</span>
+                          <span className={`px-2 py-0.5 rounded text-xs ${
+                            tender.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' :
+                            tender.status === 'closed' ? 'bg-slate-500/10 text-slate-400' :
+                            'bg-amber-500/10 text-amber-400'
+                          }`}>
+                            {tender.status === 'active' ? 'Активен' : tender.status === 'closed' ? 'Закрыт' : tender.status}
+                          </span>
+                          {tender.type === 'application' && (
+                            <span className="px-2 py-0.5 bg-purple-500/10 text-purple-400 text-xs rounded">Из заявки</span>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteTender(tender.id); }}
+                          className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      </div>
+                      
+                      <h3 className="text-white font-bold text-xl mb-1">
+                        {(tender.car_brand || cr.brand || '').toUpperCase()} {tender.car_model || cr.model || ''}
+                      </h3>
+                      
+                      {tender.user_name && (
+                        <p className="text-slate-400 text-sm mb-2">
+                          <User size={12} className="inline mr-1" />
+                          Клиент: {tender.user_name} {tender.user_email && `(${tender.user_email})`}
+                        </p>
+                      )}
+                      <p className="text-slate-500 text-xs">
+                        Создан: {new Date(tender.created_at).toLocaleDateString('ru-RU')} • Предложений: {tender.offers_count || 0}
+                      </p>
                     </div>
-                    <h3 className="text-white font-medium mb-1">{tender.car_brand} {tender.car_model}</h3>
-                    <p className="text-slate-400 text-sm mb-3">
-                      Бюджет: до ${tender.budget?.toLocaleString() || '—'}
-                    </p>
-                    <p className="text-slate-500 text-xs mb-3">
-                      Предложений: {tender.offers_count || 0}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 border-[#27272A] text-slate-300"
-                      >
-                        <Eye size={14} className="mr-1" />
-                        Детали
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleDeleteTender(tender.id);
-                        }}
-                        className="border-red-500/30 text-red-400 hover:bg-red-500/10"
-                      >
-                        <Trash2 size={14} />
-                      </Button>
+
+                    {/* Car Request Details */}
+                    {Object.keys(cr).length > 0 && (
+                      <div className="p-4 border-b border-[#27272A]">
+                        <p className="text-slate-500 text-xs font-medium mb-2">ТРЕБОВАНИЯ КЛИЕНТА</p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                          {(cr.budget_china_from || cr.budget_china_to) && (
+                            <div className="bg-[#0B0F14] p-2 rounded">
+                              <p className="text-slate-500 text-xs">Бюджет Китай</p>
+                              <p className="text-[#00E5FF] font-medium">${cr.budget_china_from?.toLocaleString() || '—'} - ${cr.budget_china_to?.toLocaleString() || '—'}</p>
+                            </div>
+                          )}
+                          {cr.budget_total && (
+                            <div className="bg-[#0B0F14] p-2 rounded">
+                              <p className="text-slate-500 text-xs">Общий бюджет</p>
+                              <p className="text-emerald-400 font-medium">${cr.budget_total?.toLocaleString()}</p>
+                            </div>
+                          )}
+                          {(cr.year_from || cr.year_to) && (
+                            <div className="bg-[#0B0F14] p-2 rounded">
+                              <p className="text-slate-500 text-xs">Год выпуска</p>
+                              <p className="text-white">{cr.year_from || '—'} - {cr.year_to || '—'}</p>
+                            </div>
+                          )}
+                          {cr.engine_type && (
+                            <div className="bg-[#0B0F14] p-2 rounded">
+                              <p className="text-slate-500 text-xs">Двигатель</p>
+                              <p className="text-white">{engineLabelsMap[cr.engine_type] || cr.engine_type}</p>
+                            </div>
+                          )}
+                          {cr.body_type && (
+                            <div className="bg-[#0B0F14] p-2 rounded">
+                              <p className="text-slate-500 text-xs">Кузов</p>
+                              <p className="text-white">{bodyLabelsMap[cr.body_type] || cr.body_type}</p>
+                            </div>
+                          )}
+                          {cr.drive_type && (
+                            <div className="bg-[#0B0F14] p-2 rounded">
+                              <p className="text-slate-500 text-xs">Привод</p>
+                              <p className="text-white">{driveLabelsMap[cr.drive_type] || cr.drive_type}</p>
+                            </div>
+                          )}
+                          {cr.mileage_max && (
+                            <div className="bg-[#0B0F14] p-2 rounded">
+                              <p className="text-slate-500 text-xs">Пробег</p>
+                              <p className="text-white">{cr.mileage_max}</p>
+                            </div>
+                          )}
+                          {cr.delivery_city && (
+                            <div className="bg-[#0B0F14] p-2 rounded">
+                              <p className="text-slate-500 text-xs">Город доставки</p>
+                              <p className="text-white">{cr.delivery_city}</p>
+                            </div>
+                          )}
+                        </div>
+                        {cr.additional_requirements && (
+                          <div className="mt-2 p-2 bg-[#0B0F14] rounded">
+                            <p className="text-slate-500 text-xs mb-1">Доп. требования</p>
+                            <p className="text-slate-300 text-sm">{cr.additional_requirements}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Offers */}
+                    <div className="p-4">
+                      <p className="text-slate-500 text-xs font-medium mb-3">ПРЕДЛОЖЕНИЯ ПОДРЯДЧИКОВ ({tender.offers?.length || 0})</p>
+                      {tender.offers?.length > 0 ? (
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {tender.offers.map((offer, idx) => {
+                            const photos = (offer.files || []).filter(f => f.category === 'photo');
+                            return (
+                            <ModeratorOfferCard
+                              key={offer.id}
+                              offer={offer}
+                              photos={photos}
+                              isFirst={idx === 0}
+                              serviceLabelsMap={serviceLabelsMap}
+                              engineLabelsMap={engineLabelsMap}
+                              transLabelsMap={transLabelsMap}
+                              token={token}
+                            />
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-slate-600 text-sm text-center py-4">Пока нет предложений</p>
+                      )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <EmptyState text="Нет активных тендеров" />
