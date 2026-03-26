@@ -5124,6 +5124,23 @@ async def create_help_request(data: dict, current_user: dict = Depends(get_curre
         except Exception as e:
             logger.error(f"Bitrix24 lead creation error: {e}")
     
+    # Telegram: Notify moderators about new help request
+    try:
+        moderator_chat_ids = await get_moderator_chat_ids()
+        client_name = f"{current_user.get('name', '')} {current_user.get('last_name', '')}".strip()
+        for chat_id in moderator_chat_ids:
+            await telegram_service.send_telegram_message(
+                chat_id,
+                f"📋 Новый запрос помощи менеджера\n\n"
+                f"Клиент: {client_name}\n"
+                f"Email: {current_user.get('email', '')}\n"
+                f"Телефон: {current_user.get('phone', '')}\n"
+                f"Описание: {description[:200]}\n\n"
+                f"Назначьте менеджера в панели модератора."
+            )
+    except Exception as e:
+        logger.error(f"Telegram moderator notification error (help request): {e}")
+    
     return {
         "message": "Запрос на помощь менеджера отправлен",
         "request_id": request_id
@@ -5149,6 +5166,7 @@ async def get_help_request(request_id: str, current_user: dict = Depends(get_cur
         raise HTTPException(status_code=404, detail="Запрос не найден")
     return request
 
+# Also update the client message endpoint to notify the manager
 @api_router.post("/help-requests/{request_id}/messages")
 async def send_help_request_message(
     request_id: str, 
@@ -5176,6 +5194,30 @@ async def send_help_request_message(
         {"id": request_id},
         {"$push": {"messages": message}}
     )
+    
+    # Telegram: Notify assigned manager about new message from client
+    try:
+        manager_id = request.get("assigned_manager_id")
+        if manager_id:
+            manager_user = await db.users.find_one({"id": manager_id})
+            if manager_user and manager_user.get("telegram_chat_id"):
+                client_name = f"{current_user.get('name', '')} {current_user.get('last_name', '')}".strip()
+                await telegram_service.send_telegram_message(
+                    manager_user["telegram_chat_id"],
+                    f"💬 Новое сообщение от клиента {client_name} (запрос помощи):\n\n{message['content'][:200]}"
+                )
+        else:
+            # No manager assigned - notify all moderators
+            moderator_chat_ids = await get_moderator_chat_ids()
+            for chat_id in moderator_chat_ids:
+                await telegram_service.send_telegram_message(
+                    chat_id,
+                    f"💬 Новое сообщение в запросе помощи (без менеджера):\n"
+                    f"Клиент: {current_user.get('name', '')}\n"
+                    f"{message['content'][:200]}"
+                )
+    except Exception as e:
+        logger.error(f"Telegram notification error (client message): {e}")
     
     return {"message": "Сообщение отправлено", "message_data": message}
 
@@ -5242,6 +5284,153 @@ async def request_manager_help(car_id: str, current_user: dict = Depends(get_cur
         "cost": MANAGER_HELP_COST,
         "new_balance": balance - MANAGER_HELP_COST
     }
+
+# ==================== MODERATOR HELP REQUESTS ====================
+
+@api_router.get("/moderator/help-requests")
+async def get_all_help_requests(current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Get all help requests for moderators"""
+    requests = await db.help_requests.find(
+        {},
+        {"_id": 0, "messages": 0}
+    ).sort("created_at", -1).to_list(100)
+    return requests
+
+@api_router.get("/moderator/help-requests/{request_id}")
+async def get_help_request_moderator(request_id: str, current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Get specific help request with messages for moderator"""
+    request = await db.help_requests.find_one(
+        {"id": request_id},
+        {"_id": 0}
+    )
+    if not request:
+        raise HTTPException(status_code=404, detail="Запрос не найден")
+    return request
+
+@api_router.get("/moderator/available-managers")
+async def get_available_managers(current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Get list of moderators/admins available for assignment as managers"""
+    managers = await db.users.find(
+        {"role": {"$in": ["moderator", "admin"]}},
+        {"_id": 0, "id": 1, "name": 1, "last_name": 1, "email": 1, "role": 1}
+    ).to_list(50)
+    return managers
+
+@api_router.post("/moderator/help-requests/{request_id}/assign")
+async def assign_manager_to_help_request(
+    request_id: str,
+    data: dict,
+    current_user: dict = Depends(require_role(["moderator", "admin"]))
+):
+    """Assign a moderator as manager to a help request"""
+    manager_id = data.get("manager_id")
+    if not manager_id:
+        raise HTTPException(status_code=400, detail="manager_id обязателен")
+    
+    # Find the manager
+    manager = await db.users.find_one(
+        {"id": manager_id, "role": {"$in": ["moderator", "admin"]}},
+        {"_id": 0}
+    )
+    if not manager:
+        raise HTTPException(status_code=404, detail="Менеджер не найден")
+    
+    # Find the help request
+    request = await db.help_requests.find_one({"id": request_id})
+    if not request:
+        raise HTTPException(status_code=404, detail="Запрос не найден")
+    
+    manager_name = f"{manager.get('name', '')} {manager.get('last_name', '')}".strip()
+    
+    # Update the help request
+    await db.help_requests.update_one(
+        {"id": request_id},
+        {"$set": {
+            "assigned_manager_id": manager_id,
+            "assigned_manager_name": manager_name,
+            "status": "active",
+            "assigned_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Add system message about assignment
+    system_msg = {
+        "id": str(uuid.uuid4()),
+        "sender_id": "system",
+        "sender_name": "Система",
+        "sender_type": "system",
+        "content": f"Назначен менеджер: {manager_name}",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.help_requests.update_one(
+        {"id": request_id},
+        {"$push": {"messages": system_msg}}
+    )
+    
+    # Telegram: Notify client about assigned manager
+    try:
+        client_user = await db.users.find_one({"id": request.get("user_id")})
+        if client_user and client_user.get("telegram_chat_id"):
+            await telegram_service.send_telegram_message(
+                client_user["telegram_chat_id"],
+                f"✅ Вам назначен менеджер: {manager_name}\n\n"
+                f"Вы можете общаться в чате «Помощь менеджера» в разделе Документы."
+            )
+    except Exception as e:
+        logger.error(f"Telegram notification error (manager assigned): {e}")
+    
+    return {"message": f"Менеджер {manager_name} назначен", "manager_name": manager_name}
+
+@api_router.post("/moderator/help-requests/{request_id}/messages")
+async def send_help_request_message_moderator(
+    request_id: str,
+    data: dict,
+    current_user: dict = Depends(require_role(["moderator", "admin"]))
+):
+    """Send a message in help request chat as moderator/manager"""
+    request = await db.help_requests.find_one({"id": request_id})
+    if not request:
+        raise HTTPException(status_code=404, detail="Запрос не найден")
+    
+    message = {
+        "id": str(uuid.uuid4()),
+        "sender_id": current_user["id"],
+        "sender_name": f"{current_user.get('name', '')} {current_user.get('last_name', '')}".strip(),
+        "sender_type": "manager",
+        "content": data.get("content", ""),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.help_requests.update_one(
+        {"id": request_id},
+        {"$push": {"messages": message}}
+    )
+    
+    # Telegram: Notify client about new message from manager
+    try:
+        client_user = await db.users.find_one({"id": request.get("user_id")})
+        if client_user and client_user.get("telegram_chat_id"):
+            sender_name = message["sender_name"]
+            await telegram_service.send_telegram_message(
+                client_user["telegram_chat_id"],
+                f"💬 Новое сообщение от менеджера {sender_name}:\n\n{message['content'][:200]}"
+            )
+    except Exception as e:
+        logger.error(f"Telegram notification error (manager message): {e}")
+    
+    return {"message": "Сообщение отправлено", "message_data": message}
+
+@api_router.post("/moderator/help-requests/{request_id}/close")
+async def close_help_request(
+    request_id: str,
+    current_user: dict = Depends(require_role(["moderator", "admin"]))
+):
+    """Close a help request"""
+    await db.help_requests.update_one(
+        {"id": request_id},
+        {"$set": {"status": "closed", "closed_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "Запрос закрыт"}
 
 # ==================== HOT DEALS ENDPOINTS ====================
 

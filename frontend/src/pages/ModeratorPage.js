@@ -60,7 +60,9 @@ import {
   Image,
   Download,
   ExternalLink,
-  Trash2
+  Trash2,
+  Headphones,
+  Send
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -126,6 +128,15 @@ const ModeratorPage = () => {
   // Delete confirmation dialog state
   const [deleteDialog, setDeleteDialog] = useState(null); // { type: 'user'|'tender'|..., id: string, title: string }
   
+  // Help requests management state
+  const [helpRequests, setHelpRequests] = useState([]);
+  const [selectedHelpRequest, setSelectedHelpRequest] = useState(null);
+  const [helpMessages, setHelpMessages] = useState([]);
+  const [newHelpMessage, setNewHelpMessage] = useState('');
+  const [sendingHelpMsg, setSendingHelpMsg] = useState(false);
+  const [availableManagers, setAvailableManagers] = useState([]);
+  const [assigningManager, setAssigningManager] = useState(false);
+  
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
@@ -172,6 +183,13 @@ const ModeratorPage = () => {
         // Fetch pending stage confirmations
         const response = await axios.get(`${API}/moderator/deals/pending-stages`, { headers });
         setPendingStages(response.data);
+      } else if (activeTab === 'help-requests') {
+        const [reqRes, mgrRes] = await Promise.all([
+          axios.get(`${API}/moderator/help-requests`, { headers }),
+          axios.get(`${API}/moderator/available-managers`, { headers })
+        ]);
+        setHelpRequests(reqRes.data);
+        setAvailableManagers(mgrRes.data);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -195,6 +213,69 @@ const ModeratorPage = () => {
       fetchData();
     } catch (error) {
       toast.error('Ошибка при обновлении роли');
+    }
+  };
+
+  // Help request management functions
+  const fetchHelpRequestMessages = async (requestId) => {
+    try {
+      const response = await axios.get(`${API}/moderator/help-requests/${requestId}`, { headers });
+      setHelpMessages(response.data.messages || []);
+      // Update the selected request with latest data
+      setSelectedHelpRequest(response.data);
+    } catch (error) {
+      console.error('Error fetching help request messages:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedHelpRequest && activeTab === 'help-requests') {
+      fetchHelpRequestMessages(selectedHelpRequest.id);
+      const interval = setInterval(() => fetchHelpRequestMessages(selectedHelpRequest.id), 5000);
+      return () => clearInterval(interval);
+    }
+  }, [selectedHelpRequest?.id, activeTab]);
+
+  const assignManager = async (requestId, managerId) => {
+    setAssigningManager(true);
+    try {
+      const response = await axios.post(`${API}/moderator/help-requests/${requestId}/assign`, {
+        manager_id: managerId
+      }, { headers });
+      toast.success(response.data.message);
+      fetchData();
+      fetchHelpRequestMessages(requestId);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка при назначении менеджера');
+    } finally {
+      setAssigningManager(false);
+    }
+  };
+
+  const sendHelpMessage = async () => {
+    if (!newHelpMessage.trim() || !selectedHelpRequest) return;
+    setSendingHelpMsg(true);
+    try {
+      await axios.post(`${API}/moderator/help-requests/${selectedHelpRequest.id}/messages`, {
+        content: newHelpMessage
+      }, { headers });
+      setNewHelpMessage('');
+      fetchHelpRequestMessages(selectedHelpRequest.id);
+    } catch (error) {
+      toast.error('Ошибка отправки сообщения');
+    } finally {
+      setSendingHelpMsg(false);
+    }
+  };
+
+  const closeHelpRequest = async (requestId) => {
+    try {
+      await axios.post(`${API}/moderator/help-requests/${requestId}/close`, {}, { headers });
+      toast.success('Запрос закрыт');
+      setSelectedHelpRequest(null);
+      fetchData();
+    } catch (error) {
+      toast.error('Ошибка при закрытии запроса');
     }
   };
 
@@ -609,6 +690,15 @@ const ModeratorPage = () => {
               {verifications.length > 0 && (
                 <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
                   {verifications.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="help-requests" className="data-[state=active]:bg-amber-500 data-[state=active]:text-black">
+              <Headphones size={16} className="mr-2" />
+              Помощь менеджера
+              {helpRequests.filter(r => r.status === 'pending').length > 0 && (
+                <span className="ml-2 px-2 py-0.5 bg-amber-600 text-white text-xs rounded-full">
+                  {helpRequests.filter(r => r.status === 'pending').length}
                 </span>
               )}
             </TabsTrigger>
@@ -1085,6 +1175,219 @@ const ModeratorPage = () => {
               </div>
             ) : (
               <EmptyState text="Нет документов на проверку" />
+            )}
+          </TabsContent>
+
+          {/* Help Requests Tab */}
+          <TabsContent value="help-requests">
+            {loading ? (
+              <LoadingState />
+            ) : (
+              <div className="grid lg:grid-cols-3 gap-6">
+                {/* Requests List */}
+                <div className="lg:col-span-1 space-y-3">
+                  <h3 className="text-white font-medium">Запросы на помощь ({helpRequests.length})</h3>
+                  {helpRequests.length === 0 ? (
+                    <div className="bg-[#15191E] border border-[#27272A] rounded-lg p-6 text-center">
+                      <Headphones size={48} className="mx-auto mb-3 text-slate-600" />
+                      <p className="text-slate-400">Нет запросов</p>
+                    </div>
+                  ) : (
+                    helpRequests.map(req => (
+                      <div
+                        key={req.id}
+                        onClick={() => { setSelectedHelpRequest(req); setHelpMessages([]); }}
+                        data-testid={`help-request-${req.id}`}
+                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                          selectedHelpRequest?.id === req.id
+                            ? 'bg-amber-500/10 border-amber-500'
+                            : 'bg-[#15191E] border-[#27272A] hover:border-amber-500/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-white font-medium text-sm truncate">{req.user_name || 'Клиент'}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs ${
+                            req.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
+                            req.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' :
+                            'bg-slate-500/20 text-slate-400'
+                          }`}>
+                            {req.status === 'pending' ? 'Ожидает' : req.status === 'active' ? 'В работе' : 'Закрыт'}
+                          </span>
+                        </div>
+                        <p className="text-slate-400 text-xs truncate">{req.description || req.request_type}</p>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-xs text-slate-500">
+                            {new Date(req.created_at).toLocaleDateString('ru-RU')}
+                          </span>
+                          {req.assigned_manager_name && (
+                            <span className="text-xs text-emerald-400">
+                              {req.assigned_manager_name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Request Detail + Chat */}
+                <div className="lg:col-span-2">
+                  {!selectedHelpRequest ? (
+                    <div className="bg-[#15191E] border border-[#27272A] rounded-lg p-12 text-center">
+                      <Headphones size={64} className="mx-auto mb-4 text-slate-600" />
+                      <p className="text-slate-400">Выберите запрос для управления</p>
+                    </div>
+                  ) : (
+                    <div className="bg-[#15191E] border border-[#27272A] rounded-lg overflow-hidden">
+                      {/* Header */}
+                      <div className="p-4 border-b border-[#27272A]">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <h3 className="text-white font-semibold">{selectedHelpRequest.user_name || 'Клиент'}</h3>
+                            <p className="text-slate-400 text-sm">
+                              {selectedHelpRequest.user_email} {selectedHelpRequest.user_phone && `• ${selectedHelpRequest.user_phone}`}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-3 py-1 rounded-full text-sm ${
+                              selectedHelpRequest.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
+                              selectedHelpRequest.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' :
+                              'bg-slate-500/20 text-slate-400'
+                            }`}>
+                              {selectedHelpRequest.status === 'pending' ? 'Ожидает' : selectedHelpRequest.status === 'active' ? 'В работе' : 'Закрыт'}
+                            </span>
+                            {selectedHelpRequest.status !== 'closed' && (
+                              <Button
+                                onClick={() => closeHelpRequest(selectedHelpRequest.id)}
+                                variant="outline"
+                                size="sm"
+                                className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                              >
+                                Закрыть
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Description */}
+                        {selectedHelpRequest.description && (
+                          <div className="p-3 bg-[#0B0F14] rounded-lg mb-3">
+                            <p className="text-xs text-slate-500 mb-1">Описание запроса:</p>
+                            <p className="text-white text-sm">{selectedHelpRequest.description}</p>
+                          </div>
+                        )}
+
+                        {/* Manager Assignment */}
+                        {selectedHelpRequest.assigned_manager_name ? (
+                          <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                            <User size={20} className="text-emerald-400" />
+                            <div>
+                              <p className="text-emerald-400 text-sm font-medium">Назначенный менеджер</p>
+                              <p className="text-white">{selectedHelpRequest.assigned_manager_name}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                            <p className="text-amber-400 text-sm mb-2 flex items-center gap-2">
+                              <AlertCircle size={14} />
+                              Менеджер не назначен
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Select onValueChange={(val) => assignManager(selectedHelpRequest.id, val)}>
+                                <SelectTrigger className="bg-[#0B0F14] border-[#27272A] text-white flex-1" data-testid="assign-manager-select">
+                                  <SelectValue placeholder="Выберите менеджера" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-[#15191E] border-[#27272A]">
+                                  {availableManagers.map(mgr => (
+                                    <SelectItem key={mgr.id} value={mgr.id} className="text-white">
+                                      {mgr.name} {mgr.last_name} ({mgr.role === 'admin' ? 'Админ' : 'Модератор'})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Chat Messages */}
+                      <div className="flex flex-col h-[400px]">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                          {helpMessages.length === 0 ? (
+                            <div className="text-center py-8">
+                              <MessageSquare size={48} className="mx-auto mb-3 text-slate-600" />
+                              <p className="text-slate-400">Нет сообщений</p>
+                            </div>
+                          ) : (
+                            helpMessages.map(msg => (
+                              <div
+                                key={msg.id}
+                                className={`flex ${
+                                  msg.sender_type === 'manager' ? 'justify-end' : 
+                                  msg.sender_type === 'system' ? 'justify-center' : 'justify-start'
+                                }`}
+                              >
+                                {msg.sender_type === 'system' ? (
+                                  <div className="px-3 py-1 bg-slate-800 rounded-full">
+                                    <p className="text-slate-400 text-xs">{msg.content}</p>
+                                  </div>
+                                ) : (
+                                  <div className={`max-w-[70%] rounded-lg p-3 ${
+                                    msg.sender_type === 'manager'
+                                      ? 'bg-emerald-500/10 border border-emerald-500/30'
+                                      : 'bg-amber-500/10 border border-amber-500/30'
+                                  }`}>
+                                    <div className="flex items-center gap-2 mb-1">
+                                      {msg.sender_type === 'manager' ? (
+                                        <Headphones size={12} className="text-emerald-400" />
+                                      ) : (
+                                        <User size={12} className="text-amber-400" />
+                                      )}
+                                      <span className={`text-xs font-medium ${
+                                        msg.sender_type === 'manager' ? 'text-emerald-400' : 'text-amber-400'
+                                      }`}>
+                                        {msg.sender_name}
+                                      </span>
+                                      <span className="text-xs text-slate-500">
+                                        {new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                    </div>
+                                    <p className="text-white text-sm whitespace-pre-wrap">{msg.content}</p>
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                        {/* Message Input */}
+                        {selectedHelpRequest.status !== 'closed' && (
+                          <div className="p-4 border-t border-[#27272A]">
+                            <div className="flex gap-2">
+                              <input
+                                value={newHelpMessage}
+                                onChange={(e) => setNewHelpMessage(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendHelpMessage()}
+                                placeholder="Напишите сообщение клиенту..."
+                                className="flex-1 bg-[#0B0F14] border border-[#27272A] rounded-md px-3 py-2 text-white text-sm placeholder-slate-500 outline-none focus:border-emerald-500/50"
+                                data-testid="manager-chat-input"
+                              />
+                              <Button
+                                onClick={sendHelpMessage}
+                                disabled={sendingHelpMsg || !newHelpMessage.trim()}
+                                className="bg-emerald-500 hover:bg-emerald-600 text-black"
+                                data-testid="manager-send-btn"
+                              >
+                                {sendingHelpMsg ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </TabsContent>
 

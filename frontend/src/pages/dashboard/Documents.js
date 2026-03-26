@@ -49,7 +49,8 @@ import {
   Scale,
   Phone,
   Mail,
-  AlertCircle
+  AlertCircle,
+  Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -92,6 +93,8 @@ const Documents = () => {
   const [helpMessages, setHelpMessages] = useState([]);
   const [newHelpMessage, setNewHelpMessage] = useState('');
   const [sendingHelp, setSendingHelp] = useState(false);
+  const [showCreateHelpDialog, setShowCreateHelpDialog] = useState(false);
+  const [helpDescription, setHelpDescription] = useState('');
   
   // Legal help state
   const [legalRequests, setLegalRequests] = useState([]);
@@ -209,6 +212,25 @@ const Documents = () => {
       toast.success('Запрос на звонок отправлен! Менеджер свяжется с вами в ближайшее время.');
     } catch (error) {
       toast.error('Ошибка при отправке запроса');
+    }
+  };
+
+  const createHelpRequest = async () => {
+    if (!helpDescription.trim()) {
+      toast.error('Опишите, в чём вам нужна помощь');
+      return;
+    }
+    try {
+      await axios.post(`${API}/help-requests`, {
+        request_type: 'general',
+        description: helpDescription.trim()
+      }, { headers });
+      toast.success('Запрос на помощь менеджера отправлен');
+      setHelpDescription('');
+      setShowCreateHelpDialog(false);
+      fetchHelpRequests();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка при создании запроса');
     }
   };
 
@@ -429,13 +451,24 @@ const Documents = () => {
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Help Requests List */}
             <div className="lg:col-span-1 space-y-3">
-              <h3 className="text-white font-medium">Запросы на помощь</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-white font-medium">Запросы на помощь</h3>
+                <Button
+                  onClick={() => setShowCreateHelpDialog(true)}
+                  size="sm"
+                  className="bg-amber-500 hover:bg-amber-600 text-black"
+                  data-testid="create-help-request-btn"
+                >
+                  <Plus size={14} className="mr-1" />
+                  Создать запрос
+                </Button>
+              </div>
               
               {helpRequests.length === 0 ? (
                 <div className="bg-[#15191E] border border-[#27272A] rounded-lg p-6 text-center">
                   <Headphones size={48} className="mx-auto mb-3 text-slate-600" />
                   <p className="text-slate-400">Нет запросов на помощь</p>
-                  <p className="text-slate-500 text-sm mt-1">Запросите помощь менеджера в разделе Гараж</p>
+                  <p className="text-slate-500 text-sm mt-1">Создайте запрос, чтобы получить помощь менеджера</p>
                 </div>
               ) : (
                 helpRequests.map(req => (
@@ -530,6 +563,44 @@ const Documents = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Create Help Request Dialog */}
+      <Dialog open={showCreateHelpDialog} onOpenChange={setShowCreateHelpDialog}>
+        <DialogContent className="bg-[#15191E] border-[#27272A]">
+          <DialogHeader>
+            <DialogTitle className="text-white">Запрос помощи менеджера</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-slate-400 mb-2 block">Опишите, в чём вам нужна помощь</label>
+              <Textarea
+                value={helpDescription}
+                onChange={(e) => setHelpDescription(e.target.value)}
+                placeholder="Например: Нужна помощь с подбором авто, оформлением документов..."
+                className="bg-[#0B0F14] border-[#27272A] text-white min-h-[120px]"
+                data-testid="help-description-input"
+              />
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowCreateHelpDialog(false)}
+                className="border-[#27272A] text-slate-400"
+              >
+                Отмена
+              </Button>
+              <Button
+                onClick={createHelpRequest}
+                disabled={!helpDescription.trim()}
+                className="bg-amber-500 hover:bg-amber-600 text-black"
+                data-testid="submit-help-request-btn"
+              >
+                Отправить запрос
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 
