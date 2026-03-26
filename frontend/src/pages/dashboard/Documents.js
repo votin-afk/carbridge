@@ -757,6 +757,26 @@ const Documents = () => {
                     </span>
                   </div>
                   <p className="text-white text-sm whitespace-pre-wrap">{msg.content}</p>
+                  {msg.source === 'telegram' && (
+                    <span className="inline-block mt-1 mr-1 px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded">
+                      Telegram
+                    </span>
+                  )}
+                  {msg.file_ids && msg.file_ids.length > 0 && (
+                    <div className="mt-1">
+                      {msg.file_ids.map(fid => (
+                        <a
+                          key={fid}
+                          href={`${API}/deals/${selectedDeal.id}/files/${fid}/download`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs text-[#00E5FF] hover:underline"
+                        >
+                          <Paperclip size={10} /> Скачать файл
+                        </a>
+                      ))}
+                    </div>
+                  )}
                   {msg.stage_key && (
                     <span className="inline-block mt-1 px-2 py-0.5 bg-slate-700 text-slate-300 text-xs rounded">
                       {stageLabels[msg.stage_key]}

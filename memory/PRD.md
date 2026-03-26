@@ -445,7 +445,7 @@ CONSULTANT_FEE = 200    # $200 за помощь консультанта/мен
 
 - **Admin User**: test@test.com / test
 - **Contractor**: Все подрядчики имеют пароль `contractor123`
-- **API URL**: https://bitrix-car-import.preview.emergentagent.com/api
+- **API URL**: https://vehicle-tender-hub.preview.emergentagent.com/api
 
 ---
 
@@ -590,7 +590,7 @@ logging.getLogger("passlib.handlers.bcrypt").setLevel(logging.ERROR)
 - **Telegram Bot**: Уведомления пользователям
   - Bot username: `@KARBRIDGE_Bot`
   - Token: Хранится в `backend/.env`
-  - Webhook: `https://bitrix-car-import.preview.emergentagent.com/api/telegram/webhook`
+  - Webhook: `https://vehicle-tender-hub.preview.emergentagent.com/api/telegram/webhook`
 
 ---
 

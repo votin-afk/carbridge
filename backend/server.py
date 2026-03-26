@@ -8317,7 +8317,8 @@ async def send_message_to_deal_chat(
     sender_id: str,
     sender_type: str,
     sender_name: str,
-    content: str
+    content: str,
+    file_ids: list = None
 ):
     """Send a message to deal stage chat from Telegram"""
     message_doc = {
@@ -8328,6 +8329,7 @@ async def send_message_to_deal_chat(
         "sender_name": sender_name,
         "sender_type": sender_type,
         "content": content,
+        "file_ids": file_ids or [],
         "created_at": datetime.now(timezone.utc).isoformat(),
         "read_by_client": sender_type == "client",
         "read_by_contractor": sender_type == "contractor",
@@ -8335,6 +8337,105 @@ async def send_message_to_deal_chat(
     }
     await db.deal_messages.insert_one(message_doc)
     return message_doc
+
+
+async def download_telegram_file(file_id: str) -> tuple:
+    """Download a file from Telegram servers. Returns (file_bytes, file_name, mime_type)"""
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not bot_token:
+        return None, None, None
+    try:
+        async with httpx.AsyncClient() as client:
+            # Get file path from Telegram
+            resp = await client.get(
+                f"https://api.telegram.org/bot{bot_token}/getFile",
+                params={"file_id": file_id},
+                timeout=15.0
+            )
+            data = resp.json()
+            if not data.get("ok"):
+                logger.error(f"Telegram getFile failed: {data}")
+                return None, None, None
+            
+            file_path = data["result"]["file_path"]
+            file_name = file_path.split("/")[-1] if "/" in file_path else file_path
+            
+            # Download the file
+            file_resp = await client.get(
+                f"https://api.telegram.org/file/bot{bot_token}/{file_path}",
+                timeout=30.0
+            )
+            if file_resp.status_code != 200:
+                logger.error(f"Telegram file download failed: {file_resp.status_code}")
+                return None, None, None
+            
+            # Guess mime type
+            ext = file_name.rsplit(".", 1)[-1].lower() if "." in file_name else ""
+            mime_map = {
+                "jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png",
+                "gif": "image/gif", "webp": "image/webp", "mp4": "video/mp4",
+                "pdf": "application/pdf", "doc": "application/msword",
+                "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "xls": "application/vnd.ms-excel", "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "ogg": "audio/ogg", "mp3": "audio/mpeg", "wav": "audio/wav"
+            }
+            mime_type = mime_map.get(ext, "application/octet-stream")
+            
+            return file_resp.content, file_name, mime_type
+    except Exception as e:
+        logger.error(f"Telegram file download error: {e}")
+        return None, None, None
+
+
+async def save_telegram_file_to_deal(
+    deal_id: str,
+    stage_key: str,
+    sender_id: str,
+    sender_name: str,
+    sender_type: str,
+    file_bytes: bytes,
+    file_name: str,
+    mime_type: str
+) -> str:
+    """Save a file downloaded from Telegram to the deal's file storage"""
+    file_id = str(uuid.uuid4())
+    ext = file_name.rsplit(".", 1)[-1] if "." in file_name else ""
+    saved_name = f"{file_id}.{ext}" if ext else file_id
+    
+    # Determine category
+    category = "document"
+    if mime_type.startswith("image/"):
+        category = "photo"
+    elif mime_type.startswith("video/"):
+        category = "video"
+    elif mime_type.startswith("audio/"):
+        category = "audio"
+    
+    # Save file to disk
+    deal_dir = UPLOADS_DIR / deal_id
+    deal_dir.mkdir(parents=True, exist_ok=True)
+    file_path = deal_dir / saved_name
+    with open(file_path, "wb") as f:
+        f.write(file_bytes)
+    
+    file_doc = {
+        "id": file_id,
+        "deal_id": deal_id,
+        "stage_key": stage_key,
+        "original_name": file_name,
+        "saved_name": saved_name,
+        "mime_type": mime_type,
+        "size": len(file_bytes),
+        "category": category,
+        "description": "",
+        "uploader_id": sender_id,
+        "uploader_name": sender_name,
+        "uploader_type": "client" if sender_type == "client" else "contractor",
+        "source": "telegram",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.deal_files.insert_one(file_doc)
+    return file_id
 
 
 @api_router.post("/telegram/webhook")
@@ -8441,9 +8542,29 @@ async def telegram_webhook(request: Request):
         if data.get("message"):
             message = data["message"]
             chat_id = message.get("chat", {}).get("id")
-            text = message.get("text", "")
+            text = message.get("text", "") or message.get("caption", "") or ""
             username = message.get("from", {}).get("username")
             first_name = message.get("from", {}).get("first_name", "")
+            
+            # Detect file attachments (photo, document, video, voice, audio)
+            telegram_file_id = None
+            telegram_file_name = None
+            if message.get("photo"):
+                # Photos come as array of sizes, take the largest
+                telegram_file_id = message["photo"][-1]["file_id"]
+                telegram_file_name = f"photo_{message['message_id']}.jpg"
+            elif message.get("document"):
+                telegram_file_id = message["document"]["file_id"]
+                telegram_file_name = message["document"].get("file_name", f"file_{message['message_id']}")
+            elif message.get("video"):
+                telegram_file_id = message["video"]["file_id"]
+                telegram_file_name = message["video"].get("file_name", f"video_{message['message_id']}.mp4")
+            elif message.get("voice"):
+                telegram_file_id = message["voice"]["file_id"]
+                telegram_file_name = f"voice_{message['message_id']}.ogg"
+            elif message.get("audio"):
+                telegram_file_id = message["audio"]["file_id"]
+                telegram_file_name = message["audio"].get("file_name", f"audio_{message['message_id']}.mp3")
             
             # Handle commands
             if text.startswith("/start"):
@@ -8592,19 +8713,44 @@ async def telegram_webhook(request: Request):
                     "✖️ Выбор чата отменён.\n\nИспользуйте /chats для выбора чата."
                 )
             
-            elif not text.startswith("/"):
-                # Regular message - check if we have context
-                if chat_id in telegram_message_context:
+            elif not text.startswith("/") or telegram_file_id:
+                # Regular message or file - check if we have context
+                has_content = text.strip() or telegram_file_id
+                
+                if chat_id in telegram_message_context and has_content:
                     ctx = telegram_message_context[chat_id]
+                    sender_type_val = "client" if ctx["user_type"] == "user" else "contractor"
                     
-                    # Send message to deal chat
+                    # Handle file download and storage
+                    saved_file_ids = []
+                    if telegram_file_id:
+                        file_bytes, file_name, mime_type = await download_telegram_file(telegram_file_id)
+                        if file_bytes:
+                            fid = await save_telegram_file_to_deal(
+                                deal_id=ctx["deal_id"],
+                                stage_key=ctx["stage_key"],
+                                sender_id=ctx["user_id"],
+                                sender_name=ctx["user_name"],
+                                sender_type=sender_type_val,
+                                file_bytes=file_bytes,
+                                file_name=telegram_file_name or file_name,
+                                mime_type=mime_type
+                            )
+                            saved_file_ids.append(fid)
+                    
+                    # Send message to deal chat (text + file reference)
+                    msg_content = text.strip() if text.strip() else ""
+                    if saved_file_ids and not msg_content:
+                        msg_content = f"[Файл: {telegram_file_name}]"
+                    
                     await send_message_to_deal_chat(
                         deal_id=ctx["deal_id"],
                         stage_key=ctx["stage_key"],
                         sender_id=ctx["user_id"],
-                        sender_type="client" if ctx["user_type"] == "user" else "contractor",
+                        sender_type=sender_type_val,
                         sender_name=ctx["user_name"],
-                        content=text
+                        content=msg_content,
+                        file_ids=saved_file_ids
                     )
                     
                     # Send confirmation
@@ -8652,7 +8798,11 @@ async def telegram_webhook(request: Request):
                     # Clear only if user explicitly uses /cancel
                     
                 else:
-                    # No context - show chat selection
+                    # No context - check if there's content to send
+                    if not has_content:
+                        return {"ok": True}
+                    
+                    # Show chat selection
                     user = await db.users.find_one({"telegram_chat_id": chat_id})
                     contractor = await db.contractors.find_one({"telegram_chat_id": chat_id})
                     
@@ -8675,6 +8825,7 @@ async def telegram_webhook(request: Request):
                             user_id = user["id"] if user else contractor["id"]
                             user_type = "user" if user else "contractor"
                             user_name = user.get("name", "Клиент") if user else contractor.get("company_name", "Подрядчик")
+                            sender_type_val = "client" if user_type == "user" else "contractor"
                             
                             telegram_message_context[chat_id] = {
                                 "deal_id": chat["deal_id"],
@@ -8685,14 +8836,37 @@ async def telegram_webhook(request: Request):
                                 "car_name": chat["car_name"]
                             }
                             
+                            # Handle file if present
+                            saved_file_ids = []
+                            if telegram_file_id:
+                                file_bytes, file_name, mime_type = await download_telegram_file(telegram_file_id)
+                                if file_bytes:
+                                    fid = await save_telegram_file_to_deal(
+                                        deal_id=chat["deal_id"],
+                                        stage_key=chat["stage_key"],
+                                        sender_id=user_id,
+                                        sender_name=user_name,
+                                        sender_type=sender_type_val,
+                                        file_bytes=file_bytes,
+                                        file_name=telegram_file_name or file_name,
+                                        mime_type=mime_type
+                                    )
+                                    saved_file_ids.append(fid)
+                            
+                            # Build message content
+                            msg_content = text.strip() if text.strip() else ""
+                            if saved_file_ids and not msg_content:
+                                msg_content = f"[Файл: {telegram_file_name}]"
+                            
                             # Send message directly
                             await send_message_to_deal_chat(
                                 deal_id=chat["deal_id"],
                                 stage_key=chat["stage_key"],
                                 sender_id=user_id,
-                                sender_type="client" if user_type == "user" else "contractor",
+                                sender_type=sender_type_val,
                                 sender_name=user_name,
-                                content=text
+                                content=msg_content,
+                                file_ids=saved_file_ids
                             )
                             
                             await telegram_service.send_message_confirmation(

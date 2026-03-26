@@ -1,0 +1,104 @@
+{
+  "summary": "Completed testing of Telegram messages display in deal chats. All 10 backend tests passed. Frontend testing confirmed: 1) Stage dialog shows messages even without contractor assigned, 2) TG indicator visible on telegram messages in stage dialog, 3) Telegram badge visible in general chat, 4) Messages with source='telegram' are properly returned by API.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dialog components", "issues": ["Console warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent} - minor accessibility issue"]}
+    ]
+  },
+  
+  "passed_tests": [
+    "GET /api/deals/{deal_id}/stages/{stage_key}/messages - returns messages with source='telegram' field",
+    "GET /api/deals/{deal_id}/stages/{stage_key}/messages - returns messages with file_ids field",
+    "GET /api/deals/{deal_id}/messages - returns all messages including telegram ones",
+    "Stage messages endpoint works without contractor assigned (insurance stage has no contractor_id)",
+    "File download endpoint exists and is accessible",
+    "GET /api/deals/{deal_id} - returns deal with stages",
+    "GET /api/deals/{deal_id}/files - returns files list",
+    "GET /api/deals/{deal_id}/stages/{stage_key}/files - returns stage files",
+    "Stage messages endpoint requires authentication (401 without token)",
+    "Deal messages endpoint requires authentication (401 without token)",
+    "Frontend: Stage dialog shows 'Подрядчик ещё не назначен' warning but still displays messages",
+    "Frontend: TG indicator (➤ TG) visible next to sender name in stage dialog",
+    "Frontend: Telegram badge visible in general chat for telegram messages",
+    "Frontend: Stage infographic with clickable stage buttons working correctly"
+  ],
+  
+  "test_report_links": [
+    "/app/backend/tests/test_telegram_messages_display.py",
+    "/app/test_reports/pytest/telegram_messages_display_results.xml"
+  ],
+  
+  "action_items": [],
+  
+  "critical_code_review_comments": [
+    "Backend correctly saves messages with source='telegram' and file_ids fields",
+    "Frontend StageInfographic.js properly shows messages even without contractor (lines 375-454)",
+    "Frontend Documents.js shows Telegram badge for messages with source='telegram' (line 760-764)",
+    "TG indicator implemented in both StageInfographic.js and ContractorMessenger.js"
+  ],
+  
+  "updated_files": [
+    "/app/backend/tests/test_telegram_messages_display.py - Created test suite for telegram messages display"
+  ],
+  
+  "success_rate": {
+    "backend": "100% (10/10 passed)",
+    "frontend": "100% (all tested features working)"
+  },
+  
+  "test_credentials": {
+    "admin_user": {"email": "votin@tut.by", "password": "test", "role": "admin"}
+  },
+  
+  "seed_data_creation": "Used existing deal ff3bbaf2-fc3e-40a3-8119-d9beb1522971 (Audi Q4 e-tron) with 5 telegram messages in insurance stage",
+  
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  
+  "context_for_next_testing_agent": "Telegram messages display fully tested. Key findings: 1) GET /api/deals/{deal_id}/stages/{stage_key}/messages returns messages with source='telegram' and file_ids fields. 2) Stage dialog shows messages even without contractor assigned. 3) TG indicator (➤ TG) visible in stage dialog. 4) Telegram badge visible in general chat. 5) Deal ff3bbaf2-fc3e-40a3-8119-d9beb1522971 has 5 telegram messages in insurance stage. Test file: /app/backend/tests/test_telegram_messages_display.py",
+  
+  "verified_features": {
+    "telegram_messages_in_stage_chat": {
+      "endpoint": "GET /api/deals/{deal_id}/stages/{stage_key}/messages",
+      "fields_returned": ["source", "file_ids", "content", "sender_type", "sender_name", "created_at"],
+      "status": "✓ Working correctly"
+    },
+    "telegram_messages_in_deal_chat": {
+      "endpoint": "GET /api/deals/{deal_id}/messages",
+      "telegram_messages_count": 5,
+      "status": "✓ Working correctly"
+    },
+    "stage_dialog_without_contractor": {
+      "component": "StageInfographic.js",
+      "behavior": "Shows warning but still displays messages",
+      "status": "✓ Working correctly"
+    },
+    "tg_indicator_in_stage_dialog": {
+      "component": "StageInfographic.js",
+      "indicator": "➤ TG next to sender name",
+      "status": "✓ Working correctly"
+    },
+    "telegram_badge_in_general_chat": {
+      "component": "Documents.js",
+      "badge": "Blue 'Telegram' badge on messages",
+      "status": "✓ Working correctly"
+    },
+    "file_ids_in_messages": {
+      "description": "Messages can have file_ids array referencing deal_files",
+      "current_data": "0 messages with file_ids in test deal (no files sent via Telegram yet)",
+      "status": "✓ Field present in API response"
+    }
+  },
+  
+  "no_mocked_apis": true,
+  
+  "notes": "All features from the bug fix are working correctly. The insurance stage in deal ff3bbaf2-fc3e-40a3-8119-d9beb1522971 has no contractor assigned but still shows 3 telegram messages. The general chat shows 5 telegram messages with Telegram badge. No files were sent via Telegram in the test data, so file_ids arrays are empty."
+}

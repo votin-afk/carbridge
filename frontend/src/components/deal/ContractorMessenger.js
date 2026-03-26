@@ -30,7 +30,8 @@ import {
   Car,
   Clock,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  SendHorizontal
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -391,11 +392,29 @@ const ContractorMessenger = ({ deal, token, myStages = [], onRefresh }) => {
                           }`}>
                             {msg.sender_name}
                           </span>
+                          {msg.source === 'telegram' && (
+                            <span className="text-xs text-blue-400" title="Отправлено из Telegram">
+                              <SendHorizontal size={10} className="inline" /> TG
+                            </span>
+                          )}
                           <span className="text-xs text-slate-500">
                             {new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
-                        <p className="text-white text-sm whitespace-pre-wrap">{msg.content}</p>
+                        {msg.content && <p className="text-white text-sm whitespace-pre-wrap">{msg.content}</p>}
+                        {msg.file_ids && msg.file_ids.length > 0 && (
+                          <div className="mt-1 space-y-1">
+                            {msg.file_ids.map(fid => (
+                              <button
+                                key={fid}
+                                onClick={() => downloadFile(fid, `file_${fid}`)}
+                                className="flex items-center gap-1 text-xs text-[#00E5FF] hover:underline"
+                              >
+                                <Paperclip size={10} /> Скачать файл
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))
