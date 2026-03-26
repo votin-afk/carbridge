@@ -61,7 +61,12 @@ import {
   File,
   Trash2,
   Bell,
-  Camera
+  Camera,
+  Award,
+  Globe,
+  Briefcase,
+  ImagePlus,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -135,6 +140,69 @@ const ContractorDashboard = () => {
   });
   const [offerFiles, setOfferFiles] = useState([]);
   const [uploadingOfferFiles, setUploadingOfferFiles] = useState(false);
+
+  // Profile state
+  const [profileData, setProfileData] = useState(null);
+  const [profileFiles, setProfileFiles] = useState([]);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [uploadingProfileFile, setUploadingProfileFile] = useState(false);
+
+  const fetchProfile = async (t) => {
+    setProfileLoading(true);
+    try {
+      const res = await axios.get(`${API}/contractor/profile`, { headers: { Authorization: `Bearer ${t}` } });
+      setProfileData(res.data);
+      setProfileFiles(res.data.files || []);
+    } catch (e) { console.error(e); }
+    finally { setProfileLoading(false); }
+  };
+
+  const saveProfile = async () => {
+    setProfileSaving(true);
+    try {
+      await axios.put(`${API}/contractor/profile`, {
+        about: profileData.about,
+        slogan: profileData.slogan,
+        founded_year: profileData.founded_year,
+        city: profileData.city,
+        address: profileData.address,
+        employees_count: profileData.employees_count,
+        staff: profileData.staff,
+        certificates: profileData.certificates,
+        portfolio_cases: profileData.portfolio_cases,
+        working_hours: profileData.working_hours,
+        languages: profileData.languages,
+        social_links: profileData.social_links
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success('Профиль сохранён');
+    } catch { toast.error('Ошибка сохранения'); }
+    finally { setProfileSaving(false); }
+  };
+
+  const uploadProfileFile = async (file, category, title) => {
+    setUploadingProfileFile(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('category', category);
+      fd.append('title', title || file.name);
+      const res = await axios.post(`${API}/contractor/profile/files`, fd, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+      });
+      setProfileFiles(prev => [...prev, { ...res.data, category, mime_type: file.type }]);
+      toast.success('Файл загружен');
+    } catch { toast.error('Ошибка загрузки'); }
+    finally { setUploadingProfileFile(false); }
+  };
+
+  const deleteProfileFile = async (fileId) => {
+    try {
+      await axios.delete(`${API}/contractor/profile/files/${fileId}`, { headers: { Authorization: `Bearer ${token}` } });
+      setProfileFiles(prev => prev.filter(f => f.id !== fileId));
+      toast.success('Файл удалён');
+    } catch { toast.error('Ошибка удаления'); }
+  };
 
   useEffect(() => {
     if (token) {
@@ -594,7 +662,10 @@ const ContractorDashboard = () => {
         </div>
 
         {/* Main Content */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={(v) => {
+          setActiveTab(v);
+          if (v === 'profile' && !profileData && token) fetchProfile(token);
+        }}>
           <TabsList className="bg-[#15191E] p-1 mb-6 flex-wrap h-auto gap-1">
             <TabsTrigger value="overview" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black text-xs sm:text-sm">
               <LayoutDashboard size={16} className="mr-1 sm:mr-2" />
@@ -615,6 +686,11 @@ const ContractorDashboard = () => {
               <Package size={16} className="mr-1 sm:mr-2" />
               <span className="hidden sm:inline">Мои предложения</span>
               <span className="sm:hidden">Мои</span>
+            </TabsTrigger>
+            <TabsTrigger value="profile" className="data-[state=active]:bg-purple-500 data-[state=active]:text-white text-xs sm:text-sm">
+              <Building2 size={16} className="mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Профиль компании</span>
+              <span className="sm:hidden">Профиль</span>
             </TabsTrigger>
           </TabsList>
 
@@ -915,6 +991,186 @@ const ContractorDashboard = () => {
             ) : (
               <EmptyState text="Вы ещё не отправляли предложений" icon={Package} />
             )}
+          </TabsContent>
+
+          {/* Profile Tab */}
+          <TabsContent value="profile">
+            {profileLoading ? (
+              <div className="flex justify-center py-12"><Loader2 className="animate-spin text-[#00E5FF]" size={32} /></div>
+            ) : profileData ? (
+              <div className="space-y-6">
+                {/* About */}
+                <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2"><Building2 size={18} className="text-purple-400" /> О компании</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-slate-400 text-xs">Слоган</Label>
+                      <Input value={profileData.slogan || ''} onChange={(e) => setProfileData(p => ({...p, slogan: e.target.value}))} placeholder="Короткий девиз вашей компании" className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                    </div>
+                    <div>
+                      <Label className="text-slate-400 text-xs">О компании</Label>
+                      <textarea value={profileData.about || ''} onChange={(e) => setProfileData(p => ({...p, about: e.target.value}))} rows={3} placeholder="Расскажите о вашей компании, опыте, преимуществах..." className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500 text-sm" />
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div>
+                        <Label className="text-slate-400 text-xs">Год основания</Label>
+                        <Input value={profileData.founded_year || ''} onChange={(e) => setProfileData(p => ({...p, founded_year: e.target.value}))} placeholder="2020" className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                      </div>
+                      <div>
+                        <Label className="text-slate-400 text-xs">Город</Label>
+                        <Input value={profileData.city || ''} onChange={(e) => setProfileData(p => ({...p, city: e.target.value}))} placeholder="Минск" className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                      </div>
+                      <div>
+                        <Label className="text-slate-400 text-xs">Адрес офиса</Label>
+                        <Input value={profileData.address || ''} onChange={(e) => setProfileData(p => ({...p, address: e.target.value}))} placeholder="ул. Притыцкого, 156" className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                      </div>
+                      <div>
+                        <Label className="text-slate-400 text-xs">Сотрудников</Label>
+                        <Input value={profileData.employees_count || ''} onChange={(e) => setProfileData(p => ({...p, employees_count: e.target.value}))} placeholder="10+" className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-slate-400 text-xs">Часы работы</Label>
+                        <Input value={profileData.working_hours || ''} onChange={(e) => setProfileData(p => ({...p, working_hours: e.target.value}))} placeholder="Пн-Пт: 9:00-18:00" className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                      </div>
+                      <div>
+                        <Label className="text-slate-400 text-xs">Языки</Label>
+                        <Input value={(profileData.languages || []).join(', ')} onChange={(e) => setProfileData(p => ({...p, languages: e.target.value.split(',').map(s => s.trim()).filter(Boolean)}))} placeholder="Русский, Английский, Китайский" className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Staff */}
+                <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2"><Users size={18} className="text-blue-400" /> Команда</h3>
+                  <div className="space-y-3">
+                    {(profileData.staff || []).map((s, i) => (
+                      <div key={i} className="grid grid-cols-12 gap-2 items-start bg-[#0B0F14] p-3 rounded">
+                        <div className="col-span-3">
+                          <Input value={s.name || ''} onChange={(e) => { const ns = [...profileData.staff]; ns[i] = {...ns[i], name: e.target.value}; setProfileData(p => ({...p, staff: ns})); }} placeholder="Имя" className="bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                        </div>
+                        <div className="col-span-3">
+                          <Input value={s.position || ''} onChange={(e) => { const ns = [...profileData.staff]; ns[i] = {...ns[i], position: e.target.value}; setProfileData(p => ({...p, staff: ns})); }} placeholder="Должность" className="bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                        </div>
+                        <div className="col-span-5">
+                          <Input value={s.description || ''} onChange={(e) => { const ns = [...profileData.staff]; ns[i] = {...ns[i], description: e.target.value}; setProfileData(p => ({...p, staff: ns})); }} placeholder="Описание" className="bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                        </div>
+                        <button onClick={() => setProfileData(p => ({...p, staff: p.staff.filter((_,idx) => idx !== i)}))} className="col-span-1 flex items-center justify-center h-8 text-red-400 hover:text-red-300"><X size={14} /></button>
+                      </div>
+                    ))}
+                    <Button size="sm" variant="outline" onClick={() => setProfileData(p => ({...p, staff: [...(p.staff || []), {name: '', position: '', description: ''}]}))} className="border-[#27272A] text-slate-400">+ Добавить сотрудника</Button>
+                  </div>
+                </div>
+
+                {/* Certificates */}
+                <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2"><Award size={18} className="text-amber-400" /> Сертификаты и лицензии</h3>
+                  <div className="space-y-3">
+                    {(profileData.certificates || []).map((c, i) => (
+                      <div key={i} className="grid grid-cols-12 gap-2 items-start bg-[#0B0F14] p-3 rounded">
+                        <div className="col-span-4">
+                          <Input value={c.title || ''} onChange={(e) => { const nc = [...profileData.certificates]; nc[i] = {...nc[i], title: e.target.value}; setProfileData(p => ({...p, certificates: nc})); }} placeholder="Название" className="bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                        </div>
+                        <div className="col-span-7">
+                          <Input value={c.description || ''} onChange={(e) => { const nc = [...profileData.certificates]; nc[i] = {...nc[i], description: e.target.value}; setProfileData(p => ({...p, certificates: nc})); }} placeholder="Описание" className="bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                        </div>
+                        <button onClick={() => setProfileData(p => ({...p, certificates: p.certificates.filter((_,idx) => idx !== i)}))} className="col-span-1 flex items-center justify-center h-8 text-red-400 hover:text-red-300"><X size={14} /></button>
+                      </div>
+                    ))}
+                    <Button size="sm" variant="outline" onClick={() => setProfileData(p => ({...p, certificates: [...(p.certificates || []), {title: '', description: ''}]}))} className="border-[#27272A] text-slate-400">+ Добавить сертификат</Button>
+                    
+                    {/* Certificate file uploads */}
+                    <div className="mt-2">
+                      <Label className="text-slate-400 text-xs mb-1 block">Файлы сертификатов</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {profileFiles.filter(f => f.category === 'certificate').map(f => (
+                          <div key={f.id} className="flex items-center gap-1.5 px-2 py-1 bg-[#0B0F14] rounded text-xs group">
+                            <Award size={10} className="text-amber-400" />
+                            <span className="text-slate-300">{f.original_name}</span>
+                            <button onClick={() => deleteProfileFile(f.id)} className="text-red-400 opacity-0 group-hover:opacity-100"><X size={10} /></button>
+                          </div>
+                        ))}
+                        <label className="flex items-center gap-1 px-2 py-1 bg-[#0B0F14] border border-dashed border-[#27272A] rounded text-xs text-slate-500 cursor-pointer hover:border-amber-400/50">
+                          <ImagePlus size={10} /> Загрузить
+                          <input type="file" className="hidden" accept="image/*,.pdf" onChange={(e) => { if (e.target.files[0]) uploadProfileFile(e.target.files[0], 'certificate', e.target.files[0].name); e.target.value=''; }} />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Portfolio */}
+                <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2"><Briefcase size={18} className="text-emerald-400" /> Портфолио / Кейсы</h3>
+                  <div className="space-y-3">
+                    {(profileData.portfolio_cases || []).map((c, i) => (
+                      <div key={i} className="bg-[#0B0F14] p-3 rounded space-y-2">
+                        <div className="grid grid-cols-12 gap-2 items-center">
+                          <Input value={c.title || ''} onChange={(e) => { const nc = [...profileData.portfolio_cases]; nc[i] = {...nc[i], title: e.target.value}; setProfileData(p => ({...p, portfolio_cases: nc})); }} placeholder="Название кейса" className="col-span-11 bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                          <button onClick={() => setProfileData(p => ({...p, portfolio_cases: p.portfolio_cases.filter((_,idx) => idx !== i)}))} className="col-span-1 flex justify-center text-red-400 hover:text-red-300"><X size={14} /></button>
+                        </div>
+                        <textarea value={c.description || ''} onChange={(e) => { const nc = [...profileData.portfolio_cases]; nc[i] = {...nc[i], description: e.target.value}; setProfileData(p => ({...p, portfolio_cases: nc})); }} placeholder="Описание кейса" rows={2} className="w-full bg-[#15191E] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500 text-sm" />
+                      </div>
+                    ))}
+                    <Button size="sm" variant="outline" onClick={() => setProfileData(p => ({...p, portfolio_cases: [...(p.portfolio_cases || []), {title: '', description: ''}]}))} className="border-[#27272A] text-slate-400">+ Добавить кейс</Button>
+                  </div>
+                </div>
+
+                {/* Facility Photos */}
+                <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2"><Camera size={18} className="text-cyan-400" /> Фото офиса и площадок</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {profileFiles.filter(f => f.category === 'facility').map(f => (
+                      <div key={f.id} className="relative group">
+                        <img src={`${API}/profile-files/${f.id}/download`} alt={f.title || f.original_name} className="w-full h-28 object-cover rounded border border-[#27272A]" onError={(e) => { e.target.style.display = 'none'; }} />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded">
+                          <button onClick={() => deleteProfileFile(f.id)} className="text-red-400 hover:text-red-300"><Trash2 size={18} /></button>
+                        </div>
+                        <p className="text-slate-500 text-[10px] mt-1 truncate">{f.title || f.original_name}</p>
+                      </div>
+                    ))}
+                    <label className="w-full h-28 flex flex-col items-center justify-center border-2 border-dashed border-[#27272A] rounded cursor-pointer hover:border-cyan-400/50 transition-colors">
+                      <ImagePlus size={24} className="text-slate-600 mb-1" />
+                      <span className="text-slate-600 text-xs">{uploadingProfileFile ? 'Загрузка...' : 'Добавить фото'}</span>
+                      <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => { Array.from(e.target.files).forEach(f => uploadProfileFile(f, 'facility', f.name)); e.target.value=''; }} />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Social Links */}
+                <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2"><Globe size={18} className="text-violet-400" /> Ссылки</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-slate-400 text-xs">Instagram</Label>
+                      <Input value={profileData.social_links?.instagram || ''} onChange={(e) => setProfileData(p => ({...p, social_links: {...(p.social_links || {}), instagram: e.target.value}}))} placeholder="https://instagram.com/..." className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                    </div>
+                    <div>
+                      <Label className="text-slate-400 text-xs">YouTube</Label>
+                      <Input value={profileData.social_links?.youtube || ''} onChange={(e) => setProfileData(p => ({...p, social_links: {...(p.social_links || {}), youtube: e.target.value}}))} placeholder="https://youtube.com/..." className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                    </div>
+                    <div>
+                      <Label className="text-slate-400 text-xs">Facebook</Label>
+                      <Input value={profileData.social_links?.facebook || ''} onChange={(e) => setProfileData(p => ({...p, social_links: {...(p.social_links || {}), facebook: e.target.value}}))} placeholder="https://facebook.com/..." className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                    </div>
+                    <div>
+                      <Label className="text-slate-400 text-xs">TikTok</Label>
+                      <Input value={profileData.social_links?.tiktok || ''} onChange={(e) => setProfileData(p => ({...p, social_links: {...(p.social_links || {}), tiktok: e.target.value}}))} placeholder="https://tiktok.com/..." className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Save Button */}
+                <div className="flex justify-end">
+                  <Button onClick={saveProfile} disabled={profileSaving} className="bg-purple-500 hover:bg-purple-600 text-white px-8">
+                    {profileSaving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+                    Сохранить профиль
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </TabsContent>
         </Tabs>
       </div>

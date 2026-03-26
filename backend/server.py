@@ -8005,6 +8005,175 @@ async def get_contractor_dashboard(contractor: dict = Depends(get_current_contra
         "recent_offers": my_offers[:10]
     }
 
+# ---- Contractor Profile Page ----
+PROFILE_UPLOADS_DIR = Path(__file__).parent / "uploads" / "profiles"
+PROFILE_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+@api_router.get("/contractor/profile")
+async def get_contractor_profile(contractor: dict = Depends(get_current_contractor)):
+    """Get contractor's own profile page data"""
+    profile = await db.contractor_profiles.find_one({"contractor_id": contractor["id"]}, {"_id": 0})
+    if not profile:
+        profile = {
+            "contractor_id": contractor["id"],
+            "about": "",
+            "slogan": "",
+            "founded_year": "",
+            "city": "",
+            "address": "",
+            "employees_count": "",
+            "staff": [],
+            "certificates": [],
+            "portfolio_cases": [],
+            "facility_photos": [],
+            "working_hours": "",
+            "languages": [],
+            "social_links": {}
+        }
+        await db.contractor_profiles.insert_one({**profile, "_id": None})
+        await db.contractor_profiles.update_one({"contractor_id": contractor["id"]}, {"$unset": {"_id": ""}})
+    
+    # Attach files
+    files = await db.profile_files.find({"contractor_id": contractor["id"]}, {"_id": 0}).to_list(100)
+    profile["files"] = files
+    profile["contractor"] = {
+        "id": contractor["id"],
+        "company_name": contractor.get("company_name", ""),
+        "services": contractor.get("services", []),
+        "service_prices": contractor.get("service_prices", {}),
+        "verified": contractor.get("verified", False),
+        "rating": contractor.get("rating", 5.0),
+        "deals_count": contractor.get("deals_count", 0),
+        "phone": contractor.get("phone", ""),
+        "email": contractor.get("email", ""),
+        "telegram": contractor.get("telegram", ""),
+        "whatsapp": contractor.get("whatsapp", ""),
+        "wechat": contractor.get("wechat", ""),
+        "website": contractor.get("website", ""),
+        "contact_person": contractor.get("contact_person", ""),
+        "description": contractor.get("description", ""),
+    }
+    return profile
+
+@api_router.put("/contractor/profile")
+async def update_contractor_profile(data: dict, contractor: dict = Depends(get_current_contractor)):
+    """Update contractor's profile page"""
+    allowed_fields = [
+        "about", "slogan", "founded_year", "city", "address",
+        "employees_count", "staff", "certificates", "portfolio_cases",
+        "working_hours", "languages", "social_links"
+    ]
+    update_data = {k: v for k, v in data.items() if k in allowed_fields}
+    
+    await db.contractor_profiles.update_one(
+        {"contractor_id": contractor["id"]},
+        {"$set": update_data},
+        upsert=True
+    )
+    return {"message": "Профиль обновлён"}
+
+@api_router.post("/contractor/profile/files")
+async def upload_profile_file(
+    file: UploadFile = File(...),
+    category: str = Form("facility"),
+    title: str = Form(""),
+    contractor: dict = Depends(get_current_contractor)
+):
+    """Upload file to contractor profile (certificates, facility photos, portfolio)"""
+    content = await file.read()
+    if len(content) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Макс. размер 20MB")
+    
+    file_id = str(uuid.uuid4())
+    ext = Path(file.filename).suffix.lower() if file.filename else ""
+    saved_name = f"{file_id}{ext}"
+    
+    cdir = PROFILE_UPLOADS_DIR / contractor["id"]
+    cdir.mkdir(exist_ok=True)
+    with open(cdir / saved_name, "wb") as f:
+        f.write(content)
+    
+    file_doc = {
+        "id": file_id,
+        "contractor_id": contractor["id"],
+        "category": category,
+        "title": title,
+        "original_name": file.filename,
+        "saved_name": saved_name,
+        "size": len(content),
+        "mime_type": file.content_type,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.profile_files.insert_one(file_doc)
+    return {"id": file_id, "category": category, "original_name": file.filename}
+
+@api_router.delete("/contractor/profile/files/{file_id}")
+async def delete_profile_file(file_id: str, contractor: dict = Depends(get_current_contractor)):
+    """Delete a profile file"""
+    file_doc = await db.profile_files.find_one({"id": file_id, "contractor_id": contractor["id"]})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+    
+    file_path = PROFILE_UPLOADS_DIR / contractor["id"] / file_doc["saved_name"]
+    if file_path.exists():
+        file_path.unlink()
+    await db.profile_files.delete_one({"id": file_id})
+    return {"message": "Файл удалён"}
+
+@api_router.get("/profile-files/{file_id}/download")
+async def download_profile_file(file_id: str, token: str = None):
+    """Download a profile file (public with token)"""
+    file_doc = await db.profile_files.find_one({"id": file_id}, {"_id": 0})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+    file_path = PROFILE_UPLOADS_DIR / file_doc["contractor_id"] / file_doc["saved_name"]
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Файл не найден на сервере")
+    return FileResponse(
+        path=str(file_path),
+        filename=file_doc["original_name"],
+        media_type=file_doc.get("mime_type", "application/octet-stream")
+    )
+
+@api_router.get("/contractors/{contractor_id}/page")
+async def get_contractor_public_page(contractor_id: str):
+    """Get contractor's public page for clients"""
+    contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0, "password_hash": 0})
+    if not contractor:
+        raise HTTPException(status_code=404, detail="Подрядчик не найден")
+    
+    profile = await db.contractor_profiles.find_one({"contractor_id": contractor_id}, {"_id": 0})
+    if not profile:
+        profile = {}
+    
+    files = await db.profile_files.find({"contractor_id": contractor_id}, {"_id": 0}).to_list(100)
+    completed = await db.deals.count_documents({"contractor_id": contractor_id, "status": "completed"})
+    
+    return {
+        "contractor": {
+            "id": contractor["id"],
+            "company_name": contractor.get("company_name", ""),
+            "services": contractor.get("services", []),
+            "service_prices": contractor.get("service_prices", {}),
+            "verified": contractor.get("verified", False),
+            "rating": contractor.get("rating", 5.0),
+            "deals_count": contractor.get("deals_count", 0),
+            "completed_deals": completed,
+            "phone": contractor.get("phone", ""),
+            "email": contractor.get("email", ""),
+            "telegram": contractor.get("telegram", ""),
+            "whatsapp": contractor.get("whatsapp", ""),
+            "website": contractor.get("website", ""),
+            "contact_person": contractor.get("contact_person", ""),
+            "description": contractor.get("description", ""),
+            "created_at": contractor.get("created_at", "")
+        },
+        "profile": profile,
+        "files": files
+    }
+
+
+
 @api_router.post("/contractor-offers")
 async def submit_contractor_offer(data: dict, contractor: dict = Depends(get_current_contractor)):
     """Submit offer for a tender or application"""
