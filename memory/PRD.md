@@ -720,3 +720,25 @@ AI-ассистент теперь:
 - Добавлен таймаут 60 сек для AI-ответов
 - Улучшена обработка ошибок с понятными сообщениями
 - Сохраняется история чата в session_id
+
+
+### ✅ Исправлено отображение Telegram-сообщений и файлов в чате
+**Дата**: 26.03.2026
+
+**Проблема:**
+Сообщения и файлы, отправленные из Telegram, не отображались в чате платформы.
+
+**Исправлено:**
+1. **Этапный чат без подрядчика** — диалог этапа теперь показывает сообщения даже если подрядчик ещё не назначен (раньше чат был полностью скрыт)
+2. **Индикатор Telegram** — добавлена метка "TG" в StageInfographic, ContractorMessenger и бейдж "Telegram" в Documents для сообщений из Telegram (`source: "telegram"`)
+3. **Обработка файлов из Telegram** — вебхук теперь обрабатывает фото, документы, видео, аудио и голосовые сообщения из Telegram:
+   - Скачивание файлов через Telegram Bot API (`getFile` → download)
+   - Сохранение в `deal_files` коллекцию и на диск (`/app/backend/uploads/`)
+   - Привязка к сообщению через поле `file_ids`
+4. **Отображение файлов в чате** — кнопки скачивания файлов рядом с сообщениями
+
+**Изменённые файлы:**
+- `/app/backend/server.py` — `download_telegram_file()`, `save_telegram_file_to_deal()`, обновлён webhook handler
+- `/app/frontend/src/components/deal/StageInfographic.js` — чат без подрядчика, TG индикатор, файлы
+- `/app/frontend/src/components/deal/ContractorMessenger.js` — TG индикатор, файлы
+- `/app/frontend/src/pages/dashboard/Documents.js` — Telegram бейдж, файлы
