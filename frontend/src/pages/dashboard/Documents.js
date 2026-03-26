@@ -319,8 +319,10 @@ const Documents = () => {
       link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      setTimeout(() => {
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      }, 500);
     } catch (error) {
       toast.error('Ошибка скачивания файла');
     }
@@ -836,15 +838,13 @@ const Documents = () => {
                   {msg.file_ids && msg.file_ids.length > 0 && (
                     <div className="mt-1">
                       {msg.file_ids.map(fid => (
-                        <a
+                        <button
                           key={fid}
-                          href={`${API}/deals/${selectedDeal.id}/files/${fid}/download`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs text-[#00E5FF] hover:underline"
+                          onClick={() => downloadFile(fid, `file_${fid}`)}
+                          className="flex items-center gap-1 text-xs text-[#00E5FF] hover:underline cursor-pointer"
                         >
                           <Paperclip size={10} /> Скачать файл
-                        </a>
+                        </button>
                       ))}
                     </div>
                   )}
