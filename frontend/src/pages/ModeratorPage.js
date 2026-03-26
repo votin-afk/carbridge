@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
@@ -76,6 +76,36 @@ const statusConfig = {
   rejected: { label: 'Отклонено', color: 'text-red-400', bg: 'bg-red-500/10' }
 };
 
+// Image preview component that loads images with auth headers
+const FileImagePreview = ({ api, dealId, fileId, fileName, headers }) => {
+  const [src, setSrc] = useState(null);
+  useEffect(() => {
+    let revoked = false;
+    (async () => {
+      try {
+        const res = await fetch(`${api}/moderator/deals/${dealId}/files/${fileId}/download`, { headers });
+        if (res.ok) {
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          if (!revoked) setSrc(url);
+        }
+      } catch {}
+    })();
+    return () => { revoked = true; if (src) URL.revokeObjectURL(src); };
+  }, [api, dealId, fileId]);
+  
+  if (!src) return <div className="w-16 h-16 bg-[#27272A] rounded flex items-center justify-center"><Loader2 size={14} className="animate-spin text-slate-500" /></div>;
+  return (
+    <img
+      src={src}
+      alt={fileName}
+      className="w-16 h-16 object-cover rounded cursor-pointer border border-[#27272A] hover:border-purple-500 transition-colors"
+      onClick={() => window.open(src, '_blank')}
+    />
+  );
+};
+
+
 const roleConfig = {
   admin: { label: 'Администратор', color: 'text-amber-400', bg: 'bg-amber-500/10', icon: Crown },
   moderator: { label: 'Модератор', color: 'text-blue-400', bg: 'bg-blue-500/10', icon: Shield },
@@ -117,6 +147,8 @@ const ModeratorPage = () => {
   const [stageMessages, setStageMessages] = useState([]);
   const [stageFiles, setStageFiles] = useState([]);
   const [loadingStageDetails, setLoadingStageDetails] = useState(false);
+  const [moderatorStageMessage, setModeratorStageMessage] = useState('');
+  const [sendingStageMessage, setSendingStageMessage] = useState(false);
   
   // Balance management states
   const [balanceDialogUser, setBalanceDialogUser] = useState(null);
@@ -331,6 +363,42 @@ const ModeratorPage = () => {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       toast.error('Ошибка скачивания файла');
+    }
+  };
+
+  const refreshStageMessages = async () => {
+    if (!stageDetailsDialog) return;
+    try {
+      const res = await axios.get(
+        `${API}/moderator/deals/${stageDetailsDialog.deal_id}/stages/${stageDetailsDialog.stage_key}/messages`,
+        { headers }
+      );
+      setStageMessages(res.data);
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    if (stageDetailsDialog) {
+      const interval = setInterval(refreshStageMessages, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [stageDetailsDialog?.deal_id, stageDetailsDialog?.stage_key]);
+
+  const sendModeratorStageMessage = async () => {
+    if (!moderatorStageMessage.trim() || !stageDetailsDialog) return;
+    setSendingStageMessage(true);
+    try {
+      await axios.post(
+        `${API}/moderator/deals/${stageDetailsDialog.deal_id}/stages/${stageDetailsDialog.stage_key}/messages`,
+        { content: moderatorStageMessage },
+        { headers }
+      );
+      setModeratorStageMessage('');
+      refreshStageMessages();
+    } catch (error) {
+      toast.error('Ошибка отправки сообщения');
+    } finally {
+      setSendingStageMessage(false);
     }
   };
 
@@ -2057,7 +2125,7 @@ const ModeratorPage = () => {
 
         {/* Stage Details Dialog */}
         <Dialog open={!!stageDetailsDialog} onOpenChange={() => setStageDetailsDialog(null)}>
-          <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
@@ -2086,7 +2154,7 @@ const ModeratorPage = () => {
                 <Loader2 size={32} className="animate-spin text-purple-400" />
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto space-y-4 mt-4">
+              <div className="space-y-4 mt-4">
                 {/* Deal Info */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="bg-[#0B0F14] p-3 rounded-lg">
@@ -2116,25 +2184,38 @@ const ModeratorPage = () => {
                   {stageFiles.length === 0 ? (
                     <p className="text-slate-500 text-sm">Нет загруженных файлов</p>
                   ) : (
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
                       {stageFiles.map(file => (
                         <div key={file.id} className="flex items-center gap-3 p-2 bg-[#15191E] rounded">
-                          <div className="w-8 h-8 bg-[#27272A] rounded flex items-center justify-center">
-                            {file.category === 'photo' ? <Image size={14} className="text-emerald-400" /> : <FileText size={14} className="text-blue-400" />}
-                          </div>
+                          {file.category === 'photo' ? (
+                            <FileImagePreview
+                              api={API}
+                              dealId={stageDetailsDialog.deal_id}
+                              fileId={file.id}
+                              fileName={file.original_name}
+                              headers={headers}
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-[#27272A] rounded flex items-center justify-center flex-shrink-0">
+                              <FileText size={18} className="text-blue-400" />
+                            </div>
+                          )}
                           <div className="flex-1 min-w-0">
                             <p className="text-white text-sm truncate">{file.original_name}</p>
                             <p className="text-slate-500 text-xs">
-                              {file.uploader_name} • {new Date(file.created_at).toLocaleDateString('ru-RU')}
+                              {file.uploader_name} • {file.source === 'telegram' ? 'Telegram' : 'Платформа'} • {new Date(file.created_at).toLocaleDateString('ru-RU')}
                             </p>
+                            <p className="text-slate-600 text-xs">{(file.size / 1024).toFixed(1)} KB</p>
                           </div>
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => downloadStageFile(stageDetailsDialog.deal_id, file.id, file.original_name)}
-                            className="h-8 w-8 p-0"
+                            className="h-8 px-2"
+                            data-testid={`download-file-${file.id}`}
                           >
-                            <Download size={14} />
+                            <Download size={14} className="mr-1" />
+                            <span className="text-xs">Скачать</span>
                           </Button>
                         </div>
                       ))}
@@ -2156,22 +2237,31 @@ const ModeratorPage = () => {
                         <div
                           key={msg.id}
                           className={`p-3 rounded-lg ${
-                            msg.sender_type === 'client'
+                            msg.sender_type === 'moderator'
+                              ? 'bg-amber-500/10 border border-amber-500/30'
+                              : msg.sender_type === 'client'
                               ? 'bg-[#00E5FF]/10 border border-[#00E5FF]/30'
                               : 'bg-purple-500/10 border border-purple-500/30'
                           }`}
                         >
                           <div className="flex items-center gap-2 mb-1">
-                            {msg.sender_type === 'client' ? (
+                            {msg.sender_type === 'moderator' ? (
+                              <Shield size={12} className="text-amber-400" />
+                            ) : msg.sender_type === 'client' ? (
                               <User size={12} className="text-[#00E5FF]" />
                             ) : (
                               <Building2 size={12} className="text-purple-400" />
                             )}
                             <span className={`text-xs font-medium ${
+                              msg.sender_type === 'moderator' ? 'text-amber-400' :
                               msg.sender_type === 'client' ? 'text-[#00E5FF]' : 'text-purple-400'
                             }`}>
                               {msg.sender_name}
+                              {msg.sender_type === 'moderator' && ' (модератор)'}
                             </span>
+                            {msg.source === 'telegram' && (
+                              <span className="text-xs text-blue-400">TG</span>
+                            )}
                             <span className="text-xs text-slate-500">
                               {new Date(msg.created_at).toLocaleString('ru-RU')}
                             </span>
@@ -2181,6 +2271,28 @@ const ModeratorPage = () => {
                       ))}
                     </div>
                   )}
+                  
+                  {/* Moderator message input */}
+                  <div className="mt-3 pt-3 border-t border-[#27272A]">
+                    <div className="flex gap-2">
+                      <input
+                        value={moderatorStageMessage}
+                        onChange={(e) => setModeratorStageMessage(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendModeratorStageMessage()}
+                        placeholder="Написать сообщение в чат этапа..."
+                        className="flex-1 bg-[#15191E] border border-[#27272A] rounded-md px-3 py-2 text-white text-sm placeholder-slate-500 outline-none focus:border-purple-500/50"
+                        data-testid="moderator-stage-message-input"
+                      />
+                      <Button
+                        onClick={sendModeratorStageMessage}
+                        disabled={sendingStageMessage || !moderatorStageMessage.trim()}
+                        className="bg-purple-500 hover:bg-purple-600 text-white"
+                        data-testid="moderator-stage-send-btn"
+                      >
+                        {sendingStageMessage ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Actions */}

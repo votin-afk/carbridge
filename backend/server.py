@@ -6059,8 +6059,13 @@ async def get_moderator_stage_files(deal_id: str, stage_key: str, current_user: 
     return files
 
 @api_router.get("/moderator/deals/{deal_id}/files/{file_id}/download")
-async def download_moderator_deal_file(deal_id: str, file_id: str, current_user: dict = Depends(require_role(["admin", "moderator"]))):
-    """Download a file from a deal (moderator)"""
+async def download_moderator_deal_file(
+    deal_id: str, 
+    file_id: str, 
+    token: str = None,
+    current_user: dict = Depends(require_role(["admin", "moderator"]))
+):
+    """Download a file from a deal (moderator). Supports auth via query param for image previews."""
     file_doc = await db.deal_files.find_one({"id": file_id, "deal_id": deal_id}, {"_id": 0})
     if not file_doc:
         raise HTTPException(status_code=404, detail="Файл не найден")
@@ -6074,6 +6079,81 @@ async def download_moderator_deal_file(deal_id: str, file_id: str, current_user:
         filename=file_doc["original_name"],
         media_type=file_doc.get("mime_type", "application/octet-stream")
     )
+
+@api_router.post("/moderator/deals/{deal_id}/stages/{stage_key}/messages")
+async def send_moderator_stage_message(
+    deal_id: str,
+    stage_key: str,
+    data: dict,
+    current_user: dict = Depends(require_role(["admin", "moderator"]))
+):
+    """Send a message to a deal stage chat as moderator"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    content = data.get("content", "").strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="Сообщение не может быть пустым")
+    
+    sender_name = f"{current_user.get('name', '')} {current_user.get('last_name', '')}".strip() or "Модератор"
+    
+    message_doc = {
+        "id": str(uuid.uuid4()),
+        "deal_id": deal_id,
+        "stage_key": stage_key,
+        "sender_id": current_user["id"],
+        "sender_name": sender_name,
+        "sender_type": "moderator",
+        "content": content,
+        "file_ids": [],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "read_by_client": False,
+        "read_by_contractor": False,
+        "source": "platform"
+    }
+    await db.deal_messages.insert_one(message_doc)
+    
+    # Telegram: Notify client
+    try:
+        client_user = await db.users.find_one({"id": deal.get("user_id")})
+        if client_user and client_user.get("telegram_chat_id"):
+            stage_labels = {
+                'leasing': 'Лизинг', 'inspection': 'Инспекция', 'export': 'Выкуп',
+                'logistics_china': 'Доставка (Китай)', 'insurance': 'Страхование',
+                'delivery_rb': 'Доставка (РБ)', 'customs': 'Таможня', 'completion': 'Завершение'
+            }
+            stage_label = stage_labels.get(stage_key, stage_key)
+            car_info = deal.get("car_info", {})
+            car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip()
+            await telegram_service.send_telegram_message(
+                client_user["telegram_chat_id"],
+                f"💬 Сообщение от модератора ({sender_name})\n"
+                f"Сделка: {car_name}\n"
+                f"Этап: {stage_label}\n\n"
+                f"{content[:200]}"
+            )
+    except Exception as e:
+        logger.error(f"Telegram notification error (moderator stage message): {e}")
+    
+    # Telegram: Notify contractor
+    try:
+        stages = deal.get("stages", {})
+        stage_data = stages.get(stage_key, {})
+        contractor_id = stage_data.get("contractor_id")
+        if contractor_id:
+            contractor = await db.contractors.find_one({"id": contractor_id})
+            if contractor and contractor.get("telegram_chat_id"):
+                await telegram_service.send_telegram_message(
+                    contractor["telegram_chat_id"],
+                    f"💬 Сообщение от модератора ({sender_name})\n"
+                    f"Этап: {stage_labels.get(stage_key, stage_key)}\n\n"
+                    f"{content[:200]}"
+                )
+    except Exception as e:
+        logger.error(f"Telegram notification error (moderator to contractor): {e}")
+    
+    return {"message": "Сообщение отправлено", "id": message_doc["id"]}
 
 @api_router.get("/moderator/tenders")
 async def get_all_tenders_moderator(current_user: dict = Depends(require_role(["admin", "moderator"]))):
