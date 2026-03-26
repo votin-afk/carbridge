@@ -2746,7 +2746,7 @@ async def upload_deal_file(
     }
 
 @api_router.get("/deals/{deal_id}/files/{file_id}/download")
-async def download_deal_file(deal_id: str, file_id: str, current_user: dict = Depends(get_current_user)):
+async def download_deal_file(deal_id: str, file_id: str, token: str = None, current_user: dict = Depends(get_current_user)):
     """Download a file from a deal"""
     deal = await db.deals.find_one({"id": deal_id})
     if not deal:
@@ -2758,6 +2758,60 @@ async def download_deal_file(deal_id: str, file_id: str, current_user: dict = De
     file_doc = await db.deal_files.find_one({"id": file_id, "deal_id": deal_id})
     if not file_doc:
         raise HTTPException(status_code=404, detail="Файл не найден")
+    
+    file_path = UPLOADS_DIR / deal_id / file_doc["saved_name"]
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Файл не найден на сервере")
+    
+    return FileResponse(
+        path=str(file_path),
+        filename=file_doc["original_name"],
+        media_type=file_doc.get("mime_type", "application/octet-stream")
+    )
+
+@api_router.get("/files/{file_id}/public-download")
+async def public_download_file(file_id: str, token: str = None):
+    """Download a file using token in query parameter (for browser-native downloads)"""
+    if not token:
+        raise HTTPException(status_code=401, detail="Токен обязателен")
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Неверный токен")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Неверный токен")
+    
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=401, detail="Пользователь не найден")
+    
+    file_doc = await db.deal_files.find_one({"id": file_id}, {"_id": 0})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+    
+    deal_id = file_doc["deal_id"]
+    
+    # Check access: owner, moderator/admin, or contractor
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    is_owner = deal.get("user_id") == user_id
+    is_mod = user.get("role") in ["moderator", "admin"]
+    is_contractor = False
+    if not is_owner and not is_mod:
+        contractor = await db.contractors.find_one({"user_id": user_id})
+        if contractor:
+            stages = deal.get("stages", {})
+            for sk, sv in stages.items():
+                if sv.get("contractor_id") == contractor["id"]:
+                    is_contractor = True
+                    break
+    
+    if not is_owner and not is_mod and not is_contractor:
+        raise HTTPException(status_code=403, detail="Нет доступа")
     
     file_path = UPLOADS_DIR / deal_id / file_doc["saved_name"]
     if not file_path.exists():

@@ -349,22 +349,25 @@ const ModeratorPage = () => {
 
   const downloadStageFile = async (dealId, fileId, filename) => {
     try {
-      const response = await axios.get(
+      const response = await fetch(
         `${API}/moderator/deals/${dealId}/files/${fileId}/download`,
-        { headers, responseType: 'blob' }
+        { headers: { 'Authorization': `Bearer ${token}` } }
       );
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      // Delay cleanup to let browser start download
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename || 'file';
+      document.body.appendChild(a);
+      a.click();
       setTimeout(() => {
-        link.remove();
-        window.URL.revokeObjectURL(url);
-      }, 500);
+        URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 1000);
     } catch (error) {
+      console.error('Download error:', error);
       toast.error('Ошибка скачивания файла');
     }
   };
