@@ -359,8 +359,11 @@ const ModeratorPage = () => {
       link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      // Delay cleanup to let browser start download
+      setTimeout(() => {
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      }, 500);
     } catch (error) {
       toast.error('Ошибка скачивания файла');
     }

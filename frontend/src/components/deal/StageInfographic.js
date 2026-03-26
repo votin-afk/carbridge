@@ -173,8 +173,10 @@ const StageInfographic = ({ deal, token, onRefresh }) => {
       link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      setTimeout(() => {
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      }, 500);
     } catch (error) {
       toast.error('Ошибка скачивания файла');
     }
