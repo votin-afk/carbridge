@@ -148,6 +148,11 @@ const ContractorDashboard = () => {
   const [profileSaving, setProfileSaving] = useState(false);
   const [uploadingProfileFile, setUploadingProfileFile] = useState(false);
 
+  // Telegram state
+  const [tgStatus, setTgStatus] = useState(null);
+  const [tgLink, setTgLink] = useState(null);
+  const [tgLoading, setTgLoading] = useState(false);
+
   const fetchProfile = async (t) => {
     setProfileLoading(true);
     try {
@@ -156,6 +161,11 @@ const ContractorDashboard = () => {
       setProfileFiles(res.data.files || []);
     } catch (e) { console.error(e); }
     finally { setProfileLoading(false); }
+    // Also fetch TG status
+    try {
+      const tgRes = await axios.get(`${API}/contractor/telegram/status`, { headers: { Authorization: `Bearer ${t}` } });
+      setTgStatus(tgRes.data);
+    } catch {}
   };
 
   const saveProfile = async () => {
@@ -202,6 +212,31 @@ const ContractorDashboard = () => {
       setProfileFiles(prev => prev.filter(f => f.id !== fileId));
       toast.success('Файл удалён');
     } catch { toast.error('Ошибка удаления'); }
+  };
+
+  const linkTelegram = async () => {
+    setTgLoading(true);
+    try {
+      const res = await axios.post(`${API}/contractor/telegram/link`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      setTgLink(res.data);
+    } catch { toast.error('Ошибка получения ссылки'); }
+    finally { setTgLoading(false); }
+  };
+
+  const unlinkTelegram = async () => {
+    try {
+      await axios.post(`${API}/contractor/telegram/unlink`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      setTgStatus({ linked: false });
+      setTgLink(null);
+      toast.success('Telegram отвязан');
+    } catch { toast.error('Ошибка'); }
+  };
+
+  const testTelegram = async () => {
+    try {
+      await axios.post(`${API}/contractor/telegram/test`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success('Тестовое сообщение отправлено');
+    } catch { toast.error('Ошибка отправки'); }
   };
 
   useEffect(() => {
@@ -1137,6 +1172,59 @@ const ContractorDashboard = () => {
                       <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => { Array.from(e.target.files).forEach(f => uploadProfileFile(f, 'facility', f.name)); e.target.value=''; }} />
                     </label>
                   </div>
+                </div>
+
+                {/* Telegram */}
+                <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+                    <MessageCircle size={18} className="text-[#0088cc]" /> Telegram
+                  </h3>
+                  {tgStatus?.linked ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 p-3 bg-emerald-500/10 rounded">
+                        <CheckCircle2 size={20} className="text-emerald-400" />
+                        <div>
+                          <p className="text-emerald-400 font-medium text-sm">Telegram привязан</p>
+                          {tgStatus.username && <p className="text-slate-400 text-xs">@{tgStatus.username}</p>}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={testTelegram} className="border-[#27272A] text-slate-300 text-xs">
+                          <Send size={12} className="mr-1" /> Тест
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={unlinkTelegram} className="border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs">
+                          Отвязать
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-slate-400 text-sm">Привяжите Telegram для получения уведомлений о новых тендерах, сообщениях и обновлениях сделок.</p>
+                      {tgLink ? (
+                        <div className="space-y-2">
+                          <a
+                            href={tgLink.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 p-3 bg-[#0088cc] hover:bg-[#0077b5] text-white rounded transition-colors"
+                            data-testid="telegram-link-btn"
+                          >
+                            <MessageCircle size={18} />
+                            Открыть бот @{tgLink.bot_username}
+                          </a>
+                          <p className="text-slate-500 text-xs text-center">Нажмите "Start" в Telegram боте для завершения привязки</p>
+                          <Button size="sm" variant="outline" onClick={() => { fetchProfile(token); }} className="w-full border-[#27272A] text-slate-400 text-xs">
+                            Проверить статус привязки
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button onClick={linkTelegram} disabled={tgLoading} className="w-full bg-[#0088cc] hover:bg-[#0077b5] text-white">
+                          {tgLoading ? <Loader2 size={16} className="animate-spin mr-2" /> : <MessageCircle size={16} className="mr-2" />}
+                          Привязать Telegram
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Social Links */}

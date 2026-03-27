@@ -9430,6 +9430,41 @@ async def link_contractor_telegram(current_user: dict = Depends(get_current_cont
         "bot_username": bot_username
     }
 
+@api_router.get("/contractor/telegram/status")
+async def get_contractor_telegram_status(contractor: dict = Depends(get_current_contractor)):
+    """Check if contractor has linked Telegram"""
+    c = await db.contractors.find_one({"id": contractor["id"]}, {"_id": 0, "telegram_chat_id": 1, "telegram_username": 1})
+    return {
+        "linked": bool(c.get("telegram_chat_id")),
+        "username": c.get("telegram_username"),
+        "chat_id": c.get("telegram_chat_id")
+    }
+
+@api_router.post("/contractor/telegram/unlink")
+async def unlink_contractor_telegram(contractor: dict = Depends(get_current_contractor)):
+    """Unlink Telegram from contractor account"""
+    await db.contractors.update_one(
+        {"id": contractor["id"]},
+        {"$unset": {"telegram_chat_id": "", "telegram_username": ""}}
+    )
+    return {"message": "Telegram отвязан"}
+
+@api_router.post("/contractor/telegram/test")
+async def test_contractor_telegram(contractor: dict = Depends(get_current_contractor)):
+    """Send test notification to contractor's Telegram"""
+    c = await db.contractors.find_one({"id": contractor["id"]}, {"_id": 0, "telegram_chat_id": 1, "company_name": 1})
+    if not c.get("telegram_chat_id"):
+        raise HTTPException(status_code=400, detail="Telegram не привязан")
+    success = await telegram_service.send_telegram_message(
+        c["telegram_chat_id"],
+        f"Тестовое сообщение от CarBridge\nКомпания: {c.get('company_name', '')}\nTelegram успешно привязан!"
+    )
+    if not success:
+        raise HTTPException(status_code=500, detail="Ошибка отправки")
+    return {"message": "Тестовое сообщение отправлено"}
+
+
+
 @api_router.get("/telegram/status")
 async def get_telegram_status(current_user: dict = Depends(get_current_user)):
     """Check if user has linked Telegram"""
