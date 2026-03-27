@@ -1,0 +1,110 @@
+{
+  "summary": "Tested contractor application file upload feature. Backend: 12/12 tests passed. Frontend: All features verified working. Fixed bug where /api/moderator/contractor-applications endpoint was not returning files array - now includes files for each application.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "Backend: GET /api/contractor-applications/{app_id}/files returns files list with all fields (id, category, title, original_name, saved_name, size, mime_type, created_at)",
+    "Backend: GET /api/contractor-applications/{app_id}/files returns empty list for non-existent app",
+    "Backend: POST /api/contractor-applications/{app_id}/files uploads file with category and title",
+    "Backend: POST /api/contractor-applications/{app_id}/files returns 404 for non-existent app",
+    "Backend: POST /api/contractor-applications/{app_id}/files supports all categories (document, certificate, license, photo, portfolio)",
+    "Backend: GET /api/application-files/{file_id}/download serves the file correctly",
+    "Backend: GET /api/application-files/{file_id}/download returns 404 for non-existent file",
+    "Backend: GET /api/moderator/applications returns applications WITH 'files' array",
+    "Backend: GET /api/moderator/applications requires authentication (401/403)",
+    "Backend: POST /api/contractors/register returns application_id in response",
+    "Backend: POST /api/contractors/register rejects duplicate email",
+    "Backend: Full flow - register contractor, get application_id, upload files, verify files list, download file",
+    "Frontend: ContractorRegisterPage has file upload section on Step 5",
+    "Frontend: File upload section has category selector (document/certificate/license/photo/portfolio)",
+    "Frontend: ModeratorPage Contractors tab shows contractor applications",
+    "Frontend: ModeratorPage contractor dialog shows 'Прикреплённые документы' section with files",
+    "Frontend: ModeratorPage shows file previews with category badges and download links"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_contractor_application_files.py",
+    "/app/test_reports/pytest/contractor_application_files_results.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "Fixed bug: /api/moderator/contractor-applications endpoint was not including files array - added files enrichment to match /api/moderator/applications behavior"
+  ],
+
+  "updated_files": [
+    "/app/backend/server.py - Fixed /api/moderator/contractor-applications to include files array for each application",
+    "/app/backend/tests/test_contractor_application_files.py - Created comprehensive test suite"
+  ],
+
+  "success_rate": {
+    "backend": "100% (12/12 passed)",
+    "frontend": "100% (all features verified)"
+  },
+
+  "test_credentials": {
+    "admin": {"email": "votin@tut.by", "password": "test"},
+    "existing_application_id": "7dfe0df3-2661-4e38-ba53-cab8a99851f4",
+    "existing_application_company": "Kee LEE"
+  },
+
+  "seed_data_creation": "Test application 7dfe0df3-2661-4e38-ba53-cab8a99851f4 (Kee LEE) has 7 test files uploaded with various categories (certificate, license, document, photo, portfolio)",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+
+  "context_for_next_testing_agent": "Contractor application file upload feature fully tested and working. Key endpoints: POST /api/contractor-applications/{app_id}/files (upload), GET /api/contractor-applications/{app_id}/files (list), GET /api/application-files/{file_id}/download (download), GET /api/moderator/contractor-applications (includes files array). Files stored in /app/backend/uploads/applications/{app_id}/. DB collection: application_files. Frontend ContractorRegisterPage.js has file upload on Step 5 with category selector. ModeratorPage.js shows files in contractor dialog under 'Прикреплённые документы' section.",
+
+  "verified_features": {
+    "backend_file_upload": {
+      "endpoints": [
+        "POST /api/contractor-applications/{app_id}/files - Upload file with category (document/certificate/license/photo/portfolio) and title",
+        "GET /api/contractor-applications/{app_id}/files - Get files list for application",
+        "GET /api/application-files/{file_id}/download - Download file (public)",
+        "GET /api/moderator/contractor-applications - Returns applications WITH files array (FIXED)",
+        "POST /api/contractors/register - Returns application_id in response"
+      ],
+      "status": "✓ All working correctly"
+    },
+    "frontend_contractor_register": {
+      "features": [
+        "Step 5 has file upload section 'Документы (сертификаты, лицензии, портфолио)'",
+        "File input accepts multiple files",
+        "Category selector with options: Документ, Сертификат, Лицензия, Фото, Портфолио",
+        "Files uploaded after registration using application_id from response"
+      ],
+      "status": "✓ All working correctly"
+    },
+    "frontend_moderator_page": {
+      "features": [
+        "Contractors tab shows contractor applications",
+        "Details dialog shows 'Прикреплённые документы' section when files exist",
+        "Files displayed with title, category badge, file size",
+        "Download links for each file using /api/application-files/{file_id}/download"
+      ],
+      "status": "✓ All working correctly"
+    }
+  },
+
+  "bug_fixed": {
+    "description": "/api/moderator/contractor-applications endpoint was not returning files array",
+    "root_cause": "The endpoint was only returning contractor_applications documents without joining application_files collection",
+    "fix_applied": "Added files enrichment loop to fetch and attach files for each application",
+    "file_modified": "/app/backend/server.py line 8414-8426"
+  },
+
+  "no_mocked_apis": true,
+
+  "notes": "All contractor application file upload features are working correctly. Backend endpoints properly handle file uploads, listing, and downloads. Frontend registration form has file upload section with category selector. Moderator page displays attached files with previews and download links. Fixed bug where moderator/contractor-applications endpoint was not including files."
+}

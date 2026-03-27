@@ -14,7 +14,10 @@ import {
   Phone,
   Mail,
   Globe,
-  Send
+  Send,
+  Upload,
+  X,
+  FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -64,6 +67,8 @@ const ContractorRegisterPage = () => {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [applicationFiles, setApplicationFiles] = useState([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
   
   const [formData, setFormData] = useState({
     // Step 1 - Company Info
@@ -186,7 +191,7 @@ const ContractorRegisterPage = () => {
         }
       });
 
-      await axios.post(`${API}/contractors/register`, {
+      const response = await axios.post(`${API}/contractors/register`, {
         company_name: formData.company_name,
         country: formData.country,
         registration_number: formData.registration_number,
@@ -205,6 +210,26 @@ const ContractorRegisterPage = () => {
         description: formData.description,
         experience_years: formData.experience_years ? parseInt(formData.experience_years) : null
       });
+      
+      // Upload files if any
+      const appId = response.data?.application_id;
+      if (appId && applicationFiles.length > 0) {
+        setUploadingFiles(true);
+        for (const f of applicationFiles) {
+          const fd = new FormData();
+          fd.append('file', f.file);
+          fd.append('category', f.category);
+          fd.append('title', f.title || f.file.name);
+          try {
+            await axios.post(`${API}/contractor-applications/${appId}/files`, fd, {
+              headers: { 'Content-Type': 'multipart/form-data' }
+            });
+          } catch (err) {
+            console.error('File upload error:', err);
+          }
+        }
+        setUploadingFiles(false);
+      }
       
       setSubmitted(true);
       toast.success('Заявка отправлена!');
@@ -742,6 +767,77 @@ const ContractorRegisterPage = () => {
                   )}
                 </div>
 
+                {/* Documents Upload */}
+                <div className="mt-6 p-4 bg-[#0B0F14] rounded-sm border border-[#27272A]">
+                  <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                    <FileText size={16} className="text-[#00E5FF]" />
+                    Документы (сертификаты, лицензии, портфолио)
+                  </h4>
+                  <p className="text-slate-500 text-xs mb-3">Загрузите документы подтверждающие квалификацию: лицензии, сертификаты, фото площадок, примеры работ</p>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx"
+                    onChange={(e) => {
+                      const newFiles = Array.from(e.target.files).map(f => ({
+                        file: f,
+                        category: f.type.startsWith('image') ? 'photo' : 'document',
+                        title: f.name
+                      }));
+                      setApplicationFiles(prev => [...prev, ...newFiles]);
+                      e.target.value = '';
+                    }}
+                    className="hidden"
+                    id="app-file-input"
+                  />
+                  <label
+                    htmlFor="app-file-input"
+                    className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-[#27272A] rounded cursor-pointer hover:border-[#00E5FF]/50 transition-colors"
+                  >
+                    <Upload size={20} className="text-slate-400" />
+                    <span className="text-slate-400 text-sm">Нажмите для выбора файлов</span>
+                  </label>
+                  {applicationFiles.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {applicationFiles.map((f, i) => (
+                        <div key={i} className="flex items-center justify-between bg-[#15191E] p-2 rounded">
+                          <div className="flex items-center gap-2">
+                            {f.file.type.startsWith('image') ? (
+                              <img src={URL.createObjectURL(f.file)} alt="" className="w-10 h-10 object-cover rounded" />
+                            ) : (
+                              <FileText size={16} className="text-slate-400" />
+                            )}
+                            <div>
+                              <p className="text-slate-300 text-sm">{f.file.name}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <select
+                                  value={f.category}
+                                  onChange={(e) => {
+                                    const updated = [...applicationFiles];
+                                    updated[i] = {...updated[i], category: e.target.value};
+                                    setApplicationFiles(updated);
+                                  }}
+                                  className="bg-[#0B0F14] border border-[#27272A] rounded text-[10px] text-slate-400 px-1 py-0.5"
+                                >
+                                  <option value="document">Документ</option>
+                                  <option value="certificate">Сертификат</option>
+                                  <option value="license">Лицензия</option>
+                                  <option value="photo">Фото</option>
+                                  <option value="portfolio">Портфолио</option>
+                                </select>
+                                <span className="text-slate-600 text-[10px]">{(f.file.size / 1024).toFixed(0)} KB</span>
+                              </div>
+                            </div>
+                          </div>
+                          <button onClick={() => setApplicationFiles(prev => prev.filter((_,idx) => idx !== i))} className="text-red-400 hover:text-red-300 p-1">
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <p className="text-slate-500 text-sm">
                   Нажимая "Отправить заявку", вы соглашаетесь с условиями платформы. 
                   После проверки модератор свяжется с вами для уточнения деталей.
@@ -774,13 +870,13 @@ const ContractorRegisterPage = () => {
             ) : (
               <Button
                 onClick={handleSubmit}
-                disabled={submitting}
+                disabled={submitting || uploadingFiles}
                 className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
               >
-                {submitting ? (
+                {submitting || uploadingFiles ? (
                   <>
                     <Loader2 size={18} className="mr-2 animate-spin" />
-                    Отправка...
+                    {uploadingFiles ? 'Загрузка файлов...' : 'Отправка...'}
                   </>
                 ) : (
                   <>

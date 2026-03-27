@@ -5562,12 +5562,81 @@ async def create_contractor_application(application: ContractorApplicationCreate
     await db.contractor_applications.insert_one(app_data)
     return {"message": "Application submitted successfully", "application_id": app_id}
 
+# Contractor application file uploads
+APP_FILES_DIR = Path(__file__).parent / "uploads" / "applications"
+APP_FILES_DIR.mkdir(parents=True, exist_ok=True)
+
+@api_router.post("/contractor-applications/{app_id}/files")
+async def upload_application_file(
+    app_id: str,
+    file: UploadFile = File(...),
+    category: str = Form("document"),
+    title: str = Form("")
+):
+    """Upload a file to a contractor application (certificates, licenses, etc.)"""
+    app = await db.contractor_applications.find_one({"id": app_id})
+    if not app:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+    
+    content = await file.read()
+    if len(content) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Макс. размер 20MB")
+    
+    file_id = str(uuid.uuid4())
+    ext = Path(file.filename).suffix.lower() if file.filename else ""
+    saved_name = f"{file_id}{ext}"
+    
+    adir = APP_FILES_DIR / app_id
+    adir.mkdir(exist_ok=True)
+    with open(adir / saved_name, "wb") as f:
+        f.write(content)
+    
+    file_doc = {
+        "id": file_id,
+        "application_id": app_id,
+        "category": category,
+        "title": title or file.filename,
+        "original_name": file.filename,
+        "saved_name": saved_name,
+        "size": len(content),
+        "mime_type": file.content_type,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.application_files.insert_one(file_doc)
+    return {"id": file_id, "category": category, "original_name": file.filename}
+
+@api_router.get("/contractor-applications/{app_id}/files")
+async def get_application_files(app_id: str):
+    """Get files for a contractor application"""
+    files = await db.application_files.find({"application_id": app_id}, {"_id": 0}).to_list(50)
+    return files
+
+@api_router.get("/application-files/{file_id}/download")
+async def download_application_file(file_id: str):
+    """Download an application file (public for moderators)"""
+    file_doc = await db.application_files.find_one({"id": file_id}, {"_id": 0})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+    file_path = APP_FILES_DIR / file_doc["application_id"] / file_doc["saved_name"]
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Файл не найден на сервере")
+    return FileResponse(
+        path=str(file_path),
+        filename=file_doc["original_name"],
+        media_type=file_doc.get("mime_type", "application/octet-stream")
+    )
+
+
+
 # ==================== MODERATOR ENDPOINTS ====================
 
 @api_router.get("/moderator/applications")
 async def get_contractor_applications(current_user: dict = Depends(require_role(["admin", "moderator"]))):
     """Get all contractor applications (moderator only)"""
     applications = await db.contractor_applications.find({}, {"_id": 0}).to_list(100)
+    for app in applications:
+        files = await db.application_files.find({"application_id": app["id"]}, {"_id": 0}).to_list(50)
+        app["files"] = files
     return applications
 
 @api_router.post("/moderator/applications/{app_id}/approve")
@@ -7897,7 +7966,8 @@ async def register_contractor(data: ContractorRegister):
     
     return {
         "message": "Заявка на регистрацию подрядчика отправлена. После одобрения вы сможете войти с указанным паролем.",
-        "contractor_id": contractor_id
+        "contractor_id": contractor_id,
+        "application_id": contractor_id
     }
 
 @api_router.post("/contractors/login")
@@ -8343,11 +8413,16 @@ async def get_contractor_public_profile(contractor_id: str):
 # Moderator endpoints for contractor management
 @api_router.get("/moderator/contractor-applications")
 async def get_contractor_applications(current_user: dict = Depends(require_role(["moderator", "admin"]))):
-    """Get all contractor applications"""
+    """Get all contractor applications with attached files"""
     applications = await db.contractor_applications.find(
         {},
         {"_id": 0}
     ).sort("created_at", -1).to_list(100)
+    
+    # Enrich each application with its files
+    for app in applications:
+        files = await db.application_files.find({"application_id": app["id"]}, {"_id": 0}).to_list(50)
+        app["files"] = files
     
     return applications
 

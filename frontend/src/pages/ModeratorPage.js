@@ -2302,6 +2302,64 @@ const ModeratorPage = () => {
                   </div>
                 )}
 
+                {/* Attached Files */}
+                {selectedContractor.files?.length > 0 && (
+                  <div className="p-4 bg-[#0B0F14] rounded-sm border border-[#27272A]">
+                    <h4 className="text-[#00E5FF] font-medium mb-3">Прикреплённые документы</h4>
+                    <div className="space-y-2">
+                      {selectedContractor.files.map(file => {
+                        const categoryLabels = {
+                          certificate: 'Сертификат',
+                          license: 'Лицензия',
+                          photo: 'Фото',
+                          portfolio: 'Портфолио',
+                          document: 'Документ'
+                        };
+                        const isImage = file.mime_type?.startsWith('image');
+                        return (
+                          <div key={file.id} className="bg-[#15191E] p-3 rounded">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                {isImage ? (
+                                  <img
+                                    src={`${API}/application-files/${file.id}/download`}
+                                    alt={file.title}
+                                    className="w-14 h-14 object-cover rounded border border-[#27272A] cursor-pointer"
+                                    onClick={() => window.open(`${API}/application-files/${file.id}/download`, '_blank')}
+                                  />
+                                ) : (
+                                  <div className="w-14 h-14 bg-[#0B0F14] rounded flex items-center justify-center border border-[#27272A]">
+                                    <FileText size={20} className="text-slate-500" />
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <p className="text-white text-sm truncate">{file.title || file.original_name}</p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="px-1.5 py-0.5 bg-[#00E5FF]/10 text-[#00E5FF] text-[10px] rounded">
+                                      {categoryLabels[file.category] || file.category}
+                                    </span>
+                                    <span className="text-slate-600 text-[10px]">
+                                      {file.size ? `${(file.size / 1024).toFixed(0)} KB` : ''}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <a
+                                href={`${API}/application-files/${file.id}/download`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#00E5FF] text-xs hover:underline flex-shrink-0 ml-2"
+                              >
+                                Скачать
+                              </a>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Actions */}
                 {selectedContractor.status === 'pending' && (
                   <div className="flex gap-3">
