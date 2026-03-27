@@ -2277,13 +2277,24 @@ const ModeratorPage = () => {
                           purchase: 'Выкуп авто',
                           export: 'Экспорт',
                           logistics: 'Логистика',
+                          logistics_china: 'Логистика Китай',
                           leasing: 'Лизинг',
-                          customs: 'Растаможка'
+                          customs: 'Растаможка',
+                          insurance: 'Страхование',
+                          delivery_rb: 'Доставка РБ',
+                          legal_belarus: 'Юр. услуги РБ',
+                          legal_china: 'Юр. услуги Китай'
                         };
+                        let displayPrice = '';
+                        if (typeof price === 'object' && price !== null) {
+                          displayPrice = price.rate ? `${price.rate}% ${price.currency || ''}` : JSON.stringify(price);
+                        } else {
+                          displayPrice = `$${price}`;
+                        }
                         return (
                           <div key={service} className="flex justify-between text-sm">
                             <span className="text-slate-400">{serviceNames[service] || service}</span>
-                            <span className="text-white font-medium">${price} USD</span>
+                            <span className="text-white font-medium">{displayPrice}</span>
                           </div>
                         );
                       })}
