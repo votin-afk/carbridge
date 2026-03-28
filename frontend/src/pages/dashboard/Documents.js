@@ -58,6 +58,14 @@ import StageInfographic from '../../components/deal/StageInfographic';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+const getProxiedImageUrl = (url) => {
+  if (!url) return null;
+  if (url.includes('autoimg.cn') || url.includes('che168.com') || url.includes('autohome.com')) {
+    return `${API}/proxy/image?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+};
+
 // Stage labels
 const stageLabels = {
   leasing: 'Лизинг',
@@ -308,7 +316,14 @@ const Documents = () => {
 
   const downloadFile = (fileId, filename) => {
     const url = `${API}/files/${fileId}/public-download?token=${encodeURIComponent(token)}`;
-    window.open(url, '_blank');
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename || 'file';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const deleteFile = async (fileId) => {
@@ -404,7 +419,7 @@ const Documents = () => {
                   >
                     <div className="flex items-center gap-3">
                       {deal.car_info?.image_url ? (
-                        <img src={deal.car_info.image_url} alt="" className="w-12 h-9 object-cover rounded" />
+                        <img src={getProxiedImageUrl(deal.car_info.image_url)} alt="" className="w-12 h-9 object-cover rounded" />
                       ) : (
                         <div className="w-12 h-9 bg-[#0B0F14] rounded flex items-center justify-center">
                           <Car size={18} className="text-slate-600" />
@@ -607,7 +622,7 @@ const Documents = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               {selectedDeal.car_info?.image_url ? (
-                <img src={selectedDeal.car_info.image_url} alt="" className="w-16 h-12 object-cover rounded" />
+                <img src={getProxiedImageUrl(selectedDeal.car_info.image_url)} alt="" className="w-16 h-12 object-cover rounded" />
               ) : (
                 <div className="w-16 h-12 bg-[#0B0F14] rounded flex items-center justify-center">
                   <Car size={24} className="text-slate-600" />

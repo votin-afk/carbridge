@@ -38,6 +38,9 @@ from services.bitrix24 import init_bitrix24, get_bitrix24, Bitrix24Service
 # Import Telegram service
 from services import telegram_service
 
+# Import Che168 API
+from services.che168 import Che168API
+
 # Uploads directory
 UPLOADS_DIR = Path(__file__).parent / "uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)

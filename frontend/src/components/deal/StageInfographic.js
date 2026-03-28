@@ -163,7 +163,14 @@ const StageInfographic = ({ deal, token, onRefresh }) => {
 
   const downloadFile = (fileId, filename) => {
     const url = `${API}/files/${fileId}/public-download?token=${encodeURIComponent(token)}`;
-    window.open(url, '_blank');
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename || 'file';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const completeStage = async () => {
