@@ -977,11 +977,36 @@ const ContractorDashboard = () => {
                       </div>
                     )}
 
-                    {/* Additional requirements */}
-                    {cr.additional_requirements && (
-                      <div className="mb-3 p-2 bg-[#0B0F14] rounded">
-                        <p className="text-slate-500 text-xs mb-1">Дополнительные требования</p>
-                        <p className="text-slate-300 text-sm">{cr.additional_requirements}</p>
+                    {/* Client text notes */}
+                    {(cr.required_options || cr.preferred_options || cr.damage_comment || cr.additional_requirements) && (
+                      <div className="mb-3 p-3 bg-[#0B0F14] rounded border border-[#27272A]">
+                        <p className="text-slate-400 text-xs font-medium mb-2">Пометки клиента</p>
+                        <div className="space-y-2">
+                          {cr.required_options && (
+                            <div>
+                              <p className="text-slate-500 text-xs">Обязательные требования:</p>
+                              <p className="text-white text-sm">{cr.required_options}</p>
+                            </div>
+                          )}
+                          {cr.preferred_options && (
+                            <div>
+                              <p className="text-slate-500 text-xs">Желательные опции:</p>
+                              <p className="text-white text-sm">{cr.preferred_options}</p>
+                            </div>
+                          )}
+                          {cr.damage_comment && (
+                            <div>
+                              <p className="text-slate-500 text-xs">Комментарий по состоянию:</p>
+                              <p className="text-amber-300 text-sm">{cr.damage_comment}</p>
+                            </div>
+                          )}
+                          {cr.additional_requirements && (
+                            <div>
+                              <p className="text-slate-500 text-xs">Дополнительные требования:</p>
+                              <p className="text-white text-sm">{cr.additional_requirements}</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -2207,6 +2232,7 @@ const engineVolumeLabels = {
   lt1: 'до 1.0 л',
   '1_1.5': '1.0 – 1.5 л',
   '1.5_2': '1.5 – 2.0 л',
+  '2_25': '2.0 – 2.5 л',
   '2_2.5': '2.0 – 2.5 л',
   '2.5_3': '2.5 – 3.0 л',
   gt3: 'более 3.0 л',
@@ -2280,7 +2306,18 @@ const optionLabels = {
   spare_wheel: 'Запасное колесо',
   first_aid: 'Аптечка',
   fire_extinguisher: 'Огнетушитель',
-  third_row: 'Третий ряд сидений'
+  third_row: 'Третий ряд сидений',
+  system_360: 'Система кругового обзора 360°',
+  sport_package: 'Спорт-пакет',
+  wireless_charge: 'Беспроводная зарядка',
+  autopark: 'Автопарковка',
+  premium_audio: 'Премиум аудио',
+  electric_trunk: 'Электропривод багажника',
+  electric_seats: 'Электропривод сидений',
+  air_suspension: 'Пневмоподвеска',
+  night_vision: 'Ночное видение',
+  ambient_light: 'Подсветка салона',
+  hud: 'Проекция на лобовое'
 };
 
 export default ContractorDashboard;
