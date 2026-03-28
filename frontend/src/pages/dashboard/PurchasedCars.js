@@ -17,6 +17,14 @@ import {
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+const getProxiedImageUrl = (url) => {
+  if (!url) return null;
+  if (url.includes('autoimg.cn') || url.includes('che168.com') || url.includes('autohome.com')) {
+    return `${API}/api/proxy/image?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+};
+
 const PurchasedCars = () => {
   const { token } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -98,11 +106,11 @@ const PurchasedCars = () => {
                 {/* Car Image */}
                 <div className="h-48 bg-[#1C2128] relative">
                   <img
-                    src={car.image_url || 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800'}
+                    src={getProxiedImageUrl(car.image_url) || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%230B0F14" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="%23555" font-size="14">AUTO</text></svg>'}
                     alt={`${car.brand || ''} ${car.model || ''}`}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.target.src = 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800';
+                      e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%230B0F14" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="%23555" font-size="14">AUTO</text></svg>';
                     }}
                   />
                   <div className="absolute top-3 right-3 px-3 py-1.5 bg-emerald-500/90 backdrop-blur-sm rounded-full flex items-center gap-2">

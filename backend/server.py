@@ -1766,12 +1766,52 @@ async def get_completed_deals(current_user: dict = Depends(get_current_user)):
         {"_id": 0}
     ).sort("completed_at", -1).to_list(100)
     
-    # Enrich with car info
+    # Build garage image map for fallback
+    garage_cars = await db.garage.find(
+        {"user_id": current_user["id"]},
+        {"_id": 0, "id": 1, "brand": 1, "model": 1, "image_url": 1}
+    ).to_list(100)
+    garage_by_id = {g["id"]: g for g in garage_cars}
+    garage_image_map = {}
+    for gc in garage_cars:
+        img = gc.get("image_url", "")
+        if img and "unsplash.com" not in img:
+            key = (gc.get("brand", "").lower(), gc.get("model", "").lower())
+            garage_image_map[key] = img
+    
     for deal in completed_deals:
-        if deal.get("car_id"):
-            car = await db.garage.find_one({"id": deal["car_id"]}, {"_id": 0})
-            if car:
-                deal["car_details"] = car
+        car_id = deal.get("car_id")
+        if car_id and car_id in garage_by_id:
+            deal["car_details"] = garage_by_id[car_id]
+        
+        # Fix image_url: use garage real image over stock
+        ci = deal.get("car_info") or {}
+        cd = deal.get("car_details") or {}
+        best_image = None
+        
+        # Priority: car_details real image > car_info real image > garage brand match
+        for source in [cd.get("image_url"), ci.get("image_url")]:
+            if source and "unsplash.com" not in source:
+                best_image = source
+                break
+        
+        if not best_image:
+            brand = (ci.get("brand") or "").lower()
+            model = (ci.get("model") or "").lower()
+            best_image = garage_image_map.get((brand, model))
+            if not best_image:
+                for (gb, gm), gimg in garage_image_map.items():
+                    if gb and gb == brand:
+                        best_image = gimg
+                        break
+        
+        if best_image:
+            if isinstance(ci, dict):
+                ci["image_url"] = best_image
+                deal["car_info"] = ci
+            if isinstance(cd, dict):
+                cd["image_url"] = best_image
+                deal["car_details"] = cd
     
     return completed_deals
 
