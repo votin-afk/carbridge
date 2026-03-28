@@ -6638,12 +6638,13 @@ CARBRIDGE - это прозрачная платформа для импорта
 
 @api_router.post("/parse-url", response_model=ParsedCarData)
 async def parse_car_url(request: ParseUrlRequest):
-    """Parse car listing URL from Chinese platforms and extract car data using AI"""
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    """Parse car listing URL from Chinese platforms and extract car data"""
+    import json
+    import re
+    from services.che168 import Che168API
     
     url = request.url.strip()
     
-    # Validate URL
     supported_domains = ['che168.com', '58.com', 'guazi.com', 'dongchedi.com', 'autohome.com.cn', 'taoche.com']
     is_supported = any(domain in url for domain in supported_domains)
     
@@ -6655,13 +6656,117 @@ async def parse_car_url(request: ParseUrlRequest):
         )
     
     try:
-        # Fetch the page content
+        # --- CHE168 / AUTOHOME: use API instead of scraping ---
+        if 'che168.com' in url or 'autohome.com.cn' in url or 'taoche.com' in url:
+            # Extract inner_id from URL: last number before .html
+            id_match = re.search(r'/(\d{5,})\.html', url)
+            if not id_match:
+                # Fallback: last sequence of 5+ digits
+                id_matches = re.findall(r'(\d{5,})', url)
+                if id_matches:
+                    id_match_val = id_matches[-1]
+                else:
+                    return ParsedCarData(
+                        success=False, source_url=url,
+                        error="Не удалось определить ID объявления из ссылки. Проверьте URL."
+                    )
+            else:
+                id_match_val = id_match.group(1)
+            
+            inner_id = id_match_val
+            logger.info(f"Parsing che168 URL, inner_id={inner_id}")
+            
+            offer = await Che168API.get_offer_details(inner_id)
+            if not offer:
+                return ParsedCarData(
+                    success=False, source_url=url,
+                    error="Объявление не найдено или удалено. Попробуйте другую ссылку."
+                )
+            
+            # offer can be {"result": {...}} or flat dict
+            data = offer.get("result", {}).get("data", {}) if isinstance(offer.get("result"), dict) else offer
+            if not data.get("mark") and not data.get("model"):
+                data = offer  # flat response
+            
+            # Parse images
+            images = data.get("images", [])
+            if isinstance(images, str):
+                try:
+                    images = json.loads(images)
+                except:
+                    images = []
+            image_url = images[0] if images else None
+            
+            # Parse price (in CNY)
+            price_raw = data.get("price", 0)
+            try:
+                price_cny = float(price_raw) if price_raw else None
+            except:
+                price_cny = None
+            
+            # Parse year
+            year_raw = data.get("year")
+            try:
+                year = int(year_raw) if year_raw else None
+            except:
+                year = None
+            
+            # Parse mileage (in km)
+            km_raw = data.get("km_age", 0)
+            try:
+                mileage = int(km_raw) if km_raw else None
+            except:
+                mileage = None
+            
+            # Engine type
+            engine_type = Che168API.map_engine_type(data.get("engine_type", ""))
+            
+            # Engine volume (displacement in liters -> cc)
+            disp = data.get("displacement", "0")
+            try:
+                disp_float = float(disp) if disp else 0
+                engine_volume = int(disp_float * 1000) if disp_float else None
+            except:
+                engine_volume = None
+            
+            # Description
+            desc_parts = []
+            if data.get("color"):
+                desc_parts.append(f"Цвет: {data['color']}")
+            if data.get("transmission_type"):
+                desc_parts.append(f"КПП: {data['transmission_type']}")
+            if data.get("drive_type"):
+                desc_parts.append(f"Привод: {data['drive_type']}")
+            if data.get("power"):
+                desc_parts.append(f"Мощность: {data['power']} л.с.")
+            if data.get("body_type"):
+                desc_parts.append(f"Кузов: {data['body_type']}")
+            if data.get("address"):
+                desc_parts.append(f"Местоположение: {data['address']}")
+            description = ". ".join(desc_parts) if desc_parts else data.get("description", "")
+            
+            return ParsedCarData(
+                success=True,
+                brand=data.get("mark"),
+                model=data.get("model"),
+                year=year,
+                price_cny=price_cny,
+                engine_type=engine_type,
+                engine_volume=engine_volume,
+                mileage=mileage,
+                image_url=image_url,
+                description=description,
+                source_url=url
+            )
+        
+        # --- OTHER PLATFORMS: scrape + AI ---
         req_headers = {
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-            'Accept-Encoding': 'gzip, deflate',
+            'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
+            'Referer': 'https://www.baidu.com/',
         }
         
         async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as http_client:
@@ -6669,33 +6774,29 @@ async def parse_car_url(request: ParseUrlRequest):
             
             if response.status_code != 200:
                 return ParsedCarData(
-                    success=False,
-                    source_url=url,
+                    success=False, source_url=url,
                     error=f"Не удалось загрузить страницу (код {response.status_code}). Попробуйте ввести данные вручную."
                 )
             
             html_content = response.text
             
-            # Check if page has meaningful content
-            if len(html_content) < 1000:
+            if len(html_content) < 500:
                 return ParsedCarData(
-                    success=False,
-                    source_url=url,
+                    success=False, source_url=url,
                     error="Страница пуста или защищена. Введите данные вручную."
                 )
             
-            # Limit content size for AI processing
             if len(html_content) > 50000:
                 html_content = html_content[:50000]
         
-        # Use AI to extract car data from HTML
         api_key = os.environ.get("EMERGENT_LLM_KEY")
         if not api_key:
             return ParsedCarData(
-                success=False,
-                source_url=url,
+                success=False, source_url=url,
                 error="AI сервис не настроен"
             )
+        
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
         
         extraction_prompt = f"""Извлеки информацию об автомобиле из HTML-страницы китайской площадки.
 
@@ -6712,15 +6813,15 @@ HTML содержимое (фрагмент):
 
 Верни данные в формате JSON:
 {{
-    "brand": "марка авто (BYD, Li Auto, Geely, Chery, Haval, NIO, Changan, Hongqi, Zeekr, Xpeng, Volkswagen, Toyota и др.)",
+    "brand": "марка авто",
     "model": "модель авто",
-    "year": число (год выпуска, 2015-2025),
-    "price_cny": число (цена в юанях. ВАЖНО: если цена в 万, умножь на 10000. Например 15.8万 = 158000),
-    "engine_type": "ice" или "hybrid" или "electric" (определи по названию модели или характеристикам),
+    "year": число (год выпуска),
+    "price_cny": число (цена в юанях. Если цена в 万, умножь на 10000),
+    "engine_type": "ice" или "hybrid" или "electric",
     "engine_volume": число (объем в см³) или null,
-    "mileage": число (пробег в км. ВАЖНО: если в 万公里, умножь на 10000) или null,
+    "mileage": число (пробег в км. Если в 万公里, умножь на 10000) или null,
     "image_url": "URL фото авто" или null,
-    "description": "краткое описание на русском (цвет, комплектация, состояние)"
+    "description": "краткое описание на русском"
 }}
 
 Верни ТОЛЬКО валидный JSON без пояснений."""
@@ -6733,49 +6834,33 @@ HTML содержимое (фрагмент):
         
         ai_response = await chat.send_message(UserMessage(text=extraction_prompt))
         
-        # Parse AI response
-        import json
-        import re
-        
-        # Try to extract JSON from response - handle nested braces
         json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', ai_response, re.DOTALL)
         if not json_match:
-            # Try simpler pattern
             json_match = re.search(r'\{.*?\}', ai_response, re.DOTALL)
         
         if json_match:
             try:
                 data = json.loads(json_match.group())
                 
-                # Check if we got at least brand or model
                 if not data.get('brand') and not data.get('model'):
                     return ParsedCarData(
-                        success=False,
-                        source_url=url,
-                        error="Не удалось определить марку/модель авто. Страница может быть защищена. Введите данные вручную."
+                        success=False, source_url=url,
+                        error="Не удалось определить марку/модель авто. Введите данные вручную."
                     )
                 
-                # Validate and convert data
                 engine_type = data.get('engine_type', 'ice')
                 if engine_type not in ['ice', 'hybrid', 'electric']:
                     engine_type = 'ice'
                 
-                # Safe number conversion
                 def safe_int(val):
-                    if val is None:
-                        return None
-                    try:
-                        return int(float(val))
-                    except:
-                        return None
+                    if val is None: return None
+                    try: return int(float(val))
+                    except: return None
                 
                 def safe_float(val):
-                    if val is None:
-                        return None
-                    try:
-                        return float(val)
-                    except:
-                        return None
+                    if val is None: return None
+                    try: return float(val)
+                    except: return None
                 
                 return ParsedCarData(
                     success=True,
@@ -6794,22 +6879,19 @@ HTML содержимое (фрагмент):
                 logger.error(f"Failed to parse AI response: {e}, response: {ai_response[:500]}")
         
         return ParsedCarData(
-            success=False,
-            source_url=url,
-            error="Не удалось извлечь данные. Страница может быть защищена от парсинга. Введите данные вручную."
+            success=False, source_url=url,
+            error="Не удалось извлечь данные. Попробуйте ввести данные вручную."
         )
         
     except httpx.TimeoutException:
         return ParsedCarData(
-            success=False,
-            source_url=url,
+            success=False, source_url=url,
             error="Превышено время ожидания. Китайский сайт не отвечает."
         )
     except Exception as e:
         logger.error(f"URL parsing error: {e}")
         return ParsedCarData(
-            success=False,
-            source_url=url,
+            success=False, source_url=url,
             error=f"Ошибка при обработке ссылки: {str(e)}"
         )
 
