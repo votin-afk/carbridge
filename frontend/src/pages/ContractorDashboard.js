@@ -2119,6 +2119,7 @@ const serviceLabels = {
 
 const engineLabels = {
   ice: 'ДВС',
+  petrol: 'Бензин',
   diesel: 'Дизель',
   hybrid: 'Гибрид',
   phev: 'Плагин-гибрид',
@@ -2131,7 +2132,8 @@ const paymentLabels = {
   full_prepay: 'Полная предоплата',
   leasing: 'Лизинг',
   credit: 'Кредит',
-  partial: 'Частичная оплата'
+  partial: 'Частичная оплата',
+  installment: 'Рассрочка'
 };
 
 const bodyLabels = {
@@ -2171,6 +2173,7 @@ const colorLabels = {
   brown: 'Коричневый',
   green: 'Зелёный',
   beige: 'Бежевый',
+  combi: 'Комбинированный',
   any: 'Любой'
 };
 
@@ -2179,7 +2182,8 @@ const timelineLabels = {
   '1month': 'В течение месяца',
   '2_3months': '2-3 месяца',
   '3_6months': '3-6 месяцев',
-  'no_rush': 'Не тороплюсь'
+  'no_rush': 'Не тороплюсь',
+  'not_rush': 'Не тороплюсь'
 };
 
 const conditionLabels = {
@@ -2190,9 +2194,12 @@ const conditionLabels = {
 
 const transmissionLabels = {
   auto: 'Автомат',
+  at: 'Автомат',
   manual: 'Механика',
+  mt: 'Механика',
   robot: 'Робот',
   variator: 'Вариатор',
+  cvt: 'Вариатор',
   any: 'Любая'
 };
 

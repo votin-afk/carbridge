@@ -3,94 +3,44 @@
 **Последнее обновление:** 28.03.2026
 
 ## Оригинальное техзадание
-Комплексная платформа для импорта автомобилей из Китая в Беларусь. Включает:
-- Главная страница с каталогом, калькулятором, AI-ассистентом
-- Личный кабинет пользователя: гараж, заявки, тендеры, сделки, верификация
-- Панель модератора: управление пользователями, документами, сделками
-- Система подрядчиков: регистрация, дашборд, профиль, тендеры
-- **Интеграция с Bitrix24** для автоматизации CRM
-- **Telegram интеграция** — двухсторонний обмен сообщениями
+Комплексная платформа для импорта автомобилей из Китая в Беларусь с интеграцией Bitrix24 CRM. Роли: пользователь, модератор, админ, подрядчик.
 
-## Роли пользователей
-- **user**: Обычный пользователь
-- **moderator**: Модератор для проверки документов и сделок
-- **admin**: Полный доступ (votin@tut.by / test)
-- **contractor**: Подрядчик (horon4ik@icloud.com / test123 — OLa CARS)
-
-## Текущая архитектура (28.03.2026)
-
-### Backend
-- **Framework**: FastAPI
-- **Database**: MongoDB
-- **Auth**: JWT токены (отдельные для пользователей и подрядчиков)
-
-### Структура проекта
-```
-/app
-├── backend/
-│   ├── config.py              # Конфигурация
-│   ├── database.py            # MongoDB подключение
-│   ├── server.py              # Основной API (~8776 строк)
-│   ├── models/schemas.py      # Pydantic модели
-│   ├── routes/
-│   │   ├── auth.py, affiliate.py, user.py  # Не подключены к app
-│   │   ├── catalog.py         # Каталог Che168
-│   │   ├── leasing.py         # Лизинг
-│   │   └── telegram.py        # ✅ Telegram интеграция (вынесен 27.03.2026)
-│   ├── services/
-│   │   ├── telegram_service.py
-│   │   ├── che168.py          # API каталога (используется для парсинга URL)
-│   │   ├── calculator.py
-│   │   └── bitrix24.py
-│   └── utils/auth.py, cache.py
-├── frontend/src/pages/
-│   ├── ContractorDashboard.js  # ~1900 строк
-│   ├── ModeratorPage.js        # ~2800 строк
-│   ├── ContractorProfilePage.js
-│   └── dashboard/
-│       ├── MyGarage.js         # Добавление авто по ссылке
-│       ├── Tenders.js
-│       └── Documents.js
-└── memory/PRD.md
-```
+## Текущая архитектура
+- FastAPI backend, React frontend, MongoDB
+- Модульные роуты: catalog.py, telegram.py (извлечены из server.py)
+- server.py: ~8900 строк (было 9618)
 
 ## Выполненные задачи
 
-### 28.03.2026
-- ✅ **Исправлен парсинг URL** — che168.com блокировал прямой скрапинг anti-bot JS защитой. Теперь используется Che168 API (auto-api.com) для получения данных по inner_id из URL. Тестирование: 100% (iteration_25.json)
+### 28.03.2026 (текущая сессия)
+1. **Исправлен краш ContractorDashboard** — добавлен импорт MessageCircle
+2. **Рефакторинг Telegram routes** — вынесено ~842 строки в routes/telegram.py
+3. **Исправлен парсинг URL** — che168 блокировал скрапинг, переключено на Che168 API
+4. **Полная заявка в тендерах подрядчика** — бэкенд обогащает тендеры данными из заявки (30+ полей вместо 9), фронтенд отображает все: клиент, бюджет, технические характеристики, цвета/салон, логистика, приоритеты клиента, опции
 
-### 27.03.2026
-- ✅ **Исправлен краш ContractorDashboard** — добавлен импорт `MessageCircle`
-- ✅ **Рефакторинг Telegram** — вынесено ~842 строки из server.py в routes/telegram.py
-- ✅ **Подтверждено**: загрузка файлов на этапы сделки уже работает
+### Ранее выполнено
+- Двухсторонний Telegram, публичные профили подрядчиков, загрузка файлов тендерных предложений, модератор видит полные тендеры, регистрация подрядчиков с файлами, исправления скачивания файлов
 
-## Рефакторинг server.py — Прогресс
-| Модуль | Файл | Статус |
-|--------|-------|--------|
-| Каталог | routes/catalog.py | ✅ |
-| Telegram | routes/telegram.py | ✅ |
-| **Deals** | — | 🔄 Следующий (~2000 строк) |
-| **Moderator** | — | 🔄 Планируется |
-| **Contractors** | — | 🔄 Планируется |
-
-## Бэклог задач
+## Бэклог
 
 ### P1 — Высокий
-1. Продолжение рефакторинга server.py
+1. Рефакторинг server.py — вынести deals, moderator, contractors
 2. Webhook Telegram на production (ожидание от пользователя)
 3. WhatsApp интеграция (ожидание Meta credentials)
 
 ### P2 — Средний
-1. Рефакторинг фронтенд-компонентов
-2. Подключение auth.py, affiliate.py, user.py роутеров
+1. Рефакторинг фронтенд-компонентов (ModeratorPage 2800+, ContractorDashboard 1900+)
+2. Подключить auth.py, affiliate.py, user.py роутеров
 
 ### P3 — Низкий
 1. Система платежей/эскроу
 2. Кэширование переводов
 
-## Интеграции
-- Che168 API (auto-api.com), Emergent LLM Key, Bitrix24, Telegram Bot, WhatsApp (ожидание)
-
 ## Тест-отчёты
+- iteration_26.json — Enriched tenders (100% backend, 95% frontend → labels fixed)
 - iteration_25.json — Parse URL fix (100%)
 - iteration_24.json — Telegram refactoring (100%)
+
+## Тестовые данные
+- Admin: votin@tut.by / test
+- Contractor: horon4ik@icloud.com / test123 (OLa CARS)
