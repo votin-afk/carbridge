@@ -7,6 +7,8 @@
 
 **Роли:** Администратор, Клиент, Подрядчик, Модератор.
 
+**Бренд-концепция:** "Мы не продаём автомобили — мы соединяем доверие и выгоду". CarBridge — мост доверия между покупателем и автомобилем.
+
 ## Текущая архитектура
 - FastAPI backend, React frontend, MongoDB
 - Модульные роуты: catalog.py, telegram.py, deals.py, auth.py, affiliate.py, user.py, leasing.py
@@ -16,36 +18,41 @@
 ## Выполненные задачи
 
 ### Сессия 28.03.2026 (текущая)
-1. **Исправлены баги Documents.js** — добавлен getProxiedImageUrl для фото авто в сделках, исправлен downloadFile (замена window.open на <a> tag)
-2. **Исправлен импорт Che168API** — добавлен top-level import в server.py, устранена ошибка NameError в /api/chat
-3. **Рефакторинг: deals.py** — вынесено ~2050 строк из server.py в routes/deals.py (CRUD сделок, сообщения, файлы, этапы, подрядчик-сделки)
-4. **Рефакторинг: config.py** — перенесены DEAL_STAGES, CONSULTANT_FEE, COMMISSION_RATE, AFFILIATE_SHARE, PARTNER_THRESHOLD, PLATFORM_COMMISSION, PLATFORM_PAYMENT_FEE, NEW_DEAL_STAGES
+1. **Исправлены баги Documents.js** — добавлен getProxiedImageUrl для фото авто, исправлен downloadFile
+2. **Исправлен импорт Che168API** — устранена NameError в /api/chat
+3. **Рефакторинг: deals.py** — вынесено ~2050 строк из server.py
+4. **Рефакторинг: config.py** — перенесены константы сделок
+5. **Обновлена главная страница:**
+   - Hero: "Мы не продаём автомобили — мы помогаем совершить безопасную сделку"
+   - "Как это работает" → "7 шагов к честной машине" (подробные описания)
+   - Преимущества → Прозрачность, Безопасность, Технологичность, Доверие
+   - FAQ расширен до 10 вопросов (тендер, подрядчики, безопасность, этапы, ЛК и т.д.)
+6. **Обновлён AI-ассистент:**
+   - Новый системный промпт с бренд-концепцией и ценностями
+   - Помогает ориентироваться в платформе (конкретные ссылки на разделы ЛК)
+   - Подбор авто из каталога с расширенным списком брендов
+   - Объясняет 7 шагов, тендер, проверку подрядчиков
 
 ### Предыдущие сессии
 - Полная двусторонняя Telegram интеграция
-- Привязка Telegram пользователей (авто и массовая)
-- Уведомления модератору через Telegram
-- AI-чат на лендинге
-- Clickable brand exclusion badges в каталоге
-- Прокси для китайских изображений (autoimg.cn)
+- Привязка Telegram пользователей
+- Прокси для китайских изображений
 - Lightbox для фото предложений подрядчиков
-- Реальные фото из гаража вместо стоковых
-- Исправлен парсинг URL (переход на Che168 API)
 - Полная заявка в тендерах подрядчика (30+ полей)
+- Добавление авто по ссылке через Che168 API
 
 ## Бэклог
-- P1: Продолжить рефакторинг server.py (moderator, contractors, applications — ~6950 строк)
-- P2: Telegram webhook на production (ожидает действий пользователя)
+- P1: Продолжить рефакторинг server.py (moderator, contractors, applications)
+- P2: Telegram webhook на production (ожидает действия пользователя)
 - P2: WhatsApp интеграция (ожидание Meta credentials)
 - P2: Рефакторинг фронтенд-компонентов (ModeratorPage.js, ContractorDashboard.js)
 - P3: Система платежей/эскроу
 - P3: Кэширование переведённых описаний авто
 
 ## Тест-отчёты
+- iteration_30.json — Landing page content + AI chat (100%)
 - iteration_29.json — Deals refactoring (100%)
 - iteration_28.json — Documents bugs fix (100%)
-- iteration_27.json — Images + lightbox (100%)
-- iteration_26.json — Enriched tenders (100%)
 
 ## Тестовые данные
 - Admin: votin@tut.by / test
