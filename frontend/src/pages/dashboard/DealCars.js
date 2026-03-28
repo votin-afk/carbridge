@@ -59,6 +59,14 @@ import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+const getProxiedImageUrl = (url) => {
+  if (!url) return null;
+  if (url.includes('autoimg.cn') || url.includes('che168.com') || url.includes('autohome.com')) {
+    return `${API}/proxy/image?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+};
+
 // Platform commission rates
 const PLATFORM_COMMISSION = 0.03; // 3%
 const PLATFORM_PAYMENT_FEE = 0.01; // +1% if paid through platform
@@ -1363,7 +1371,7 @@ const DealCard = ({
       <div className="p-4 border-b border-[#27272A] flex items-center justify-between">
         <div className="flex items-center gap-4">
           {deal.car_info?.image_url ? (
-            <img src={deal.car_info.image_url} alt="" className="w-16 h-12 object-cover rounded" />
+            <img src={getProxiedImageUrl(deal.car_info.image_url)} alt="" className="w-16 h-12 object-cover rounded" />
           ) : (
             <div className="w-16 h-12 bg-[#0B0F14] rounded flex items-center justify-center">
               <Car size={24} className="text-slate-600" />

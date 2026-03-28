@@ -29,12 +29,22 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
-  BadgeCheck
+  BadgeCheck,
+  X,
+  ZoomIn
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+const getProxiedImageUrl = (url) => {
+  if (!url) return null;
+  if (url.includes('autoimg.cn') || url.includes('che168.com') || url.includes('autohome.com')) {
+    return `${API}/proxy/image?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+};
 
 // Service labels for display
 const serviceLabels = {
@@ -178,10 +188,10 @@ const Tenders = () => {
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 bg-[#0B0F14] rounded-sm overflow-hidden flex-shrink-0">
                       <img 
-                        src={tender.car_info?.image_url || 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=200'} 
+                        src={getProxiedImageUrl(tender.car_info?.image_url || tender.image_url) || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%230B0F14" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="%23555" font-size="14">AUTO</text></svg>'} 
                         alt={tender.car_info?.brand || tender.car_request?.brand}
                         className="w-full h-full object-cover"
-                        onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=200'; }}
+                        onError={(e) => { e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%230B0F14" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="%23555" font-size="14">AUTO</text></svg>'; }}
                       />
                     </div>
                     <div>
@@ -278,6 +288,8 @@ const OfferCard = ({ offer, isFirst, isSelected, tenderStatus, onSelect, onAddTo
   const [offerPhotos, setOfferPhotos] = useState([]);
   const [currentPhoto, setCurrentPhoto] = useState(0);
   const [loadingProfile, setLoadingProfile] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   useEffect(() => {
     // Load offer files
@@ -329,9 +341,17 @@ const OfferCard = ({ offer, isFirst, isSelected, tenderStatus, onSelect, onAddTo
           <img
             src={photoUrl(offerPhotos[currentPhoto]?.id)}
             alt={offer.car_brand || 'Авто'}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => { setLightboxIndex(currentPhoto); setLightboxOpen(true); }}
             onError={(e) => { e.target.style.display = 'none'; }}
           />
+          {/* Zoom icon */}
+          <button 
+            onClick={() => { setLightboxIndex(currentPhoto); setLightboxOpen(true); }}
+            className="absolute bottom-2 left-2 w-8 h-8 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/80 z-10"
+          >
+            <ZoomIn size={14} />
+          </button>
           {offerPhotos.length > 1 && (
             <>
               <button onClick={(e) => { e.stopPropagation(); setCurrentPhoto(p => p > 0 ? p - 1 : offerPhotos.length - 1); }}
@@ -346,6 +366,24 @@ const OfferCard = ({ offer, isFirst, isSelected, tenderStatus, onSelect, onAddTo
                 {currentPhoto + 1} / {offerPhotos.length}
               </div>
             </>
+          )}
+          {/* Thumbnail strip */}
+          {offerPhotos.length > 1 && (
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-1 px-2 py-1 bg-black/50 rounded-lg">
+              {offerPhotos.slice(0, 6).map((p, i) => (
+                <img 
+                  key={p.id} 
+                  src={photoUrl(p.id)} 
+                  alt="" 
+                  className={`w-8 h-8 object-cover rounded cursor-pointer border ${i === currentPhoto ? 'border-[#00E5FF]' : 'border-transparent'} hover:border-white/50`}
+                  onClick={(e) => { e.stopPropagation(); setCurrentPhoto(i); }}
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              ))}
+              {offerPhotos.length > 6 && (
+                <div className="w-8 h-8 bg-black/60 rounded flex items-center justify-center text-white text-xs">+{offerPhotos.length - 6}</div>
+              )}
+            </div>
           )}
           {/* Price overlay */}
           <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded">
@@ -568,6 +606,56 @@ const OfferCard = ({ offer, isFirst, isSelected, tenderStatus, onSelect, onAddTo
           )}
         </div>
       </div>
+
+      {/* Lightbox Modal */}
+      {lightboxOpen && offerPhotos.length > 0 && (
+        <div 
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center"
+          onClick={() => setLightboxOpen(false)}
+          data-testid="photo-lightbox"
+        >
+          <button 
+            onClick={() => setLightboxOpen(false)}
+            className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white z-10"
+          >
+            <X size={20} />
+          </button>
+          <img
+            src={photoUrl(offerPhotos[lightboxIndex]?.id)}
+            alt={`Фото ${lightboxIndex + 1}`}
+            className="max-w-[90vw] max-h-[85vh] object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          {offerPhotos.length > 1 && (
+            <>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setLightboxIndex(i => i > 0 ? i - 1 : offerPhotos.length - 1); }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setLightboxIndex(i => i < offerPhotos.length - 1 ? i + 1 : 0); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white"
+              >
+                <ChevronRight size={24} />
+              </button>
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                {offerPhotos.map((p, i) => (
+                  <button 
+                    key={p.id}
+                    onClick={(e) => { e.stopPropagation(); setLightboxIndex(i); }}
+                    className={`w-2 h-2 rounded-full ${i === lightboxIndex ? 'bg-[#00E5FF]' : 'bg-white/30'}`}
+                  />
+                ))}
+              </div>
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/50 text-sm">
+                {lightboxIndex + 1} / {offerPhotos.length}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };

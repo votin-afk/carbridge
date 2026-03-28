@@ -41,6 +41,14 @@ import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+const getProxiedImageUrl = (url) => {
+  if (!url) return null;
+  if (url.includes('autoimg.cn') || url.includes('che168.com') || url.includes('autohome.com')) {
+    return `${API}/proxy/image?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+};
+
 const DEAL_STAGES = [
   { key: 'leasing_request', label: 'Лизинг', optional: true },
   { key: 'inspection', label: 'Проверка' },
@@ -491,7 +499,7 @@ const DashboardOverview = () => {
                 >
                   <div className="w-16 h-12 bg-[#27272A] rounded-sm flex items-center justify-center overflow-hidden">
                     {car.image_url ? (
-                      <img src={car.image_url} alt={car.model} className="w-full h-full object-cover" />
+                      <img src={getProxiedImageUrl(car.image_url)} alt={car.model} className="w-full h-full object-cover" />
                     ) : (
                       <Car size={20} className="text-slate-500" />
                     )}

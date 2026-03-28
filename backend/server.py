@@ -4558,6 +4558,18 @@ def generate_mock_offers(tender_id: str, car: dict) -> List[dict]:
 async def get_tenders(current_user: dict = Depends(get_current_user)):
     tenders = await db.tenders.find({"user_id": current_user["id"]}, {"_id": 0}).to_list(100)
     
+    # Get user's garage cars for image matching
+    garage_cars = await db.garage.find(
+        {"user_id": current_user["id"]},
+        {"_id": 0, "brand": 1, "model": 1, "image_url": 1}
+    ).to_list(100)
+    garage_image_map = {}
+    for gc in garage_cars:
+        key = (gc.get("brand", "").lower(), gc.get("model", "").lower())
+        img = gc.get("image_url", "")
+        if img and "unsplash.com" not in img:
+            garage_image_map[key] = img
+    
     # Enrich each tender with real contractor offers from tender_offers collection
     for tender in tenders:
         real_offers = await db.tender_offers.find(
@@ -4569,6 +4581,29 @@ async def get_tenders(current_user: dict = Depends(get_current_user)):
         existing_offers = tender.get("offers", [])
         tender["offers"] = real_offers + existing_offers
         tender["offers_count"] = len(tender["offers"])
+        
+        # Fix image_url: prefer garage image over stock
+        ci = tender.get("car_info") or {}
+        cr = tender.get("car_request") or {}
+        current_img = ci.get("image_url") or tender.get("image_url") or ""
+        
+        if not current_img or "unsplash.com" in current_img:
+            brand = (ci.get("brand") or cr.get("brand") or "").lower()
+            model = (ci.get("model") or cr.get("model") or "").lower()
+            garage_img = garage_image_map.get((brand, model))
+            
+            if not garage_img:
+                # Try partial match (brand only)
+                for (gb, gm), gimg in garage_image_map.items():
+                    if gb and gb == brand:
+                        garage_img = gimg
+                        break
+            
+            if garage_img:
+                if isinstance(ci, dict):
+                    ci["image_url"] = garage_img
+                    tender["car_info"] = ci
+                tender["image_url"] = garage_img
     
     return [TenderResponse(**t) for t in tenders]
 
@@ -4588,6 +4623,25 @@ async def get_tender(tender_id: str, current_user: dict = Depends(get_current_us
     existing_offers = tender.get("offers", [])
     tender["offers"] = real_offers + existing_offers
     tender["offers_count"] = len(tender["offers"])
+    
+    # Fix image_url: prefer garage image over stock
+    ci = tender.get("car_info") or {}
+    cr = tender.get("car_request") or {}
+    current_img = ci.get("image_url") or tender.get("image_url") or ""
+    
+    if not current_img or "unsplash.com" in current_img:
+        brand = (ci.get("brand") or cr.get("brand") or "").lower()
+        model = (ci.get("model") or cr.get("model") or "").lower()
+        if brand:
+            garage_car = await db.garage.find_one(
+                {"user_id": current_user["id"], "brand": {"$regex": f"^{brand}$", "$options": "i"}},
+                {"_id": 0, "image_url": 1}
+            )
+            if garage_car and garage_car.get("image_url") and "unsplash.com" not in garage_car["image_url"]:
+                if isinstance(ci, dict):
+                    ci["image_url"] = garage_car["image_url"]
+                    tender["car_info"] = ci
+                tender["image_url"] = garage_car["image_url"]
     
     return TenderResponse(**tender)
 
