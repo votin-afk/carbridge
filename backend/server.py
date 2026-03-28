@@ -8141,6 +8141,40 @@ async def get_contractor_dashboard(contractor: dict = Depends(get_current_contra
                     active_deals_count += 1
                     break
     
+    # Enrich tenders with full application data
+    enriched_tenders = []
+    for tender in tenders[:10]:
+        t = dict(tender)
+        app_id = t.get("application_id")
+        if app_id:
+            app = await db.applications.find_one({"id": app_id}, {"_id": 0})
+            if app:
+                # Merge application fields into car_request (application is the source of truth)
+                cr = t.get("car_request", {})
+                app_fields = [
+                    "client_type", "full_name", "delivery_city",
+                    "brand", "model", "year_from", "year_to", "body_type", "engine_type",
+                    "engine_volume", "power_from", "power_to", "transmission", "drive_type",
+                    "body_color", "body_color_other", "exact_color", "color_importance",
+                    "interior_color", "interior_color_other", "interior_material",
+                    "mileage_max", "car_condition", "allow_damage", "damage_level", "damage_comment",
+                    "options_electronic", "options_comfort", "options_exterior", "options_other",
+                    "required_options", "preferred_options",
+                    "budget_china_from", "budget_china_to", "budget_total",
+                    "budget_min", "budget_max", "budget_currency",
+                    "purchase_timeline", "payment_method", "car_purpose", "customs_clearance",
+                    "priority_price", "priority_reliability", "priority_technology",
+                    "priority_prestige", "priority_fuel",
+                    "additional_requirements", "has_decree_140", "decree_140_category"
+                ]
+                for field in app_fields:
+                    val = app.get(field)
+                    if val is not None and val != "" and val != []:
+                        cr[field] = val
+                t["car_request"] = cr
+                t["application_number"] = app.get("application_number")
+        enriched_tenders.append(t)
+    
     return {
         "contractor": {
             "id": contractor["id"],
@@ -8154,7 +8188,7 @@ async def get_contractor_dashboard(contractor: dict = Depends(get_current_contra
         "my_offers": len(my_offers),
         "completed_deals": len(completed_deals),
         "active_deals": active_deals_count,
-        "tenders": tenders[:10],
+        "tenders": enriched_tenders,
         "recent_offers": my_offers[:10]
     }
 

@@ -780,15 +780,23 @@ const ContractorDashboard = () => {
                 {dashboardData.tenders.map(tender => {
                   const cr = tender.car_request || {};
                   const ci = tender.car_info || {};
+                  const allOptions = [
+                    ...(cr.options_comfort || []).map(o => ({ key: o, type: 'comfort' })),
+                    ...(cr.options_electronic || []).map(o => ({ key: o, type: 'electronic' })),
+                    ...(cr.options_exterior || []).map(o => ({ key: o, type: 'exterior' })),
+                    ...(cr.options_other || []).map(o => ({ key: o, type: 'other' }))
+                  ];
+                  const hasPriorities = cr.priority_price || cr.priority_reliability || cr.priority_technology;
                   return (
-                  <div key={tender.id} className="bg-[#15191E] border border-[#27272A] rounded-sm p-4">
+                  <div key={tender.id} className="bg-[#15191E] border border-[#27272A] rounded-sm p-4" data-testid={`tender-card-${tender.id}`}>
+                    {/* Header */}
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <h4 className="text-white font-medium text-lg">
                           {(ci.brand || cr.brand || 'Любая марка').toUpperCase()} {ci.model || cr.model || ''}
                         </h4>
                         <p className="text-slate-400 text-sm">
-                          Тендер #{tender.id.slice(0, 8)} • {new Date(tender.created_at).toLocaleDateString('ru-RU')}
+                          {tender.application_number ? `${tender.application_number} • ` : ''}Тендер #{tender.id.slice(0, 8)} • {new Date(tender.created_at).toLocaleDateString('ru-RU')}
                         </p>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-xs ${
@@ -797,7 +805,22 @@ const ContractorDashboard = () => {
                         {tender.status === 'active' ? 'Активен' : tender.status}
                       </span>
                     </div>
+
+                    {/* Client info */}
+                    {(cr.full_name || cr.client_type) && (
+                      <div className="flex items-center gap-3 mb-3 px-2 py-1.5 bg-[#0B0F14] rounded text-sm">
+                        <User size={14} className="text-slate-500" />
+                        <span className="text-slate-300">{cr.full_name || '—'}</span>
+                        {cr.client_type && (
+                          <span className="px-2 py-0.5 bg-slate-700 text-slate-300 text-xs rounded">{clientTypeLabels[cr.client_type] || cr.client_type}</span>
+                        )}
+                        {cr.has_decree_140 && (
+                          <span className="px-2 py-0.5 bg-amber-500/10 text-amber-400 text-xs rounded">Указ 140</span>
+                        )}
+                      </div>
+                    )}
                     
+                    {/* Budget */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
                       <div className="bg-[#0B0F14] p-2 rounded">
                         <p className="text-slate-500 text-xs">Бюджет в Китае</p>
@@ -821,69 +844,144 @@ const ContractorDashboard = () => {
                       </div>
                     </div>
 
+                    {/* Technical specs */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
                       <div className="bg-[#0B0F14] p-2 rounded">
                         <p className="text-slate-500 text-xs">Двигатель</p>
                         <p className="text-white">{engineLabels[cr.engine_type] || cr.engine_type || 'Любой'}</p>
                       </div>
                       <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Кузов</p>
-                        <p className="text-white">{bodyLabels[cr.body_type] || cr.body_type || 'Любой'}</p>
+                        <p className="text-slate-500 text-xs">Объём</p>
+                        <p className="text-white">{engineVolumeLabels[cr.engine_volume] || cr.engine_volume || '—'}</p>
+                      </div>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">КПП</p>
+                        <p className="text-white">{transmissionLabels[cr.transmission] || cr.transmission || '—'}</p>
                       </div>
                       <div className="bg-[#0B0F14] p-2 rounded">
                         <p className="text-slate-500 text-xs">Привод</p>
                         <p className="text-white">{driveLabels[cr.drive_type] || cr.drive_type || 'Любой'}</p>
                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Кузов</p>
+                        <p className="text-white">{bodyLabels[cr.body_type] || cr.body_type || 'Любой'}</p>
+                      </div>
                       <div className="bg-[#0B0F14] p-2 rounded">
                         <p className="text-slate-500 text-xs">Пробег</p>
                         <p className="text-white">{mileageLabels[cr.mileage_max] || cr.mileage_max || 'Любой'}</p>
                       </div>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Состояние</p>
+                        <p className="text-white">{conditionLabels[cr.car_condition] || cr.car_condition || '—'}</p>
+                      </div>
+                      {cr.allow_damage !== undefined && (
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Допускаются повреждения</p>
+                          <p className={cr.allow_damage ? 'text-amber-400' : 'text-emerald-400'}>{cr.allow_damage ? 'Да' : 'Нет'}</p>
+                        </div>
+                      )}
                     </div>
 
-                    {(cr.purchase_timeline || cr.payment_method || cr.delivery_city) && (
+                    {/* Colors & Interior */}
+                    {(cr.body_color || cr.interior_color || cr.interior_material) && (
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 text-sm">
-                        {cr.delivery_city && (
-                          <div className="bg-[#0B0F14] p-2 rounded">
-                            <p className="text-slate-500 text-xs">Город доставки</p>
-                            <p className="text-white">{cr.delivery_city}</p>
-                          </div>
-                        )}
-                        {cr.purchase_timeline && (
-                          <div className="bg-[#0B0F14] p-2 rounded">
-                            <p className="text-slate-500 text-xs">Сроки</p>
-                            <p className="text-white">{timelineLabels[cr.purchase_timeline] || cr.purchase_timeline}</p>
-                          </div>
-                        )}
-                        {cr.payment_method && (
-                          <div className="bg-[#0B0F14] p-2 rounded">
-                            <p className="text-slate-500 text-xs">Оплата</p>
-                            <p className="text-white">{paymentLabels[cr.payment_method] || cr.payment_method}</p>
-                          </div>
-                        )}
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Цвет кузова</p>
+                          <p className="text-white">{colorLabels[cr.body_color] || cr.body_color || '—'}{cr.exact_color ? ` (${cr.exact_color})` : ''}</p>
+                        </div>
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Цвет салона</p>
+                          <p className="text-white">{colorLabels[cr.interior_color] || cr.interior_color || '—'}</p>
+                        </div>
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Материал салона</p>
+                          <p className="text-white">{interiorMaterialLabels[cr.interior_material] || cr.interior_material || '—'}</p>
+                        </div>
                       </div>
                     )}
 
+                    {/* Logistics */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
+                      {cr.purchase_timeline && (
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Сроки</p>
+                          <p className="text-white">{timelineLabels[cr.purchase_timeline] || cr.purchase_timeline}</p>
+                        </div>
+                      )}
+                      {cr.payment_method && (
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Оплата</p>
+                          <p className="text-white">{paymentLabels[cr.payment_method] || cr.payment_method}</p>
+                        </div>
+                      )}
+                      {cr.customs_clearance && (
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Растаможка</p>
+                          <p className="text-white">{customsLabels[cr.customs_clearance] || cr.customs_clearance}</p>
+                        </div>
+                      )}
+                      {cr.delivery_city && (
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Город доставки</p>
+                          <p className="text-white">{cr.delivery_city}</p>
+                        </div>
+                      )}
+                      {cr.car_purpose && (
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Назначение</p>
+                          <p className="text-white">{carPurposeLabels[cr.car_purpose] || cr.car_purpose}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Priorities */}
+                    {hasPriorities && (
+                      <div className="mb-3 p-2 bg-[#0B0F14] rounded">
+                        <p className="text-slate-500 text-xs mb-2">Приоритеты клиента</p>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                          {[
+                            { key: 'priority_price', label: 'Цена' },
+                            { key: 'priority_reliability', label: 'Надёжность' },
+                            { key: 'priority_technology', label: 'Технологии' },
+                            { key: 'priority_prestige', label: 'Престиж' },
+                            { key: 'priority_fuel', label: 'Экономичность' },
+                          ].map(p => cr[p.key] ? (
+                            <div key={p.key} className="flex items-center gap-1.5">
+                              <span className="text-slate-400">{p.label}:</span>
+                              <span className={`font-medium ${cr[p.key] >= 4 ? 'text-emerald-400' : cr[p.key] >= 3 ? 'text-amber-400' : 'text-slate-500'}`}>
+                                {priorityLabels[cr[p.key]] || cr[p.key]}
+                              </span>
+                            </div>
+                          ) : null)}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Options */}
+                    {allOptions.length > 0 && (
+                      <div className="mb-3 p-2 bg-[#0B0F14] rounded">
+                        <p className="text-slate-500 text-xs mb-2">Желаемые опции</p>
+                        <div className="flex flex-wrap gap-1">
+                          {allOptions.map(({ key, type }) => (
+                            <span key={key} className={`px-2 py-0.5 text-xs rounded ${
+                              type === 'comfort' ? 'bg-emerald-500/10 text-emerald-400' :
+                              type === 'electronic' ? 'bg-blue-500/10 text-blue-400' :
+                              type === 'exterior' ? 'bg-purple-500/10 text-purple-400' :
+                              'bg-amber-500/10 text-amber-400'
+                            }`}>{optionLabels[key] || key}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Additional requirements */}
                     {cr.additional_requirements && (
                       <div className="mb-3 p-2 bg-[#0B0F14] rounded">
                         <p className="text-slate-500 text-xs mb-1">Дополнительные требования</p>
                         <p className="text-slate-300 text-sm">{cr.additional_requirements}</p>
-                      </div>
-                    )}
-
-                    {(cr.options_comfort?.length > 0 || cr.options_electronic?.length > 0 || cr.options_exterior?.length > 0) && (
-                      <div className="mb-3 p-2 bg-[#0B0F14] rounded">
-                        <p className="text-slate-500 text-xs mb-2">Желаемые опции</p>
-                        <div className="flex flex-wrap gap-1">
-                          {cr.options_comfort?.map(opt => (
-                            <span key={opt} className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-xs rounded">{optionLabels[opt] || opt}</span>
-                          ))}
-                          {cr.options_electronic?.map(opt => (
-                            <span key={opt} className="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-xs rounded">{optionLabels[opt] || opt}</span>
-                          ))}
-                          {cr.options_exterior?.map(opt => (
-                            <span key={opt} className="px-2 py-0.5 bg-purple-500/10 text-purple-400 text-xs rounded">{optionLabels[opt] || opt}</span>
-                          ))}
-                        </div>
                       </div>
                     )}
 
@@ -2021,7 +2119,9 @@ const serviceLabels = {
 
 const engineLabels = {
   ice: 'ДВС',
+  diesel: 'Дизель',
   hybrid: 'Гибрид',
+  phev: 'Плагин-гибрид',
   electric: 'Электро',
   any: 'Любой'
 };
@@ -2088,43 +2188,48 @@ const conditionLabels = {
   any: 'Любой'
 };
 
-const optionLabels = {
-  // Comfort
-  heated_seats: 'Подогрев сидений',
-  ventilated_seats: 'Вентиляция сидений',
-  heated_wheel: 'Подогрев руля',
-  panoramic_roof: 'Панорамная крыша',
-  sunroof: 'Люк',
-  climate_control: 'Климат-контроль',
-  rear_climate: 'Задний климат',
-  seat_memory: 'Память сидений',
-  massage_seats: 'Массаж сидений',
-  // Electronic
-  cruise_control: 'Круиз-контроль',
-  adaptive_cruise: 'Адаптивный круиз',
-  lane_assist: 'Ассистент полосы',
-  parking_sensors: 'Парктроники',
-  camera_360: 'Камера 360°',
-  rear_camera: 'Задняя камера',
-  blind_spot: 'Мониторинг слепых зон',
-  head_up: 'Проекция на лобовое',
-  keyless: 'Бесключевой доступ',
-  remote_start: 'Дистанционный запуск',
-  // Exterior
-  led_lights: 'LED фары',
-  matrix_lights: 'Матричные фары',
-  wheels_r18: 'Диски R18+',
-  wheels_r19: 'Диски R19+',
-  wheels_r20: 'Диски R20+',
-  tinted_windows: 'Тонировка',
-  // Other
-  spare_wheel: 'Запасное колесо',
-  first_aid: 'Аптечка',
-  fire_extinguisher: 'Огнетушитель'
+const transmissionLabels = {
+  auto: 'Автомат',
+  manual: 'Механика',
+  robot: 'Робот',
+  variator: 'Вариатор',
+  any: 'Любая'
+};
+
+const engineVolumeLabels = {
+  lt1: 'до 1.0 л',
+  '1_1.5': '1.0 – 1.5 л',
+  '1.5_2': '1.5 – 2.0 л',
+  '2_2.5': '2.0 – 2.5 л',
+  '2.5_3': '2.5 – 3.0 л',
+  gt3: 'более 3.0 л',
+  any: 'Любой'
+};
+
+const interiorMaterialLabels = {
+  leather: 'Кожа',
+  fabric: 'Ткань',
+  alcantara: 'Алькантара',
+  combined: 'Комбинированный',
+  any: 'Любой'
+};
+
+const customsLabels = {
+  carbridge: 'Через CarBridge',
+  self: 'Самостоятельно',
+  other: 'Другое'
+};
+
+const carPurposeLabels = {
+  personal: 'Личное использование',
+  business: 'Для бизнеса',
+  resale: 'Перепродажа',
+  fleet: 'Автопарк'
 };
 
 const clientTypeLabels = {
   individual: 'Физ. лицо',
+  legal: 'Юр. лицо',
   company: 'Юр. лицо',
   ip: 'ИП'
 };
@@ -2135,6 +2240,40 @@ const priorityLabels = {
   3: 'Средне',
   4: 'Важно',
   5: 'Очень важно'
+};
+
+const optionLabels = {
+  heated_seats: 'Подогрев сидений',
+  ventilated_seats: 'Вентиляция сидений',
+  heated_wheel: 'Подогрев руля',
+  panoramic_roof: 'Панорамная крыша',
+  sunroof: 'Люк',
+  climate_control: 'Климат-контроль',
+  rear_climate: 'Задний климат',
+  seat_memory: 'Память сидений',
+  massage_seats: 'Массаж сидений',
+  cruise_control: 'Круиз-контроль',
+  adaptive_cruise: 'Адаптивный круиз',
+  lane_assist: 'Ассистент полосы',
+  parking_sensors: 'Парктроники',
+  camera_360: 'Камера 360°',
+  rear_camera: 'Задняя камера',
+  blind_spot: 'Мониторинг слепых зон',
+  head_up: 'Проекция на лобовое',
+  hud: 'Проекция на лобовое',
+  keyless: 'Бесключевой доступ',
+  remote_start: 'Дистанционный запуск',
+  carplay: 'Apple CarPlay / Android Auto',
+  led_lights: 'LED фары',
+  matrix_lights: 'Матричные фары',
+  wheels_r18: 'Диски R18+',
+  wheels_r19: 'Диски R19+',
+  wheels_r20: 'Диски R20+',
+  tinted_windows: 'Тонировка',
+  spare_wheel: 'Запасное колесо',
+  first_aid: 'Аптечка',
+  fire_extinguisher: 'Огнетушитель',
+  third_row: 'Третий ряд сидений'
 };
 
 export default ContractorDashboard;
