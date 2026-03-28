@@ -3,44 +3,37 @@
 **Последнее обновление:** 28.03.2026
 
 ## Оригинальное техзадание
-Комплексная платформа для импорта автомобилей из Китая в Беларусь с интеграцией Bitrix24 CRM. Роли: пользователь, модератор, админ, подрядчик.
+Комплексная платформа для импорта автомобилей из Китая в Беларусь с интеграцией Bitrix24 CRM.
 
 ## Текущая архитектура
 - FastAPI backend, React frontend, MongoDB
-- Модульные роуты: catalog.py, telegram.py (извлечены из server.py)
-- server.py: ~8900 строк (было 9618)
+- Модульные роуты: catalog.py, telegram.py
+- server.py: ~8950 строк
 
-## Выполненные задачи
+## Выполненные задачи (28.03.2026)
 
-### 28.03.2026 (текущая сессия)
 1. **Исправлен краш ContractorDashboard** — добавлен импорт MessageCircle
 2. **Рефакторинг Telegram routes** — вынесено ~842 строки в routes/telegram.py
 3. **Исправлен парсинг URL** — che168 блокировал скрапинг, переключено на Che168 API
-4. **Полная заявка в тендерах подрядчика** — бэкенд обогащает тендеры данными из заявки (30+ полей вместо 9), фронтенд отображает все: клиент, бюджет, технические характеристики, цвета/салон, логистика, приоритеты клиента, опции
-
-### Ранее выполнено
-- Двухсторонний Telegram, публичные профили подрядчиков, загрузка файлов тендерных предложений, модератор видит полные тендеры, регистрация подрядчиков с файлами, исправления скачивания файлов
+4. **Полная заявка в тендерах подрядчика** — 30+ полей вместо 9
+5. **Текстовые пометки клиента** — required_options, preferred_options, damage_comment
+6. **Кликабельные фото предложений** — лайтбокс с навигацией, миниатюрами, точечными индикаторами
+7. **Реальные фото в тендерах** — вместо стоковых unsplash теперь реальные из гаража
+8. **Прокси для китайских изображений** — getProxiedImageUrl() в DashboardOverview, DealCars, Tenders
 
 ## Бэклог
-
-### P1 — Высокий
-1. Рефакторинг server.py — вынести deals, moderator, contractors
-2. Webhook Telegram на production (ожидание от пользователя)
-3. WhatsApp интеграция (ожидание Meta credentials)
-
-### P2 — Средний
-1. Рефакторинг фронтенд-компонентов (ModeratorPage 2800+, ContractorDashboard 1900+)
-2. Подключить auth.py, affiliate.py, user.py роутеров
-
-### P3 — Низкий
-1. Система платежей/эскроу
-2. Кэширование переводов
+- P1: Рефакторинг server.py (deals, moderator, contractors)
+- P1: Webhook Telegram на production
+- P2: WhatsApp интеграция (ожидание Meta credentials)
+- P2: Рефакторинг фронтенд-компонентов
+- P3: Система платежей/эскроу
 
 ## Тест-отчёты
-- iteration_26.json — Enriched tenders (100% backend, 95% frontend → labels fixed)
+- iteration_27.json — Images + lightbox (100%)
+- iteration_26.json — Enriched tenders (100%)
 - iteration_25.json — Parse URL fix (100%)
 - iteration_24.json — Telegram refactoring (100%)
 
 ## Тестовые данные
 - Admin: votin@tut.by / test
-- Contractor: horon4ik@icloud.com / test123 (OLa CARS)
+- Contractor: horon4ik@icloud.com / test123
