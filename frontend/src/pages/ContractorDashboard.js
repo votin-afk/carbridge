@@ -60,7 +60,14 @@ import {
   Video,
   File,
   Trash2,
-  Bell
+  Bell,
+  Camera,
+  Award,
+  Globe,
+  Briefcase,
+  ImagePlus,
+  X,
+  MessageCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -104,11 +111,19 @@ const ContractorDashboard = () => {
     delivery_cost: '',
     car_details: '',
     car_link: '',
+    car_brand: '',
+    car_model: '',
+    car_year: '',
+    car_mileage: '',
+    car_engine_type: '',
+    car_engine_volume: '',
+    car_color: '',
+    car_transmission: '',
+    car_vin: '',
     car_photos: [],
     car_videos: [],
     notes: '',
     valid_until: '',
-    // Services included in offer
     included_services: {
       inspection: false,
       export: false,
@@ -116,7 +131,6 @@ const ContractorDashboard = () => {
       delivery_rb: false,
       insurance: false
     },
-    // Service prices breakdown
     service_prices: {
       inspection: '',
       export: '',
@@ -125,6 +139,106 @@ const ContractorDashboard = () => {
       insurance: ''
     }
   });
+  const [offerFiles, setOfferFiles] = useState([]);
+  const [uploadingOfferFiles, setUploadingOfferFiles] = useState(false);
+
+  // Profile state
+  const [profileData, setProfileData] = useState(null);
+  const [profileFiles, setProfileFiles] = useState([]);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [uploadingProfileFile, setUploadingProfileFile] = useState(false);
+
+  // Telegram state
+  const [tgStatus, setTgStatus] = useState(null);
+  const [tgLink, setTgLink] = useState(null);
+  const [tgLoading, setTgLoading] = useState(false);
+
+  const fetchProfile = async (t) => {
+    setProfileLoading(true);
+    try {
+      const res = await axios.get(`${API}/contractor/profile`, { headers: { Authorization: `Bearer ${t}` } });
+      setProfileData(res.data);
+      setProfileFiles(res.data.files || []);
+    } catch (e) { console.error(e); }
+    finally { setProfileLoading(false); }
+    // Also fetch TG status
+    try {
+      const tgRes = await axios.get(`${API}/contractor/telegram/status`, { headers: { Authorization: `Bearer ${t}` } });
+      setTgStatus(tgRes.data);
+    } catch {}
+  };
+
+  const saveProfile = async () => {
+    setProfileSaving(true);
+    try {
+      await axios.put(`${API}/contractor/profile`, {
+        about: profileData.about,
+        slogan: profileData.slogan,
+        founded_year: profileData.founded_year,
+        city: profileData.city,
+        address: profileData.address,
+        employees_count: profileData.employees_count,
+        staff: profileData.staff,
+        certificates: profileData.certificates,
+        portfolio_cases: profileData.portfolio_cases,
+        working_hours: profileData.working_hours,
+        languages: profileData.languages,
+        social_links: profileData.social_links
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success('Профиль сохранён');
+    } catch { toast.error('Ошибка сохранения'); }
+    finally { setProfileSaving(false); }
+  };
+
+  const uploadProfileFile = async (file, category, title) => {
+    setUploadingProfileFile(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('category', category);
+      fd.append('title', title || file.name);
+      const res = await axios.post(`${API}/contractor/profile/files`, fd, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+      });
+      setProfileFiles(prev => [...prev, { ...res.data, category, mime_type: file.type }]);
+      toast.success('Файл загружен');
+    } catch { toast.error('Ошибка загрузки'); }
+    finally { setUploadingProfileFile(false); }
+  };
+
+  const deleteProfileFile = async (fileId) => {
+    try {
+      await axios.delete(`${API}/contractor/profile/files/${fileId}`, { headers: { Authorization: `Bearer ${token}` } });
+      setProfileFiles(prev => prev.filter(f => f.id !== fileId));
+      toast.success('Файл удалён');
+    } catch { toast.error('Ошибка удаления'); }
+  };
+
+  const linkTelegram = async () => {
+    setTgLoading(true);
+    try {
+      const res = await axios.post(`${API}/contractor/telegram/link`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      setTgLink(res.data);
+    } catch { toast.error('Ошибка получения ссылки'); }
+    finally { setTgLoading(false); }
+  };
+
+  const unlinkTelegram = async () => {
+    try {
+      await axios.post(`${API}/contractor/telegram/unlink`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      setTgStatus({ linked: false });
+      setTgLink(null);
+      toast.success('Telegram отвязан');
+    } catch { toast.error('Ошибка'); }
+  };
+
+  const testTelegram = async () => {
+    try {
+      await axios.post(`${API}/contractor/telegram/test`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success('Тестовое сообщение отправлено');
+    } catch { toast.error('Ошибка отправки'); }
+  };
 
   useEffect(() => {
     if (token) {
@@ -344,7 +458,6 @@ const ContractorDashboard = () => {
   const submitOffer = async () => {
     if (!selectedTender) return;
     
-    // Validate at least one service is selected
     const hasServices = Object.values(offerData.included_services).some(v => v);
     if (!hasServices) {
       toast.error('Выберите хотя бы одну услугу');
@@ -353,7 +466,6 @@ const ContractorDashboard = () => {
     
     setSubmitting(true);
     try {
-      // Calculate total from individual service prices
       let calculatedTotal = 0;
       Object.entries(offerData.included_services).forEach(([service, included]) => {
         if (included && offerData.service_prices[service]) {
@@ -361,7 +473,7 @@ const ContractorDashboard = () => {
         }
       });
       
-      await axios.post(`${API}/contractor-offers`, {
+      const response = await axios.post(`${API}/contractor-offers`, {
         tender_id: selectedTender.id,
         price_usd: parseFloat(offerData.price_usd) || calculatedTotal,
         price_cny: parseFloat(offerData.price_cny) || null,
@@ -369,6 +481,15 @@ const ContractorDashboard = () => {
         delivery_cost: parseFloat(offerData.delivery_cost) || null,
         car_details: offerData.car_details,
         car_link: offerData.car_link,
+        car_brand: offerData.car_brand,
+        car_model: offerData.car_model,
+        car_year: offerData.car_year,
+        car_mileage: offerData.car_mileage,
+        car_engine_type: offerData.car_engine_type,
+        car_engine_volume: offerData.car_engine_volume,
+        car_color: offerData.car_color,
+        car_transmission: offerData.car_transmission,
+        car_vin: offerData.car_vin,
         car_photos: offerData.car_photos,
         car_videos: offerData.car_videos,
         notes: offerData.notes,
@@ -377,6 +498,26 @@ const ContractorDashboard = () => {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      const offerId = response.data.offer_id;
+      
+      // Upload files if any
+      if (offerFiles.length > 0) {
+        setUploadingOfferFiles(true);
+        for (const f of offerFiles) {
+          const fd = new FormData();
+          fd.append('file', f);
+          fd.append('file_type', f.type.startsWith('video') ? 'video' : 'photo');
+          try {
+            await axios.post(`${API}/contractor-offers/${offerId}/files`, fd, {
+              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+            });
+          } catch (err) {
+            console.error('File upload error:', err);
+          }
+        }
+        setUploadingOfferFiles(false);
+      }
       
       toast.success('Предложение отправлено');
       setOfferDialog(false);
@@ -398,6 +539,15 @@ const ContractorDashboard = () => {
       delivery_cost: '',
       car_details: '',
       car_link: '',
+      car_brand: '',
+      car_model: '',
+      car_year: '',
+      car_mileage: '',
+      car_engine_type: '',
+      car_engine_volume: '',
+      car_color: '',
+      car_transmission: '',
+      car_vin: '',
       car_photos: [],
       car_videos: [],
       notes: '',
@@ -417,6 +567,7 @@ const ContractorDashboard = () => {
         insurance: ''
       }
     });
+    setOfferFiles([]);
   };
 
   if (loading) {
@@ -543,11 +694,14 @@ const ContractorDashboard = () => {
           <StatCard icon={Gavel} label="Активные тендеры" value={dashboardData?.active_tenders || 0} color="cyan" />
           <StatCard icon={Send} label="Мои предложения" value={dashboardData?.my_offers || 0} color="blue" />
           <StatCard icon={CheckCircle2} label="Завершённые сделки" value={dashboardData?.completed_deals || 0} color="emerald" />
-          <StatCard icon={Users} label="Новые заявки" value={dashboardData?.new_applications || 0} color="amber" />
+          <StatCard icon={Folder} label="Активные сделки" value={dashboardData?.active_deals || 0} color="amber" />
         </div>
 
         {/* Main Content */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={(v) => {
+          setActiveTab(v);
+          if (v === 'profile' && !profileData && token) fetchProfile(token);
+        }}>
           <TabsList className="bg-[#15191E] p-1 mb-6 flex-wrap h-auto gap-1">
             <TabsTrigger value="overview" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black text-xs sm:text-sm">
               <LayoutDashboard size={16} className="mr-1 sm:mr-2" />
@@ -559,11 +713,6 @@ const ContractorDashboard = () => {
               <span className="hidden sm:inline">Тендеры</span>
               <span className="sm:hidden">Тендеры</span>
             </TabsTrigger>
-            <TabsTrigger value="applications" className="data-[state=active]:bg-[#00E5FF] data-[state=active]:text-black text-xs sm:text-sm">
-              <FileText size={16} className="mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Заявки клиентов</span>
-              <span className="sm:hidden">Заявки</span>
-            </TabsTrigger>
             <TabsTrigger value="deals" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white text-xs sm:text-sm">
               <Folder size={16} className="mr-1 sm:mr-2" />
               <span className="hidden sm:inline">Мои сделки</span>
@@ -573,6 +722,11 @@ const ContractorDashboard = () => {
               <Package size={16} className="mr-1 sm:mr-2" />
               <span className="hidden sm:inline">Мои предложения</span>
               <span className="sm:hidden">Мои</span>
+            </TabsTrigger>
+            <TabsTrigger value="profile" className="data-[state=active]:bg-purple-500 data-[state=active]:text-white text-xs sm:text-sm">
+              <Building2 size={16} className="mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Профиль компании</span>
+              <span className="sm:hidden">Профиль</span>
             </TabsTrigger>
           </TabsList>
 
@@ -623,15 +777,26 @@ const ContractorDashboard = () => {
           <TabsContent value="tenders">
             {dashboardData?.tenders?.length > 0 ? (
               <div className="space-y-4">
-                {dashboardData.tenders.map(tender => (
-                  <div key={tender.id} className="bg-[#15191E] border border-[#27272A] rounded-sm p-4">
+                {dashboardData.tenders.map(tender => {
+                  const cr = tender.car_request || {};
+                  const ci = tender.car_info || {};
+                  const allOptions = [
+                    ...(cr.options_comfort || []).map(o => ({ key: o, type: 'comfort' })),
+                    ...(cr.options_electronic || []).map(o => ({ key: o, type: 'electronic' })),
+                    ...(cr.options_exterior || []).map(o => ({ key: o, type: 'exterior' })),
+                    ...(cr.options_other || []).map(o => ({ key: o, type: 'other' }))
+                  ];
+                  const hasPriorities = cr.priority_price || cr.priority_reliability || cr.priority_technology;
+                  return (
+                  <div key={tender.id} className="bg-[#15191E] border border-[#27272A] rounded-sm p-4" data-testid={`tender-card-${tender.id}`}>
+                    {/* Header */}
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <h4 className="text-white font-medium">
-                          {(tender.car_info?.brand || tender.car_request?.brand || 'Любая марка').toUpperCase()} {tender.car_info?.model || tender.car_request?.model || ''}
+                        <h4 className="text-white font-medium text-lg">
+                          {(ci.brand || cr.brand || 'Любая марка').toUpperCase()} {ci.model || cr.model || ''}
                         </h4>
                         <p className="text-slate-400 text-sm">
-                          Тендер #{tender.id.slice(0, 8)} • {new Date(tender.created_at).toLocaleDateString('ru-RU')}
+                          {tender.application_number ? `${tender.application_number} • ` : ''}Тендер #{tender.id.slice(0, 8)} • {new Date(tender.created_at).toLocaleDateString('ru-RU')}
                         </p>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-xs ${
@@ -640,23 +805,210 @@ const ContractorDashboard = () => {
                         {tender.status === 'active' ? 'Активен' : tender.status}
                       </span>
                     </div>
+
+                    {/* Client info */}
+                    {(cr.full_name || cr.client_type) && (
+                      <div className="flex items-center gap-3 mb-3 px-2 py-1.5 bg-[#0B0F14] rounded text-sm">
+                        <User size={14} className="text-slate-500" />
+                        <span className="text-slate-300">{cr.full_name || '—'}</span>
+                        {cr.client_type && (
+                          <span className="px-2 py-0.5 bg-slate-700 text-slate-300 text-xs rounded">{clientTypeLabels[cr.client_type] || cr.client_type}</span>
+                        )}
+                        {cr.has_decree_140 && (
+                          <span className="px-2 py-0.5 bg-amber-500/10 text-amber-400 text-xs rounded">Указ 140</span>
+                        )}
+                      </div>
+                    )}
                     
-                    <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
-                      <div>
-                        <p className="text-slate-500">Бюджет</p>
+                    {/* Budget */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Бюджет в Китае</p>
                         <p className="text-[#00E5FF] font-medium">
-                          ${tender.budget?.toLocaleString() || tender.car_request?.budget_max?.toLocaleString() || '—'}
+                          {cr.budget_china_from || cr.budget_min ? `$${(cr.budget_china_from || cr.budget_min)?.toLocaleString()}` : '—'} - {cr.budget_china_to || cr.budget_max ? `$${(cr.budget_china_to || cr.budget_max)?.toLocaleString()}` : '—'}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-slate-500">Предложений</p>
-                        <p className="text-white">{tender.offers?.length || 0}</p>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Общий бюджет</p>
+                        <p className="text-emerald-400 font-medium">
+                          {cr.budget_total ? `$${cr.budget_total.toLocaleString()}` : '—'}
+                        </p>
                       </div>
-                      <div>
-                        <p className="text-slate-500">Срок</p>
-                        <p className="text-white">{tender.delivery_days || '—'} дней</p>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Год выпуска</p>
+                        <p className="text-white">{cr.year_from || '—'} - {cr.year_to || '—'}</p>
+                      </div>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Предложений</p>
+                        <p className="text-white">{tender.offers_count || tender.offers?.length || 0}</p>
                       </div>
                     </div>
+
+                    {/* Technical specs */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Двигатель</p>
+                        <p className="text-white">{engineLabels[cr.engine_type] || cr.engine_type || 'Любой'}</p>
+                      </div>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Объём</p>
+                        <p className="text-white">{engineVolumeLabels[cr.engine_volume] || cr.engine_volume || '—'}</p>
+                      </div>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">КПП</p>
+                        <p className="text-white">{transmissionLabels[cr.transmission] || cr.transmission || '—'}</p>
+                      </div>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Привод</p>
+                        <p className="text-white">{driveLabels[cr.drive_type] || cr.drive_type || 'Любой'}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Кузов</p>
+                        <p className="text-white">{bodyLabels[cr.body_type] || cr.body_type || 'Любой'}</p>
+                      </div>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Пробег</p>
+                        <p className="text-white">{mileageLabels[cr.mileage_max] || cr.mileage_max || 'Любой'}</p>
+                      </div>
+                      <div className="bg-[#0B0F14] p-2 rounded">
+                        <p className="text-slate-500 text-xs">Состояние</p>
+                        <p className="text-white">{conditionLabels[cr.car_condition] || cr.car_condition || '—'}</p>
+                      </div>
+                      {cr.allow_damage !== undefined && (
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Допускаются повреждения</p>
+                          <p className={cr.allow_damage ? 'text-amber-400' : 'text-emerald-400'}>{cr.allow_damage ? 'Да' : 'Нет'}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Colors & Interior */}
+                    {(cr.body_color || cr.interior_color || cr.interior_material) && (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 text-sm">
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Цвет кузова</p>
+                          <p className="text-white">{colorLabels[cr.body_color] || cr.body_color || '—'}{cr.exact_color ? ` (${cr.exact_color})` : ''}</p>
+                        </div>
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Цвет салона</p>
+                          <p className="text-white">{colorLabels[cr.interior_color] || cr.interior_color || '—'}</p>
+                        </div>
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Материал салона</p>
+                          <p className="text-white">{interiorMaterialLabels[cr.interior_material] || cr.interior_material || '—'}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Logistics */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
+                      {cr.purchase_timeline && (
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Сроки</p>
+                          <p className="text-white">{timelineLabels[cr.purchase_timeline] || cr.purchase_timeline}</p>
+                        </div>
+                      )}
+                      {cr.payment_method && (
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Оплата</p>
+                          <p className="text-white">{paymentLabels[cr.payment_method] || cr.payment_method}</p>
+                        </div>
+                      )}
+                      {cr.customs_clearance && (
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Растаможка</p>
+                          <p className="text-white">{customsLabels[cr.customs_clearance] || cr.customs_clearance}</p>
+                        </div>
+                      )}
+                      {cr.delivery_city && (
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Город доставки</p>
+                          <p className="text-white">{cr.delivery_city}</p>
+                        </div>
+                      )}
+                      {cr.car_purpose && (
+                        <div className="bg-[#0B0F14] p-2 rounded">
+                          <p className="text-slate-500 text-xs">Назначение</p>
+                          <p className="text-white">{carPurposeLabels[cr.car_purpose] || cr.car_purpose}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Priorities */}
+                    {hasPriorities && (
+                      <div className="mb-3 p-2 bg-[#0B0F14] rounded">
+                        <p className="text-slate-500 text-xs mb-2">Приоритеты клиента</p>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                          {[
+                            { key: 'priority_price', label: 'Цена' },
+                            { key: 'priority_reliability', label: 'Надёжность' },
+                            { key: 'priority_technology', label: 'Технологии' },
+                            { key: 'priority_prestige', label: 'Престиж' },
+                            { key: 'priority_fuel', label: 'Экономичность' },
+                          ].map(p => cr[p.key] ? (
+                            <div key={p.key} className="flex items-center gap-1.5">
+                              <span className="text-slate-400">{p.label}:</span>
+                              <span className={`font-medium ${cr[p.key] >= 4 ? 'text-emerald-400' : cr[p.key] >= 3 ? 'text-amber-400' : 'text-slate-500'}`}>
+                                {priorityLabels[cr[p.key]] || cr[p.key]}
+                              </span>
+                            </div>
+                          ) : null)}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Options */}
+                    {allOptions.length > 0 && (
+                      <div className="mb-3 p-2 bg-[#0B0F14] rounded">
+                        <p className="text-slate-500 text-xs mb-2">Желаемые опции</p>
+                        <div className="flex flex-wrap gap-1">
+                          {allOptions.map(({ key, type }) => (
+                            <span key={key} className={`px-2 py-0.5 text-xs rounded ${
+                              type === 'comfort' ? 'bg-emerald-500/10 text-emerald-400' :
+                              type === 'electronic' ? 'bg-blue-500/10 text-blue-400' :
+                              type === 'exterior' ? 'bg-purple-500/10 text-purple-400' :
+                              'bg-amber-500/10 text-amber-400'
+                            }`}>{optionLabels[key] || key}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Client text notes */}
+                    {(cr.required_options || cr.preferred_options || cr.damage_comment || cr.additional_requirements) && (
+                      <div className="mb-3 p-3 bg-[#0B0F14] rounded border border-[#27272A]">
+                        <p className="text-slate-400 text-xs font-medium mb-2">Пометки клиента</p>
+                        <div className="space-y-2">
+                          {cr.required_options && (
+                            <div>
+                              <p className="text-slate-500 text-xs">Обязательные требования:</p>
+                              <p className="text-white text-sm">{cr.required_options}</p>
+                            </div>
+                          )}
+                          {cr.preferred_options && (
+                            <div>
+                              <p className="text-slate-500 text-xs">Желательные опции:</p>
+                              <p className="text-white text-sm">{cr.preferred_options}</p>
+                            </div>
+                          )}
+                          {cr.damage_comment && (
+                            <div>
+                              <p className="text-slate-500 text-xs">Комментарий по состоянию:</p>
+                              <p className="text-amber-300 text-sm">{cr.damage_comment}</p>
+                            </div>
+                          )}
+                          {cr.additional_requirements && (
+                            <div>
+                              <p className="text-slate-500 text-xs">Дополнительные требования:</p>
+                              <p className="text-white text-sm">{cr.additional_requirements}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     <Button
                       onClick={() => {
@@ -664,166 +1016,17 @@ const ContractorDashboard = () => {
                         setOfferDialog(true);
                       }}
                       className="w-full bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
+                      data-testid={`tender-offer-btn-${tender.id}`}
                     >
                       <Send size={16} className="mr-2" />
                       Сделать предложение
                     </Button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <EmptyState text="Нет активных тендеров" icon={Gavel} />
-            )}
-          </TabsContent>
-
-          {/* Applications Tab */}
-          <TabsContent value="applications">
-            {dashboardData?.applications?.length > 0 ? (
-              <div className="space-y-4">
-                {dashboardData.applications.map(app => (
-                  <div key={app.id} className="bg-[#15191E] border border-[#27272A] rounded-sm p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h4 className="text-white font-medium text-lg">
-                          {app.brand ? `${app.brand.toUpperCase()} ${app.model || ''}` : 'Любой автомобиль'}
-                        </h4>
-                        <p className="text-slate-400 text-sm">
-                          Заявка {app.application_number} • {new Date(app.created_at).toLocaleDateString('ru-RU')}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {app.urgent && (
-                          <span className="px-2 py-0.5 bg-red-500/10 text-red-400 text-xs rounded">Срочно</span>
-                        )}
-                        <span className={`px-3 py-1 rounded-full text-xs ${
-                          app.status === 'new' ? 'bg-blue-500/10 text-blue-400' : 'bg-amber-500/10 text-amber-400'
-                        }`}>
-                          {app.status === 'new' ? 'Новая' : 'В работе'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Basic Info Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Бюджет в Китае</p>
-                        <p className="text-[#00E5FF] font-medium">
-                          ${app.budget_china_from?.toLocaleString() || '—'} - ${app.budget_china_to?.toLocaleString() || '—'}
-                        </p>
-                      </div>
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Общий бюджет</p>
-                        <p className="text-emerald-400 font-medium">
-                          ${app.budget_total?.toLocaleString() || app.budget_max?.toLocaleString() || '—'}
-                        </p>
-                      </div>
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Год выпуска</p>
-                        <p className="text-white">{app.year_from || '—'} - {app.year_to || '—'}</p>
-                      </div>
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Тип двигателя</p>
-                        <p className="text-white">{engineLabels[app.engine_type] || app.engine_type || 'Любой'}</p>
-                      </div>
-                    </div>
-
-                    {/* Extended Info Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Кузов</p>
-                        <p className="text-white">{bodyLabels[app.body_type] || app.body_type || 'Любой'}</p>
-                      </div>
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Привод</p>
-                        <p className="text-white">{driveLabels[app.drive_type] || app.drive_type || 'Любой'}</p>
-                      </div>
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Пробег</p>
-                        <p className="text-white">{mileageLabels[app.mileage_max] || app.mileage_max || 'Любой'}</p>
-                      </div>
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Оплата</p>
-                        <p className="text-white">{paymentLabels[app.payment_method] || app.payment_method || '—'}</p>
-                      </div>
-                    </div>
-
-                    {/* Color and timeline */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 text-sm">
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Цвет кузова</p>
-                        <p className="text-white">{colorLabels[app.body_color] || app.body_color || 'Любой'}</p>
-                      </div>
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Сроки покупки</p>
-                        <p className="text-white">{timelineLabels[app.purchase_timeline] || app.purchase_timeline || '—'}</p>
-                      </div>
-                      <div className="bg-[#0B0F14] p-2 rounded">
-                        <p className="text-slate-500 text-xs">Клиент</p>
-                        <p className="text-white">{app.full_name || '—'}</p>
-                      </div>
-                    </div>
-
-                    {/* Additional requirements */}
-                    {app.additional_requirements && (
-                      <div className="mb-3 p-2 bg-[#0B0F14] rounded">
-                        <p className="text-slate-500 text-xs mb-1">Дополнительные требования</p>
-                        <p className="text-slate-300 text-sm">{app.additional_requirements}</p>
-                      </div>
-                    )}
-
-                    {/* Options if any */}
-                    {(app.options_comfort?.length > 0 || app.options_electronic?.length > 0 || app.options_exterior?.length > 0) && (
-                      <div className="mb-3 p-2 bg-[#0B0F14] rounded">
-                        <p className="text-slate-500 text-xs mb-2">Желаемые опции</p>
-                        <div className="flex flex-wrap gap-1">
-                          {app.options_comfort?.map(opt => (
-                            <span key={opt} className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-xs rounded">
-                              {optionLabels[opt] || opt}
-                            </span>
-                          ))}
-                          {app.options_electronic?.map(opt => (
-                            <span key={opt} className="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-xs rounded">
-                              {optionLabels[opt] || opt}
-                            </span>
-                          ))}
-                          {app.options_exterior?.map(opt => (
-                            <span key={opt} className="px-2 py-0.5 bg-purple-500/10 text-purple-400 text-xs rounded">
-                              {optionLabels[opt] || opt}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Buttons */}
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedApplication(app);
-                          setDetailsDialog(true);
-                        }}
-                        className="flex-1 border-[#27272A] hover:bg-[#27272A]"
-                      >
-                        <Eye size={16} className="mr-2" />
-                        Все детали
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setSelectedTender({ id: app.id, type: 'application', ...app });
-                          setOfferDialog(true);
-                        }}
-                        className="flex-1 bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
-                      >
-                        <Send size={16} className="mr-2" />
-                        Откликнуться
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyState text="Нет активных заявок" icon={FileText} />
             )}
           </TabsContent>
 
@@ -948,6 +1151,239 @@ const ContractorDashboard = () => {
               <EmptyState text="Вы ещё не отправляли предложений" icon={Package} />
             )}
           </TabsContent>
+
+          {/* Profile Tab */}
+          <TabsContent value="profile">
+            {profileLoading ? (
+              <div className="flex justify-center py-12"><Loader2 className="animate-spin text-[#00E5FF]" size={32} /></div>
+            ) : profileData ? (
+              <div className="space-y-6">
+                {/* About */}
+                <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2"><Building2 size={18} className="text-purple-400" /> О компании</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-slate-400 text-xs">Слоган</Label>
+                      <Input value={profileData.slogan || ''} onChange={(e) => setProfileData(p => ({...p, slogan: e.target.value}))} placeholder="Короткий девиз вашей компании" className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                    </div>
+                    <div>
+                      <Label className="text-slate-400 text-xs">О компании</Label>
+                      <textarea value={profileData.about || ''} onChange={(e) => setProfileData(p => ({...p, about: e.target.value}))} rows={3} placeholder="Расскажите о вашей компании, опыте, преимуществах..." className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500 text-sm" />
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div>
+                        <Label className="text-slate-400 text-xs">Год основания</Label>
+                        <Input value={profileData.founded_year || ''} onChange={(e) => setProfileData(p => ({...p, founded_year: e.target.value}))} placeholder="2020" className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                      </div>
+                      <div>
+                        <Label className="text-slate-400 text-xs">Город</Label>
+                        <Input value={profileData.city || ''} onChange={(e) => setProfileData(p => ({...p, city: e.target.value}))} placeholder="Минск" className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                      </div>
+                      <div>
+                        <Label className="text-slate-400 text-xs">Адрес офиса</Label>
+                        <Input value={profileData.address || ''} onChange={(e) => setProfileData(p => ({...p, address: e.target.value}))} placeholder="ул. Притыцкого, 156" className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                      </div>
+                      <div>
+                        <Label className="text-slate-400 text-xs">Сотрудников</Label>
+                        <Input value={profileData.employees_count || ''} onChange={(e) => setProfileData(p => ({...p, employees_count: e.target.value}))} placeholder="10+" className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-slate-400 text-xs">Часы работы</Label>
+                        <Input value={profileData.working_hours || ''} onChange={(e) => setProfileData(p => ({...p, working_hours: e.target.value}))} placeholder="Пн-Пт: 9:00-18:00" className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                      </div>
+                      <div>
+                        <Label className="text-slate-400 text-xs">Языки</Label>
+                        <Input value={(profileData.languages || []).join(', ')} onChange={(e) => setProfileData(p => ({...p, languages: e.target.value.split(',').map(s => s.trim()).filter(Boolean)}))} placeholder="Русский, Английский, Китайский" className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Staff */}
+                <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2"><Users size={18} className="text-blue-400" /> Команда</h3>
+                  <div className="space-y-3">
+                    {(profileData.staff || []).map((s, i) => (
+                      <div key={i} className="grid grid-cols-12 gap-2 items-start bg-[#0B0F14] p-3 rounded">
+                        <div className="col-span-3">
+                          <Input value={s.name || ''} onChange={(e) => { const ns = [...profileData.staff]; ns[i] = {...ns[i], name: e.target.value}; setProfileData(p => ({...p, staff: ns})); }} placeholder="Имя" className="bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                        </div>
+                        <div className="col-span-3">
+                          <Input value={s.position || ''} onChange={(e) => { const ns = [...profileData.staff]; ns[i] = {...ns[i], position: e.target.value}; setProfileData(p => ({...p, staff: ns})); }} placeholder="Должность" className="bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                        </div>
+                        <div className="col-span-5">
+                          <Input value={s.description || ''} onChange={(e) => { const ns = [...profileData.staff]; ns[i] = {...ns[i], description: e.target.value}; setProfileData(p => ({...p, staff: ns})); }} placeholder="Описание" className="bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                        </div>
+                        <button onClick={() => setProfileData(p => ({...p, staff: p.staff.filter((_,idx) => idx !== i)}))} className="col-span-1 flex items-center justify-center h-8 text-red-400 hover:text-red-300"><X size={14} /></button>
+                      </div>
+                    ))}
+                    <Button size="sm" variant="outline" onClick={() => setProfileData(p => ({...p, staff: [...(p.staff || []), {name: '', position: '', description: ''}]}))} className="border-[#27272A] text-slate-400">+ Добавить сотрудника</Button>
+                  </div>
+                </div>
+
+                {/* Certificates */}
+                <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2"><Award size={18} className="text-amber-400" /> Сертификаты и лицензии</h3>
+                  <div className="space-y-3">
+                    {(profileData.certificates || []).map((c, i) => (
+                      <div key={i} className="grid grid-cols-12 gap-2 items-start bg-[#0B0F14] p-3 rounded">
+                        <div className="col-span-4">
+                          <Input value={c.title || ''} onChange={(e) => { const nc = [...profileData.certificates]; nc[i] = {...nc[i], title: e.target.value}; setProfileData(p => ({...p, certificates: nc})); }} placeholder="Название" className="bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                        </div>
+                        <div className="col-span-7">
+                          <Input value={c.description || ''} onChange={(e) => { const nc = [...profileData.certificates]; nc[i] = {...nc[i], description: e.target.value}; setProfileData(p => ({...p, certificates: nc})); }} placeholder="Описание" className="bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                        </div>
+                        <button onClick={() => setProfileData(p => ({...p, certificates: p.certificates.filter((_,idx) => idx !== i)}))} className="col-span-1 flex items-center justify-center h-8 text-red-400 hover:text-red-300"><X size={14} /></button>
+                      </div>
+                    ))}
+                    <Button size="sm" variant="outline" onClick={() => setProfileData(p => ({...p, certificates: [...(p.certificates || []), {title: '', description: ''}]}))} className="border-[#27272A] text-slate-400">+ Добавить сертификат</Button>
+                    
+                    {/* Certificate file uploads */}
+                    <div className="mt-2">
+                      <Label className="text-slate-400 text-xs mb-1 block">Файлы сертификатов</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {profileFiles.filter(f => f.category === 'certificate').map(f => (
+                          <div key={f.id} className="flex items-center gap-1.5 px-2 py-1 bg-[#0B0F14] rounded text-xs group">
+                            <Award size={10} className="text-amber-400" />
+                            <span className="text-slate-300">{f.original_name}</span>
+                            <button onClick={() => deleteProfileFile(f.id)} className="text-red-400 opacity-0 group-hover:opacity-100"><X size={10} /></button>
+                          </div>
+                        ))}
+                        <label className="flex items-center gap-1 px-2 py-1 bg-[#0B0F14] border border-dashed border-[#27272A] rounded text-xs text-slate-500 cursor-pointer hover:border-amber-400/50">
+                          <ImagePlus size={10} /> Загрузить
+                          <input type="file" className="hidden" accept="image/*,.pdf" onChange={(e) => { if (e.target.files[0]) uploadProfileFile(e.target.files[0], 'certificate', e.target.files[0].name); e.target.value=''; }} />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Portfolio */}
+                <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2"><Briefcase size={18} className="text-emerald-400" /> Портфолио / Кейсы</h3>
+                  <div className="space-y-3">
+                    {(profileData.portfolio_cases || []).map((c, i) => (
+                      <div key={i} className="bg-[#0B0F14] p-3 rounded space-y-2">
+                        <div className="grid grid-cols-12 gap-2 items-center">
+                          <Input value={c.title || ''} onChange={(e) => { const nc = [...profileData.portfolio_cases]; nc[i] = {...nc[i], title: e.target.value}; setProfileData(p => ({...p, portfolio_cases: nc})); }} placeholder="Название кейса" className="col-span-11 bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                          <button onClick={() => setProfileData(p => ({...p, portfolio_cases: p.portfolio_cases.filter((_,idx) => idx !== i)}))} className="col-span-1 flex justify-center text-red-400 hover:text-red-300"><X size={14} /></button>
+                        </div>
+                        <textarea value={c.description || ''} onChange={(e) => { const nc = [...profileData.portfolio_cases]; nc[i] = {...nc[i], description: e.target.value}; setProfileData(p => ({...p, portfolio_cases: nc})); }} placeholder="Описание кейса" rows={2} className="w-full bg-[#15191E] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500 text-sm" />
+                      </div>
+                    ))}
+                    <Button size="sm" variant="outline" onClick={() => setProfileData(p => ({...p, portfolio_cases: [...(p.portfolio_cases || []), {title: '', description: ''}]}))} className="border-[#27272A] text-slate-400">+ Добавить кейс</Button>
+                  </div>
+                </div>
+
+                {/* Facility Photos */}
+                <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2"><Camera size={18} className="text-cyan-400" /> Фото офиса и площадок</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {profileFiles.filter(f => f.category === 'facility').map(f => (
+                      <div key={f.id} className="relative group">
+                        <img src={`${API}/profile-files/${f.id}/download`} alt={f.title || f.original_name} className="w-full h-28 object-cover rounded border border-[#27272A]" onError={(e) => { e.target.style.display = 'none'; }} />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded">
+                          <button onClick={() => deleteProfileFile(f.id)} className="text-red-400 hover:text-red-300"><Trash2 size={18} /></button>
+                        </div>
+                        <p className="text-slate-500 text-[10px] mt-1 truncate">{f.title || f.original_name}</p>
+                      </div>
+                    ))}
+                    <label className="w-full h-28 flex flex-col items-center justify-center border-2 border-dashed border-[#27272A] rounded cursor-pointer hover:border-cyan-400/50 transition-colors">
+                      <ImagePlus size={24} className="text-slate-600 mb-1" />
+                      <span className="text-slate-600 text-xs">{uploadingProfileFile ? 'Загрузка...' : 'Добавить фото'}</span>
+                      <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => { Array.from(e.target.files).forEach(f => uploadProfileFile(f, 'facility', f.name)); e.target.value=''; }} />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Telegram */}
+                <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+                    <MessageCircle size={18} className="text-[#0088cc]" /> Telegram
+                  </h3>
+                  {tgStatus?.linked ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 p-3 bg-emerald-500/10 rounded">
+                        <CheckCircle2 size={20} className="text-emerald-400" />
+                        <div>
+                          <p className="text-emerald-400 font-medium text-sm">Telegram привязан</p>
+                          {tgStatus.username && <p className="text-slate-400 text-xs">@{tgStatus.username}</p>}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={testTelegram} className="border-[#27272A] text-slate-300 text-xs">
+                          <Send size={12} className="mr-1" /> Тест
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={unlinkTelegram} className="border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs">
+                          Отвязать
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-slate-400 text-sm">Привяжите Telegram для получения уведомлений о новых тендерах, сообщениях и обновлениях сделок.</p>
+                      {tgLink ? (
+                        <div className="space-y-2">
+                          <a
+                            href={tgLink.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 p-3 bg-[#0088cc] hover:bg-[#0077b5] text-white rounded transition-colors"
+                            data-testid="telegram-link-btn"
+                          >
+                            <MessageCircle size={18} />
+                            Открыть бот @{tgLink.bot_username}
+                          </a>
+                          <p className="text-slate-500 text-xs text-center">Нажмите "Start" в Telegram боте для завершения привязки</p>
+                          <Button size="sm" variant="outline" onClick={() => { fetchProfile(token); }} className="w-full border-[#27272A] text-slate-400 text-xs">
+                            Проверить статус привязки
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button onClick={linkTelegram} disabled={tgLoading} className="w-full bg-[#0088cc] hover:bg-[#0077b5] text-white">
+                          {tgLoading ? <Loader2 size={16} className="animate-spin mr-2" /> : <MessageCircle size={16} className="mr-2" />}
+                          Привязать Telegram
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Social Links */}
+                <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2"><Globe size={18} className="text-violet-400" /> Ссылки</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-slate-400 text-xs">Instagram</Label>
+                      <Input value={profileData.social_links?.instagram || ''} onChange={(e) => setProfileData(p => ({...p, social_links: {...(p.social_links || {}), instagram: e.target.value}}))} placeholder="https://instagram.com/..." className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                    </div>
+                    <div>
+                      <Label className="text-slate-400 text-xs">YouTube</Label>
+                      <Input value={profileData.social_links?.youtube || ''} onChange={(e) => setProfileData(p => ({...p, social_links: {...(p.social_links || {}), youtube: e.target.value}}))} placeholder="https://youtube.com/..." className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                    </div>
+                    <div>
+                      <Label className="text-slate-400 text-xs">Facebook</Label>
+                      <Input value={profileData.social_links?.facebook || ''} onChange={(e) => setProfileData(p => ({...p, social_links: {...(p.social_links || {}), facebook: e.target.value}}))} placeholder="https://facebook.com/..." className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                    </div>
+                    <div>
+                      <Label className="text-slate-400 text-xs">TikTok</Label>
+                      <Input value={profileData.social_links?.tiktok || ''} onChange={(e) => setProfileData(p => ({...p, social_links: {...(p.social_links || {}), tiktok: e.target.value}}))} placeholder="https://tiktok.com/..." className="mt-1 bg-[#0B0F14] border-[#27272A]" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Save Button */}
+                <div className="flex justify-end">
+                  <Button onClick={saveProfile} disabled={profileSaving} className="bg-purple-500 hover:bg-purple-600 text-white px-8">
+                    {profileSaving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+                    Сохранить профиль
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -975,7 +1411,7 @@ const ContractorDashboard = () => {
 
               {/* Car Link */}
               <div>
-                <Label className="text-slate-300">🔗 Ссылка на автомобиль</Label>
+                <Label className="text-slate-300">Ссылка на автомобиль</Label>
                 <Input
                   type="url"
                   value={offerData.car_link}
@@ -983,48 +1419,128 @@ const ContractorDashboard = () => {
                   placeholder="https://che168.com/car/123..."
                   className="mt-1 bg-[#0B0F14] border-[#27272A]"
                 />
-                <p className="text-slate-500 text-xs mt-1">Ссылка на объявление, если авто в общем доступе</p>
               </div>
 
-              {/* Car Details */}
+              {/* Car structured info */}
               <div>
-                <Label className="text-slate-300">📋 Детали автомобиля</Label>
+                <Label className="text-slate-300 mb-2 block">Характеристики автомобиля</Label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-3 bg-[#0B0F14] rounded-sm">
+                  <div>
+                    <Label className="text-slate-500 text-xs">Марка *</Label>
+                    <Input value={offerData.car_brand} onChange={(e) => setOfferData(p => ({ ...p, car_brand: e.target.value }))} placeholder="BYD" className="mt-0.5 bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-slate-500 text-xs">Модель *</Label>
+                    <Input value={offerData.car_model} onChange={(e) => setOfferData(p => ({ ...p, car_model: e.target.value }))} placeholder="Han EV" className="mt-0.5 bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-slate-500 text-xs">Год выпуска</Label>
+                    <Input type="number" value={offerData.car_year} onChange={(e) => setOfferData(p => ({ ...p, car_year: e.target.value }))} placeholder="2024" className="mt-0.5 bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-slate-500 text-xs">Пробег (км)</Label>
+                    <Input type="number" value={offerData.car_mileage} onChange={(e) => setOfferData(p => ({ ...p, car_mileage: e.target.value }))} placeholder="15000" className="mt-0.5 bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-slate-500 text-xs">Двигатель</Label>
+                    <select value={offerData.car_engine_type} onChange={(e) => setOfferData(p => ({ ...p, car_engine_type: e.target.value }))} className="mt-0.5 w-full bg-[#15191E] border border-[#27272A] rounded-sm px-2 h-8 text-sm text-white">
+                      <option value="">—</option>
+                      <option value="gasoline">Бензин</option>
+                      <option value="diesel">Дизель</option>
+                      <option value="electric">Электро</option>
+                      <option value="hybrid">Гибрид</option>
+                      <option value="phev">Плагин-гибрид</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-slate-500 text-xs">Объём (л)</Label>
+                    <Input value={offerData.car_engine_volume} onChange={(e) => setOfferData(p => ({ ...p, car_engine_volume: e.target.value }))} placeholder="2.0" className="mt-0.5 bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-slate-500 text-xs">Цвет</Label>
+                    <Input value={offerData.car_color} onChange={(e) => setOfferData(p => ({ ...p, car_color: e.target.value }))} placeholder="Чёрный" className="mt-0.5 bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-slate-500 text-xs">КПП</Label>
+                    <select value={offerData.car_transmission} onChange={(e) => setOfferData(p => ({ ...p, car_transmission: e.target.value }))} className="mt-0.5 w-full bg-[#15191E] border border-[#27272A] rounded-sm px-2 h-8 text-sm text-white">
+                      <option value="">—</option>
+                      <option value="automatic">АКПП</option>
+                      <option value="manual">МКПП</option>
+                      <option value="robot">Робот</option>
+                      <option value="cvt">Вариатор</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-slate-500 text-xs">VIN</Label>
+                    <Input value={offerData.car_vin} onChange={(e) => setOfferData(p => ({ ...p, car_vin: e.target.value }))} placeholder="LGXC..." className="mt-0.5 bg-[#15191E] border-[#27272A] h-8 text-sm" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Car Details free text */}
+              <div>
+                <Label className="text-slate-300">Дополнительное описание</Label>
                 <textarea
                   value={offerData.car_details}
                   onChange={(e) => setOfferData(p => ({ ...p, car_details: e.target.value }))}
-                  placeholder="VIN, год, комплектация, пробег, цвет, состояние..."
-                  rows={3}
-                  className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500"
+                  placeholder="Комплектация, состояние, особенности..."
+                  rows={2}
+                  className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500 text-sm"
                 />
               </div>
 
-              {/* Photo/Video Links */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-slate-300">📷 Фото (ссылки)</Label>
-                  <textarea
-                    value={offerData.car_photos.join('\n')}
-                    onChange={(e) => setOfferData(p => ({ ...p, car_photos: e.target.value.split('\n').filter(l => l.trim()) }))}
-                    placeholder="Ссылки на фото (по одной на строку)"
-                    rows={2}
-                    className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500 text-xs"
+              {/* File Upload */}
+              <div>
+                <Label className="text-slate-300 mb-2 block">Фото и видео автомобиля</Label>
+                <div className="p-3 bg-[#0B0F14] rounded-sm">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,video/*"
+                    onChange={(e) => {
+                      const newFiles = Array.from(e.target.files);
+                      setOfferFiles(prev => [...prev, ...newFiles]);
+                      e.target.value = '';
+                    }}
+                    className="hidden"
+                    id="offer-file-input"
                   />
-                </div>
-                <div>
-                  <Label className="text-slate-300">🎥 Видео (ссылки)</Label>
-                  <textarea
-                    value={offerData.car_videos.join('\n')}
-                    onChange={(e) => setOfferData(p => ({ ...p, car_videos: e.target.value.split('\n').filter(l => l.trim()) }))}
-                    placeholder="Ссылки на видео (по одной на строку)"
-                    rows={2}
-                    className="mt-1 w-full bg-[#0B0F14] border border-[#27272A] rounded-sm px-3 py-2 text-white placeholder:text-slate-500 text-xs"
-                  />
+                  <label
+                    htmlFor="offer-file-input"
+                    className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-[#27272A] rounded cursor-pointer hover:border-[#00E5FF]/50 transition-colors"
+                  >
+                    <Camera size={20} className="text-slate-400" />
+                    <span className="text-slate-400 text-sm">Нажмите для загрузки фото/видео</span>
+                  </label>
+                  {offerFiles.length > 0 && (
+                    <div className="mt-3 grid grid-cols-4 gap-2">
+                      {offerFiles.map((f, i) => (
+                        <div key={i} className="relative group">
+                          {f.type.startsWith('image') ? (
+                            <img src={URL.createObjectURL(f)} alt="" className="w-full h-16 object-cover rounded border border-[#27272A]" />
+                          ) : (
+                            <div className="w-full h-16 bg-[#15191E] rounded border border-[#27272A] flex items-center justify-center">
+                              <Video size={16} className="text-slate-400" />
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setOfferFiles(prev => prev.filter((_, idx) => idx !== i))}
+                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            x
+                          </button>
+                          <p className="text-slate-500 text-[10px] truncate mt-0.5">{f.name}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Services Selection */}
               <div>
-                <Label className="text-slate-300 mb-2 block">🛠️ Этапы сделки в предложении</Label>
+                <Label className="text-slate-300 mb-2 block">Этапы сделки в предложении</Label>
                 <div className="space-y-3 p-3 bg-[#0B0F14] rounded-sm">
                   {[
                     { key: 'inspection', label: 'Инспекция авто', desc: 'Проверка технического состояния' },
@@ -1085,7 +1601,7 @@ const ContractorDashboard = () => {
               {/* Pricing */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-slate-300">💵 Общая цена (USD) *</Label>
+                  <Label className="text-slate-300">Общая цена (USD) *</Label>
                   <Input
                     type="number"
                     value={offerData.price_usd}
@@ -1096,7 +1612,7 @@ const ContractorDashboard = () => {
                   <p className="text-slate-500 text-xs mt-1">Полная стоимость с доставкой</p>
                 </div>
                 <div>
-                  <Label className="text-slate-300">💴 Цена авто (CNY)</Label>
+                  <Label className="text-slate-300">Цена авто (CNY)</Label>
                   <Input
                     type="number"
                     value={offerData.price_cny}
@@ -1109,7 +1625,7 @@ const ContractorDashboard = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-slate-300">📅 Срок доставки (дней)</Label>
+                  <Label className="text-slate-300">Срок доставки (дней)</Label>
                   <Input
                     type="number"
                     value={offerData.delivery_days}
@@ -1119,7 +1635,7 @@ const ContractorDashboard = () => {
                   />
                 </div>
                 <div>
-                  <Label className="text-slate-300">🚚 Отдельно доставка ($)</Label>
+                  <Label className="text-slate-300">Отдельно доставка ($)</Label>
                   <Input
                     type="number"
                     value={offerData.delivery_cost}
@@ -1131,7 +1647,7 @@ const ContractorDashboard = () => {
               </div>
 
               <div>
-                <Label className="text-slate-300">📝 Примечания</Label>
+                <Label className="text-slate-300">Примечания</Label>
                 <textarea
                   value={offerData.notes}
                   onChange={(e) => setOfferData(p => ({ ...p, notes: e.target.value }))}
@@ -1143,11 +1659,11 @@ const ContractorDashboard = () => {
 
               <Button
                 onClick={submitOffer}
-                disabled={submitting || !offerData.price_usd}
+                disabled={submitting || uploadingOfferFiles || !offerData.price_usd || !offerData.car_brand}
                 className="w-full bg-[#00E5FF] hover:bg-[#22D3EE] text-black"
               >
-                {submitting ? <Loader2 className="animate-spin mr-2" size={16} /> : <Send size={16} className="mr-2" />}
-                Отправить предложение
+                {submitting || uploadingOfferFiles ? <Loader2 className="animate-spin mr-2" size={16} /> : <Send size={16} className="mr-2" />}
+                {uploadingOfferFiles ? `Загрузка файлов...` : submitting ? 'Отправка...' : 'Отправить предложение'}
               </Button>
             </div>
           )}
@@ -1628,7 +2144,10 @@ const serviceLabels = {
 
 const engineLabels = {
   ice: 'ДВС',
+  petrol: 'Бензин',
+  diesel: 'Дизель',
   hybrid: 'Гибрид',
+  phev: 'Плагин-гибрид',
   electric: 'Электро',
   any: 'Любой'
 };
@@ -1638,7 +2157,8 @@ const paymentLabels = {
   full_prepay: 'Полная предоплата',
   leasing: 'Лизинг',
   credit: 'Кредит',
-  partial: 'Частичная оплата'
+  partial: 'Частичная оплата',
+  installment: 'Рассрочка'
 };
 
 const bodyLabels = {
@@ -1678,6 +2198,7 @@ const colorLabels = {
   brown: 'Коричневый',
   green: 'Зелёный',
   beige: 'Бежевый',
+  combi: 'Комбинированный',
   any: 'Любой'
 };
 
@@ -1686,7 +2207,8 @@ const timelineLabels = {
   '1month': 'В течение месяца',
   '2_3months': '2-3 месяца',
   '3_6months': '3-6 месяцев',
-  'no_rush': 'Не тороплюсь'
+  'no_rush': 'Не тороплюсь',
+  'not_rush': 'Не тороплюсь'
 };
 
 const conditionLabels = {
@@ -1695,43 +2217,52 @@ const conditionLabels = {
   any: 'Любой'
 };
 
-const optionLabels = {
-  // Comfort
-  heated_seats: 'Подогрев сидений',
-  ventilated_seats: 'Вентиляция сидений',
-  heated_wheel: 'Подогрев руля',
-  panoramic_roof: 'Панорамная крыша',
-  sunroof: 'Люк',
-  climate_control: 'Климат-контроль',
-  rear_climate: 'Задний климат',
-  seat_memory: 'Память сидений',
-  massage_seats: 'Массаж сидений',
-  // Electronic
-  cruise_control: 'Круиз-контроль',
-  adaptive_cruise: 'Адаптивный круиз',
-  lane_assist: 'Ассистент полосы',
-  parking_sensors: 'Парктроники',
-  camera_360: 'Камера 360°',
-  rear_camera: 'Задняя камера',
-  blind_spot: 'Мониторинг слепых зон',
-  head_up: 'Проекция на лобовое',
-  keyless: 'Бесключевой доступ',
-  remote_start: 'Дистанционный запуск',
-  // Exterior
-  led_lights: 'LED фары',
-  matrix_lights: 'Матричные фары',
-  wheels_r18: 'Диски R18+',
-  wheels_r19: 'Диски R19+',
-  wheels_r20: 'Диски R20+',
-  tinted_windows: 'Тонировка',
-  // Other
-  spare_wheel: 'Запасное колесо',
-  first_aid: 'Аптечка',
-  fire_extinguisher: 'Огнетушитель'
+const transmissionLabels = {
+  auto: 'Автомат',
+  at: 'Автомат',
+  manual: 'Механика',
+  mt: 'Механика',
+  robot: 'Робот',
+  variator: 'Вариатор',
+  cvt: 'Вариатор',
+  any: 'Любая'
+};
+
+const engineVolumeLabels = {
+  lt1: 'до 1.0 л',
+  '1_1.5': '1.0 – 1.5 л',
+  '1.5_2': '1.5 – 2.0 л',
+  '2_25': '2.0 – 2.5 л',
+  '2_2.5': '2.0 – 2.5 л',
+  '2.5_3': '2.5 – 3.0 л',
+  gt3: 'более 3.0 л',
+  any: 'Любой'
+};
+
+const interiorMaterialLabels = {
+  leather: 'Кожа',
+  fabric: 'Ткань',
+  alcantara: 'Алькантара',
+  combined: 'Комбинированный',
+  any: 'Любой'
+};
+
+const customsLabels = {
+  carbridge: 'Через CarBridge',
+  self: 'Самостоятельно',
+  other: 'Другое'
+};
+
+const carPurposeLabels = {
+  personal: 'Личное использование',
+  business: 'Для бизнеса',
+  resale: 'Перепродажа',
+  fleet: 'Автопарк'
 };
 
 const clientTypeLabels = {
   individual: 'Физ. лицо',
+  legal: 'Юр. лицо',
   company: 'Юр. лицо',
   ip: 'ИП'
 };
@@ -1742,6 +2273,51 @@ const priorityLabels = {
   3: 'Средне',
   4: 'Важно',
   5: 'Очень важно'
+};
+
+const optionLabels = {
+  heated_seats: 'Подогрев сидений',
+  ventilated_seats: 'Вентиляция сидений',
+  heated_wheel: 'Подогрев руля',
+  panoramic_roof: 'Панорамная крыша',
+  sunroof: 'Люк',
+  climate_control: 'Климат-контроль',
+  rear_climate: 'Задний климат',
+  seat_memory: 'Память сидений',
+  massage_seats: 'Массаж сидений',
+  cruise_control: 'Круиз-контроль',
+  adaptive_cruise: 'Адаптивный круиз',
+  lane_assist: 'Ассистент полосы',
+  parking_sensors: 'Парктроники',
+  camera_360: 'Камера 360°',
+  rear_camera: 'Задняя камера',
+  blind_spot: 'Мониторинг слепых зон',
+  head_up: 'Проекция на лобовое',
+  hud: 'Проекция на лобовое',
+  keyless: 'Бесключевой доступ',
+  remote_start: 'Дистанционный запуск',
+  carplay: 'Apple CarPlay / Android Auto',
+  led_lights: 'LED фары',
+  matrix_lights: 'Матричные фары',
+  wheels_r18: 'Диски R18+',
+  wheels_r19: 'Диски R19+',
+  wheels_r20: 'Диски R20+',
+  tinted_windows: 'Тонировка',
+  spare_wheel: 'Запасное колесо',
+  first_aid: 'Аптечка',
+  fire_extinguisher: 'Огнетушитель',
+  third_row: 'Третий ряд сидений',
+  system_360: 'Система кругового обзора 360°',
+  sport_package: 'Спорт-пакет',
+  wireless_charge: 'Беспроводная зарядка',
+  autopark: 'Автопарковка',
+  premium_audio: 'Премиум аудио',
+  electric_trunk: 'Электропривод багажника',
+  electric_seats: 'Электропривод сидений',
+  air_suspension: 'Пневмоподвеска',
+  night_vision: 'Ночное видение',
+  ambient_light: 'Подсветка салона',
+  hud: 'Проекция на лобовое'
 };
 
 export default ContractorDashboard;

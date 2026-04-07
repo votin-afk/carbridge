@@ -27,7 +27,22 @@ UPLOADS_DIR.mkdir(exist_ok=True)
 # Limits
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 DEAL_ADD_FEE = 300  # USD
+CONSULTANT_FEE = 200  # $200 for consultant help
 
 # Platform fee
 PLATFORM_FEE_PERCENT = 3.0
 AFFILIATE_COMMISSION_PERCENT = 20.0  # 20% of platform fee goes to referrer
+
+# Deal constants
+PLATFORM_COMMISSION = 0.03  # 3%
+PLATFORM_PAYMENT_FEE = 0.01  # +1% if paid through platform
+COMMISSION_RATE = 0.03  # 3% platform commission
+AFFILIATE_SHARE = 0.20  # 20% of commission goes to affiliate
+PARTNER_THRESHOLD = 3  # 3 completed deals to become partner
+
+NEW_DEAL_STAGES = [
+    "leasing", "inspection", "export", "logistics_china",
+    "insurance", "delivery_rb", "customs", "completion"
+]
+
+DEAL_STAGES = ["verification", "contract", "inspection", "payment", "export", "logistics", "delivery"]

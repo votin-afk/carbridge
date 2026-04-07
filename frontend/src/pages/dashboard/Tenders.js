@@ -21,12 +21,30 @@ import {
   Ship,
   Shield,
   DollarSign,
-  User
+  User,
+  MapPin,
+  Gauge,
+  Palette,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  Building2,
+  BadgeCheck,
+  X,
+  ZoomIn
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+const getProxiedImageUrl = (url) => {
+  if (!url) return null;
+  if (url.includes('autoimg.cn') || url.includes('che168.com') || url.includes('autohome.com')) {
+    return `${API}/proxy/image?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+};
 
 // Service labels for display
 const serviceLabels = {
@@ -170,10 +188,10 @@ const Tenders = () => {
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 bg-[#0B0F14] rounded-sm overflow-hidden flex-shrink-0">
                       <img 
-                        src={tender.car_info?.image_url || 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=200'} 
+                        src={getProxiedImageUrl(tender.car_info?.image_url || tender.image_url) || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%230B0F14" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="%23555" font-size="14">AUTO</text></svg>'} 
                         alt={tender.car_info?.brand || tender.car_request?.brand}
                         className="w-full h-full object-cover"
-                        onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=200'; }}
+                        onError={(e) => { e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%230B0F14" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="%23555" font-size="14">AUTO</text></svg>'; }}
                       />
                     </div>
                     <div>
@@ -258,9 +276,43 @@ const Tenders = () => {
   );
 };
 
-// Offer Card Component
+// Engine type labels
+const engineLabels = { gasoline: 'Бензин', diesel: 'Дизель', electric: 'Электро', hybrid: 'Гибрид', phev: 'Плагин-гибрид' };
+const transLabels = { automatic: 'АКПП', manual: 'МКПП', robot: 'Робот', cvt: 'Вариатор' };
+
+// Offer Card Component - Car-style card
 const OfferCard = ({ offer, isFirst, isSelected, tenderStatus, onSelect, onAddToDeal, addingToDeal, dealCreated }) => {
-  const [showDetails, setShowDetails] = useState(false);
+  const { token } = useAuth();
+  const [showProfile, setShowProfile] = useState(false);
+  const [contractorProfile, setContractorProfile] = useState(null);
+  const [offerPhotos, setOfferPhotos] = useState([]);
+  const [currentPhoto, setCurrentPhoto] = useState(0);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  useEffect(() => {
+    // Load offer files
+    (async () => {
+      try {
+        const res = await axios.get(`${API}/offers/${offer.id}/files`);
+        setOfferPhotos(res.data.filter(f => f.category === 'photo'));
+      } catch {}
+    })();
+  }, [offer.id]);
+
+  const loadProfile = async () => {
+    if (contractorProfile) { setShowProfile(true); return; }
+    setLoadingProfile(true);
+    try {
+      const res = await axios.get(`${API}/contractors/${offer.contractor_id}/public-profile`);
+      setContractorProfile(res.data);
+      setShowProfile(true);
+    } catch { toast.error('Не удалось загрузить профиль'); }
+    finally { setLoadingProfile(false); }
+  };
+
+  const photoUrl = (fileId) => `${API}/offer-files/${fileId}/download?token=${encodeURIComponent(token)}`;
   
   return (
     <div className={`bg-[#0B0F14] border rounded-sm overflow-hidden ${
@@ -283,64 +335,142 @@ const OfferCard = ({ offer, isFirst, isSelected, tenderStatus, onSelect, onAddTo
         </div>
       )}
 
-      <div className="p-4">
-        {/* Contractor & Price */}
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[#15191E] rounded-full flex items-center justify-center">
-              <User size={14} className="text-slate-400" />
-            </div>
-            <div>
-              <p className="text-white text-sm font-medium">{offer.contractor_name || 'Подрядчик'}</p>
-              <div className="flex items-center gap-1">
-                {[1,2,3,4,5].map(s => (
-                  <Star key={s} size={10} className={s <= (offer.contractor_rating || 5) ? 'text-amber-400 fill-amber-400' : 'text-slate-600'} />
-                ))}
+      {/* Photo Gallery */}
+      {offerPhotos.length > 0 ? (
+        <div className="relative h-48 bg-[#15191E]">
+          <img
+            src={photoUrl(offerPhotos[currentPhoto]?.id)}
+            alt={offer.car_brand || 'Авто'}
+            className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => { setLightboxIndex(currentPhoto); setLightboxOpen(true); }}
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+          {/* Zoom icon */}
+          <button 
+            onClick={() => { setLightboxIndex(currentPhoto); setLightboxOpen(true); }}
+            className="absolute bottom-2 left-2 w-8 h-8 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/80 z-10"
+          >
+            <ZoomIn size={14} />
+          </button>
+          {offerPhotos.length > 1 && (
+            <>
+              <button onClick={(e) => { e.stopPropagation(); setCurrentPhoto(p => p > 0 ? p - 1 : offerPhotos.length - 1); }}
+                className="absolute left-1 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/80">
+                <ChevronLeft size={16} />
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); setCurrentPhoto(p => p < offerPhotos.length - 1 ? p + 1 : 0); }}
+                className="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/80">
+                <ChevronRight size={16} />
+              </button>
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 px-2 py-0.5 rounded-full text-white text-xs">
+                {currentPhoto + 1} / {offerPhotos.length}
               </div>
+            </>
+          )}
+          {/* Thumbnail strip */}
+          {offerPhotos.length > 1 && (
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-1 px-2 py-1 bg-black/50 rounded-lg">
+              {offerPhotos.slice(0, 6).map((p, i) => (
+                <img 
+                  key={p.id} 
+                  src={photoUrl(p.id)} 
+                  alt="" 
+                  className={`w-8 h-8 object-cover rounded cursor-pointer border ${i === currentPhoto ? 'border-[#00E5FF]' : 'border-transparent'} hover:border-white/50`}
+                  onClick={(e) => { e.stopPropagation(); setCurrentPhoto(i); }}
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              ))}
+              {offerPhotos.length > 6 && (
+                <div className="w-8 h-8 bg-black/60 rounded flex items-center justify-center text-white text-xs">+{offerPhotos.length - 6}</div>
+              )}
             </div>
-          </div>
-          <div className="text-right">
-            <p className="text-[#00E5FF] text-xl font-bold">${offer.price_usd?.toLocaleString()}</p>
-            {offer.price_cny && (
-              <p className="text-slate-500 text-xs">¥{offer.price_cny.toLocaleString()}</p>
-            )}
+          )}
+          {/* Price overlay */}
+          <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded">
+            <p className="text-[#00E5FF] text-lg font-bold">${offer.price_usd?.toLocaleString()}</p>
           </div>
         </div>
+      ) : (
+        <div className="h-32 bg-[#15191E] flex items-center justify-center relative">
+          <Car size={40} className="text-slate-700" />
+          <div className="absolute top-2 right-2 bg-black/70 px-3 py-1.5 rounded">
+            <p className="text-[#00E5FF] text-lg font-bold">${offer.price_usd?.toLocaleString()}</p>
+          </div>
+        </div>
+      )}
 
-        {/* Car Info from Offer */}
+      <div className="p-4">
+        {/* Car Title */}
+        <h4 className="text-white font-bold text-lg mb-1">
+          {(offer.car_brand || '').toUpperCase()} {offer.car_model || ''}
+          {!offer.car_brand && !offer.car_model && 'Автомобиль'}
+        </h4>
+
+        {/* Car Specs Grid */}
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          {offer.car_year && (
+            <div className="flex items-center gap-1.5 text-slate-400 text-xs">
+              <Clock size={12} className="text-slate-500 flex-shrink-0" />
+              <span>{offer.car_year} г.</span>
+            </div>
+          )}
+          {offer.car_mileage && (
+            <div className="flex items-center gap-1.5 text-slate-400 text-xs">
+              <Gauge size={12} className="text-slate-500 flex-shrink-0" />
+              <span>{Number(offer.car_mileage).toLocaleString()} км</span>
+            </div>
+          )}
+          {offer.car_engine_type && (
+            <div className="flex items-center gap-1.5 text-slate-400 text-xs">
+              <Settings size={12} className="text-slate-500 flex-shrink-0" />
+              <span>{engineLabels[offer.car_engine_type] || offer.car_engine_type}</span>
+            </div>
+          )}
+          {offer.car_color && (
+            <div className="flex items-center gap-1.5 text-slate-400 text-xs">
+              <Palette size={12} className="text-slate-500 flex-shrink-0" />
+              <span>{offer.car_color}</span>
+            </div>
+          )}
+          {offer.car_transmission && (
+            <div className="flex items-center gap-1.5 text-slate-400 text-xs">
+              <Settings size={12} className="text-slate-500 flex-shrink-0" />
+              <span>{transLabels[offer.car_transmission] || offer.car_transmission}</span>
+            </div>
+          )}
+          {offer.car_engine_volume && (
+            <div className="flex items-center gap-1.5 text-slate-400 text-xs">
+              <Gauge size={12} className="text-slate-500 flex-shrink-0" />
+              <span>{offer.car_engine_volume}L</span>
+            </div>
+          )}
+        </div>
+
+        {/* Car Details */}
         {offer.car_details && (
           <div className="bg-[#15191E] rounded p-2 mb-3">
             <p className="text-slate-300 text-sm">{offer.car_details}</p>
           </div>
         )}
 
+        {/* VIN */}
+        {offer.car_vin && (
+          <p className="text-slate-500 text-xs mb-2">VIN: <span className="text-slate-400 font-mono">{offer.car_vin}</span></p>
+        )}
+
         {/* Car Link */}
         {offer.car_link && (
-          <a 
-            href={offer.car_link} 
-            target="_blank" 
-            rel="noopener noreferrer"
+          <a href={offer.car_link} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 text-[#00E5FF] text-sm hover:underline mb-3"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ExternalLink size={14} />
-            Ссылка на авто
+            onClick={(e) => e.stopPropagation()}>
+            <ExternalLink size={14} /> Ссылка на авто
           </a>
         )}
 
-        {/* Photos/Videos indicators */}
-        <div className="flex items-center gap-3 mb-3">
-          {offer.car_photos?.length > 0 && (
-            <span className="flex items-center gap-1 text-slate-400 text-xs">
-              <Image size={12} /> {offer.car_photos.length} фото
-            </span>
-          )}
-          {offer.car_videos?.length > 0 && (
-            <span className="flex items-center gap-1 text-slate-400 text-xs">
-              <Video size={12} /> {offer.car_videos.length} видео
-            </span>
-          )}
-        </div>
+        {/* Price breakdown */}
+        {offer.price_cny && (
+          <p className="text-slate-500 text-xs mb-2">Цена авто: <span className="text-amber-400">¥{offer.price_cny.toLocaleString()}</span></p>
+        )}
 
         {/* Included Services */}
         {offer.included_services && Object.values(offer.included_services).some(v => v) && (
@@ -354,11 +484,7 @@ const OfferCard = ({ offer, isFirst, isSelected, tenderStatus, onSelect, onAddTo
                 const ServiceIcon = service.icon;
                 const price = offer.service_prices?.[key];
                 return (
-                  <div 
-                    key={key} 
-                    className="flex items-center gap-1 px-2 py-1 bg-[#15191E] rounded text-xs"
-                    title={price ? `$${price}` : ''}
-                  >
+                  <div key={key} className="flex items-center gap-1 px-2 py-1 bg-[#15191E] rounded text-xs">
                     <ServiceIcon size={10} className={service.color} />
                     <span className="text-slate-300">{service.label}</span>
                     {price && <span className="text-slate-500">${price}</span>}
@@ -373,14 +499,12 @@ const OfferCard = ({ offer, isFirst, isSelected, tenderStatus, onSelect, onAddTo
         <div className="flex items-center gap-4 text-sm mb-3">
           {offer.delivery_days && (
             <div className="flex items-center gap-1 text-slate-400">
-              <Clock size={12} />
-              <span>{offer.delivery_days} дней</span>
+              <Clock size={12} /> <span>{offer.delivery_days} дней</span>
             </div>
           )}
-          {offer.delivery_cost !== undefined && (
+          {offer.delivery_cost !== undefined && offer.delivery_cost !== null && (
             <div className="flex items-center gap-1 text-slate-400">
-              <Truck size={12} />
-              <span>{offer.delivery_cost === 0 ? 'Бесплатно' : `$${offer.delivery_cost}`}</span>
+              <Truck size={12} /> <span>{offer.delivery_cost === 0 ? 'Бесплатно' : `$${offer.delivery_cost}`}</span>
             </div>
           )}
         </div>
@@ -388,6 +512,71 @@ const OfferCard = ({ offer, isFirst, isSelected, tenderStatus, onSelect, onAddTo
         {/* Notes */}
         {offer.notes && (
           <p className="text-slate-500 text-xs mb-3 italic">"{offer.notes}"</p>
+        )}
+
+        {/* Contractor Info */}
+        <div className="border-t border-[#27272A] pt-3 mb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 bg-[#15191E] rounded-full flex items-center justify-center">
+                <Building2 size={16} className="text-slate-400" />
+              </div>
+              <div>
+                <p className="text-white text-sm font-medium">{offer.contractor_name || 'Подрядчик'}</p>
+                <div className="flex items-center gap-1">
+                  {[1,2,3,4,5].map(s => (
+                    <Star key={s} size={10} className={s <= (offer.contractor_rating || 5) ? 'text-amber-400 fill-amber-400' : 'text-slate-600'} />
+                  ))}
+                  <span className="text-slate-500 text-xs ml-1">{offer.contractor_rating || 5.0}</span>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); loadProfile(); }}
+              disabled={loadingProfile}
+              className="text-[#00E5FF] text-xs hover:underline flex items-center gap-1"
+              data-testid={`view-profile-${offer.id}`}
+            >
+              {loadingProfile ? <Loader2 size={12} className="animate-spin" /> : <User size={12} />}
+              Профиль
+            </button>
+          </div>
+        </div>
+
+        {/* Contractor Profile Popup */}
+        {showProfile && contractorProfile && (
+          <div className="mb-3 p-3 bg-[#15191E] rounded border border-[#27272A]">
+            <div className="flex items-center justify-between mb-2">
+              <h5 className="text-white text-sm font-medium flex items-center gap-1">
+                {contractorProfile.company_name}
+                {contractorProfile.verified && <BadgeCheck size={14} className="text-[#00E5FF]" />}
+              </h5>
+              <button onClick={() => setShowProfile(false)} className="text-slate-500 text-xs hover:text-white">Закрыть</button>
+            </div>
+            {contractorProfile.contact_person && <p className="text-slate-400 text-xs mb-1">Контакт: {contractorProfile.contact_person}</p>}
+            {contractorProfile.city && <p className="text-slate-400 text-xs mb-1 flex items-center gap-1"><MapPin size={10} />{contractorProfile.city}</p>}
+            {contractorProfile.experience && <p className="text-slate-400 text-xs mb-1">Опыт: {contractorProfile.experience}</p>}
+            {contractorProfile.description && <p className="text-slate-400 text-xs mb-2">{contractorProfile.description}</p>}
+            <div className="flex flex-wrap gap-1 mb-2">
+              {contractorProfile.services?.map(s => (
+                <span key={s} className="px-2 py-0.5 bg-[#0B0F14] text-[#00E5FF] text-xs rounded">{s}</span>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <div className="text-center p-1.5 bg-[#0B0F14] rounded">
+                <p className="text-emerald-400 font-bold">{contractorProfile.completed_deals}</p>
+                <p className="text-slate-500">Завершено</p>
+              </div>
+              <div className="text-center p-1.5 bg-[#0B0F14] rounded">
+                <p className="text-amber-400 font-bold">{contractorProfile.accepted_offers}</p>
+                <p className="text-slate-500">Принято</p>
+              </div>
+              <div className="text-center p-1.5 bg-[#0B0F14] rounded">
+                <p className="text-[#00E5FF] font-bold">{contractorProfile.rating}</p>
+                <p className="text-slate-500">Рейтинг</p>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Actions */}
@@ -413,12 +602,60 @@ const OfferCard = ({ offer, isFirst, isSelected, tenderStatus, onSelect, onAddTo
             </Button>
           )}
           {isSelected && dealCreated && (
-            <span className="flex-1 text-center text-emerald-400 text-sm py-2">
-              ✓ Сделка создана
-            </span>
+            <span className="flex-1 text-center text-emerald-400 text-sm py-2">Сделка создана</span>
           )}
         </div>
       </div>
+
+      {/* Lightbox Modal */}
+      {lightboxOpen && offerPhotos.length > 0 && (
+        <div 
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center"
+          onClick={() => setLightboxOpen(false)}
+          data-testid="photo-lightbox"
+        >
+          <button 
+            onClick={() => setLightboxOpen(false)}
+            className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white z-10"
+          >
+            <X size={20} />
+          </button>
+          <img
+            src={photoUrl(offerPhotos[lightboxIndex]?.id)}
+            alt={`Фото ${lightboxIndex + 1}`}
+            className="max-w-[90vw] max-h-[85vh] object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          {offerPhotos.length > 1 && (
+            <>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setLightboxIndex(i => i > 0 ? i - 1 : offerPhotos.length - 1); }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setLightboxIndex(i => i < offerPhotos.length - 1 ? i + 1 : 0); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white"
+              >
+                <ChevronRight size={24} />
+              </button>
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                {offerPhotos.map((p, i) => (
+                  <button 
+                    key={p.id}
+                    onClick={(e) => { e.stopPropagation(); setLightboxIndex(i); }}
+                    className={`w-2 h-2 rounded-full ${i === lightboxIndex ? 'bg-[#00E5FF]' : 'bg-white/30'}`}
+                  />
+                ))}
+              </div>
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/50 text-sm">
+                {lightboxIndex + 1} / {offerPhotos.length}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };

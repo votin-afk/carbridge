@@ -34,7 +34,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Trash2,
-  ClipboardCheck
+  ClipboardCheck,
+  SendHorizontal
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -160,23 +161,16 @@ const StageInfographic = ({ deal, token, onRefresh }) => {
     }
   };
 
-  const downloadFile = async (fileId, filename) => {
-    try {
-      const response = await axios.get(
-        `${API}/deals/${deal.id}/files/${fileId}/download`,
-        { headers, responseType: 'blob' }
-      );
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      toast.error('Ошибка скачивания файла');
-    }
+  const downloadFile = (fileId, filename) => {
+    const url = `${API}/files/${fileId}/public-download?token=${encodeURIComponent(token)}`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename || 'file';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const completeStage = async () => {
@@ -372,14 +366,84 @@ const StageInfographic = ({ deal, token, onRefresh }) => {
           </DialogHeader>
 
           {!stageContractor ? (
-            <div className="flex-1 flex flex-col items-center justify-center py-12">
-              <AlertCircle size={48} className="text-slate-600 mb-4" />
-              <p className="text-slate-400 text-center">
-                Подрядчик ещё не назначен на этот этап
-              </p>
-              <p className="text-slate-500 text-sm mt-1">
-                Выберите подрядчика в разделе "Авто для сделки"
-              </p>
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="p-4 bg-amber-500/10 border-b border-amber-500/30">
+                <p className="text-amber-400 text-sm flex items-center gap-2">
+                  <AlertCircle size={16} />
+                  Подрядчик ещё не назначен на этот этап
+                </p>
+              </div>
+              
+              {/* Still show chat messages even without contractor */}
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="p-3 border-b border-[#27272A]">
+                  <h4 className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                    <MessageSquare size={16} />
+                    Сообщения
+                  </h4>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px] max-h-[300px]">
+                  {loading && messages.length === 0 ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="animate-spin text-[#00E5FF]" size={24} />
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div className="text-center py-8">
+                      <MessageSquare size={32} className="mx-auto mb-2 text-slate-600" />
+                      <p className="text-slate-400 text-sm">Нет сообщений</p>
+                    </div>
+                  ) : (
+                    messages.map(msg => (
+                      <div
+                        key={msg.id}
+                        className={`flex ${msg.sender_type === 'client' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div className={`max-w-[80%] rounded-lg p-3 ${
+                          msg.sender_type === 'client'
+                            ? 'bg-[#00E5FF]/10 border border-[#00E5FF]/30'
+                            : 'bg-purple-500/10 border border-purple-500/30'
+                        }`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            {msg.sender_type === 'client' ? (
+                              <User size={12} className="text-[#00E5FF]" />
+                            ) : (
+                              <Building2 size={12} className="text-purple-400" />
+                            )}
+                            <span className={`text-xs font-medium ${
+                              msg.sender_type === 'client' ? 'text-[#00E5FF]' : 'text-purple-400'
+                            }`}>
+                              {msg.sender_name}
+                            </span>
+                            {msg.source === 'telegram' && (
+                              <span className="text-xs text-blue-400" title="Отправлено из Telegram">
+                                <SendHorizontal size={10} className="inline" /> TG
+                              </span>
+                            )}
+                            <span className="text-xs text-slate-500">
+                              {new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          {msg.content && <p className="text-white text-sm whitespace-pre-wrap">{msg.content}</p>}
+                          {msg.file_ids && msg.file_ids.length > 0 && (
+                            <div className="mt-1 space-y-1">
+                              {msg.file_ids.map(fid => (
+                                <button
+                                  key={fid}
+                                  onClick={() => downloadFile(fid, `file_${fid}`)}
+                                  className="flex items-center gap-1 text-xs text-[#00E5FF] hover:underline"
+                                >
+                                  <Paperclip size={10} /> Скачать файл
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              </div>
             </div>
           ) : (
             <div className="flex-1 flex flex-col overflow-hidden">
@@ -483,11 +547,29 @@ const StageInfographic = ({ deal, token, onRefresh }) => {
                             }`}>
                               {msg.sender_name}
                             </span>
+                            {msg.source === 'telegram' && (
+                              <span className="text-xs text-blue-400" title="Отправлено из Telegram">
+                                <SendHorizontal size={10} className="inline" /> TG
+                              </span>
+                            )}
                             <span className="text-xs text-slate-500">
                               {new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <p className="text-white text-sm whitespace-pre-wrap">{msg.content}</p>
+                          {msg.content && <p className="text-white text-sm whitespace-pre-wrap">{msg.content}</p>}
+                          {msg.file_ids && msg.file_ids.length > 0 && (
+                            <div className="mt-1 space-y-1">
+                              {msg.file_ids.map(fid => (
+                                <button
+                                  key={fid}
+                                  onClick={() => downloadFile(fid, `file_${fid}`)}
+                                  className="flex items-center gap-1 text-xs text-[#00E5FF] hover:underline"
+                                >
+                                  <Paperclip size={10} /> Скачать файл
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))

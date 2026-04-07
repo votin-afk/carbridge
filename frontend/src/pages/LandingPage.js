@@ -111,14 +111,16 @@ const LandingPage = () => {
   const [chatMessages, setChatMessages] = useState([
     {
       role: 'assistant',
-      content: `Привет! 👋 Я AI-консультант CARBRIDGE по подбору авто из Китая.
+      content: `Здравствуйте! Я AI-консультант платформы CARBRIDGE.
 
 Помогу вам:
-• Подобрать автомобиль под ваши требования
-• Показать актуальные предложения из каталога
-• Рассчитать примерную стоимость с доставкой
+- Подобрать автомобиль из Китая под ваш бюджет
+- Показать актуальные авто из каталога Che168
+- Рассчитать полную стоимость с доставкой в Беларусь
+- Разобраться в работе платформы и этапах сделки
+- Объяснить тендерную систему и процесс проверки подрядчиков
 
-Давайте начнём! Как вас зовут?`
+Чем могу помочь?`
     }
   ]);
   const [chatInput, setChatInput] = useState('');
@@ -235,20 +237,20 @@ const LandingPage = () => {
   };
 
   const processSteps = [
-    { num: "1", title: "Заявка", desc: "Заполните параметры авто", icon: FileCheck },
-    { num: "2", title: "Тендер", desc: "Получайте предложения от подрядчиков", icon: Search },
-    { num: "3", title: "Выбор", desc: "Выбирайте лучшее предложение", icon: Car },
-    { num: "4", title: "Эскроу", desc: "Безопасное хранение средств", icon: Shield },
-    { num: "5", title: "Оплата", desc: "Поэтапная оплата", icon: Shield },
-    { num: "6", title: "Логистика", desc: "GPS-трекинг доставки", icon: Truck },
-    { num: "7", title: "Таможня", desc: "Оформление и выдача", icon: CheckCircle2 },
+    { num: "01", title: "Создание запроса", desc: "Опишите автомобиль в заявке или выберите из каталога. AI-ассистент поможет определить оптимальные параметры и рассчитать бюджет под ключ в Беларуси.", icon: Search },
+    { num: "02", title: "Подбор подрядчиков", desc: "Ваша заявка попадает к проверенным подрядчикам со статусом Verified Partner. Каждый прошёл аудит: юридическая проверка, фото офиса, история сделок и видеосвязь с менеджером CarBridge.", icon: Users },
+    { num: "03", title: "Тендер", desc: "Подрядчики конкурируют за ваш заказ, предлагая лучшие условия по цене, срокам и доставке. Вы сравниваете предложения и выбираете оптимальное — полная прозрачность и выгода.", icon: FileCheck },
+    { num: "04", title: "Договор и оплата", desc: "Заключаете договор с выбранным подрядчиком через платформу. Деньги переводятся только после подтверждения выполнения каждого этапа — модель безопасной сделки.", icon: Shield },
+    { num: "05", title: "Проверка и фото-пакет", desc: "Инспекция авто на месте в Китае: VIN-проверка, детальные фотографии, видеообзор и профессиональный отчёт о техническом состоянии. Всё в вашем личном кабинете.", icon: Car },
+    { num: "06", title: "Логистика и GPS-трек", desc: "Отслеживайте перемещение автомобиля в реальном времени через GPS-трекинг. Фото и видео отчёты на каждом этапе: порт, погрузка, транзит, прибытие в Беларусь.", icon: Truck },
+    { num: "07", title: "Передача авто", desc: "Таможенное оформление, регистрация и передача автомобиля с полным пакетом документов. CarBridge сопровождает до момента получения ключей.", icon: CheckCircle2 },
   ];
 
   const advantages = [
-    { title: "Честные 3%", desc: "Прозрачная комиссия без скрытых наценок", icon: "%" },
-    { title: "Тендер дилеров", desc: "Конкуренция подрядчиков - лучшая цена для вас", icon: "↔" },
-    { title: "GPS-трекинг", desc: "Отслеживайте авто в реальном времени", icon: "◎" },
-    { title: "Видео-отчеты", desc: "Фото и видео на каждом этапе сделки", icon: "▶" },
+    { title: "Прозрачность", desc: "Все процессы видны клиенту: от выбора авто до логистики и растаможки. Никаких скрытых наценок — только честные 3% комиссии.", icon: "%" },
+    { title: "Безопасность", desc: "Юридический контроль сделки, проверка контрактов и VIN. Деньги списываются поэтапно только после подтверждения.", icon: "🛡" },
+    { title: "Технологичность", desc: "Цифровая платформа с личным кабинетом, тендерной системой, GPS-трекингом и AI-ассистентом для подбора авто.", icon: "◎" },
+    { title: "Доверие", desc: "CarBridge — независимый арбитр сделки. Все подрядчики проходят аудит: проверка юрлица, фото офиса, видеосвязь.", icon: "✓" },
   ];
 
   const platforms = [
@@ -260,24 +262,44 @@ const LandingPage = () => {
 
   const faqItems = [
     {
-      q: "Сколько стоят ваши услуги?",
-      a: "Комиссия платформы составляет 3% от стоимости автомобиля (FOB Китай). За проведение платежа через платформу взимается дополнительно 1.5%, которые включают банковские издержки и гарантию безопасности сделки."
+      q: "Как работает тендерная система CarBridge?",
+      a: "После создания заявки на автомобиль, она рассылается верифицированным подрядчикам в Китае. Подрядчики конкурируют за ваш заказ, предлагая лучшие условия по цене, срокам и доставке. Вы сравниваете все предложения в личном кабинете и выбираете оптимальное. Это обеспечивает прозрачность и максимальную выгоду."
+    },
+    {
+      q: "Как проверяются подрядчики?",
+      a: "Каждый подрядчик проходит многоуровневую верификацию: проверка юридического лица (лицензии, регистрация, контакты), фото офиса или склада, анализ истории сделок и отзывов, а также ежегодная видеосвязь с менеджером CarBridge. После проверки подрядчик получает статус Verified Partner и допуск к тендерам."
+    },
+    {
+      q: "Какие гарантии безопасности сделки?",
+      a: "CarBridge выступает независимым арбитром сделки. Используется модель поэтапной оплаты — деньги переводятся подрядчику только после подтверждения выполнения каждого этапа модератором. Все этапы видны в личном кабинете: инспекция, выкуп, логистика, таможня. Договорная защита, VIN-проверка и юридический контроль на каждом шаге."
+    },
+    {
+      q: "Сколько стоят услуги платформы?",
+      a: "Комиссия платформы составляет 3% от стоимости автомобиля. При проведении платежа через платформу взимается дополнительно 1%, которые включают банковские издержки и гарантию безопасности. Это единственные расходы — никаких скрытых наценок."
+    },
+    {
+      q: "Как отслеживать статус сделки?",
+      a: "Вся сделка отслеживается в личном кабинете через интерактивную инфографику этапов. Для каждого этапа есть чат с подрядчиком, возможность загрузки документов и фото. GPS-трекинг позволяет следить за перемещением авто в реальном времени. Уведомления приходят через Telegram."
     },
     {
       q: "Как долго занимает доставка?",
-      a: "Средний срок доставки составляет 30-45 дней с момента выкупа автомобиля. Срок зависит от выбранного способа перевозки (ЖД или автовоз) и загруженности маршрута."
-    },
-    {
-      q: "Какие гарантии вы предоставляете?",
-      a: "Мы используем модель безопасной сделки - деньги переводятся подрядчику только после подтверждения выполнения каждого этапа. Все подрядчики проходят многоуровневую верификацию, включая физический аудит офиса."
+      a: "Средний срок от выкупа до передачи авто составляет 30-45 дней. Срок зависит от выбранного способа перевозки (ЖД, автовоз или контейнер), загруженности маршрута и скорости таможенного оформления. Вы видите все этапы и статусы в режиме реального времени."
     },
     {
       q: "Можно ли привезти электромобиль?",
-      a: "Да, электромобили растамаживаются по льготной ставке 0%. Это делает их особенно выгодными для импорта. Мы поможем подобрать подходящую модель с учетом особенностей эксплуатации в Беларуси."
+      a: "Да, электромобили растамаживаются по льготной ставке 0% — это делает их особенно выгодными для импорта. AI-ассистент поможет подобрать модель с учётом особенностей эксплуатации в Беларуси: запас хода, зарядная инфраструктура, сервисное обслуживание."
     },
     {
       q: "Что такое Указ 140?",
-      a: "Указ № 140 позволяет многодетным семьям, инвалидам I-II групп и родителям детей-инвалидов получить 50% скидку на таможенные пошлины при ввозе автомобиля для личного пользования."
+      a: "Указ № 140 позволяет многодетным семьям, инвалидам I-II групп и родителям детей-инвалидов получить 50% скидку на таможенные пошлины при ввозе автомобиля для личного пользования. Наш калькулятор учитывает эту льготу при расчёте стоимости."
+    },
+    {
+      q: "Можно ли самостоятельно выбрать авто?",
+      a: "Да, вы можете найти автомобиль на любой площадке (Che168, 58.com, Guazi, Dongchedi) и добавить его по ссылке в свой гараж. Также можно воспользоваться нашим встроенным каталогом или попросить AI-ассистента подобрать варианты под ваши требования и бюджет."
+    },
+    {
+      q: "Что входит в личный кабинет?",
+      a: "Личный кабинет включает: Гараж (сохранённые авто с расчётом стоимости), Заявки (создание и управление запросами), Тендеры (просмотр предложений подрядчиков), Документы (этапы сделки с чатами и файлами), Приобретённые авто. Все процессы управляются из одного интерфейса."
     },
   ];
 
@@ -335,178 +357,118 @@ const LandingPage = () => {
         </div>
       </header>
 
-      {/* Hero Section with Bridge Animation */}
-      <section className="hero-bridge-section relative pt-24 pb-16 overflow-hidden" data-testid="hero-section">
-        {/* City skyline background */}
-        <div className="hero-city-bg" />
-        
-        {/* Vertical light beams */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-1">
-          {[10, 25, 40, 55, 70, 85].map((left, i) => (
-            <div 
-              key={i} 
-              className="light-beam" 
-              style={{ 
-                left: `${left}%`, 
-                animationDelay: `${i * 0.5}s`,
-                height: `${100 + i * 20}px`
-              }} 
-            />
-          ))}
-        </div>
-
-        {/* Animated Bridge SVG */}
-        <div className="hero-bridge-container">
-          <svg className="hero-bridge-svg" viewBox="0 0 1200 200" preserveAspectRatio="xMidYMax slice">
-            {/* Bridge towers */}
-            <rect x="200" y="20" width="8" height="180" fill="#1a2030" />
-            <rect x="992" y="20" width="8" height="180" fill="#1a2030" />
-            
-            {/* Main bridge road */}
-            <rect x="0" y="150" width="1200" height="12" fill="#1a2030" />
-            
-            {/* Glowing road line */}
-            <line x1="0" y1="156" x2="1200" y2="156" className="bridge-glow-line" fill="none" />
-            
-            {/* Support cables left tower */}
-            {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-              <line 
-                key={`left-${i}`}
-                x1="204" 
-                y1="30" 
-                x2={50 + i * 25} 
-                y2="150" 
-                className={`bridge-cable ${i % 2 === 0 ? 'bridge-cable-animated' : ''}`}
-                style={{ animationDelay: `${i * 0.2}s` }}
-              />
-            ))}
-            
-            {/* Support cables right tower */}
-            {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-              <line 
-                key={`right-${i}`}
-                x1="996" 
-                y1="30" 
-                x2={1150 - i * 25} 
-                y2="150" 
-                className={`bridge-cable ${i % 2 === 0 ? 'bridge-cable-animated' : ''}`}
-                style={{ animationDelay: `${i * 0.2}s` }}
-              />
-            ))}
-            
-            {/* Middle cables */}
-            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
-              <line 
-                key={`mid-left-${i}`}
-                x1="204" 
-                y1="30" 
-                x2={250 + i * 50} 
-                y2="150" 
-                className="bridge-cable"
-                style={{ opacity: 0.3 + (i * 0.05) }}
-              />
-            ))}
-            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
-              <line 
-                key={`mid-right-${i}`}
-                x1="996" 
-                y1="30" 
-                x2={950 - i * 50} 
-                y2="150" 
-                className="bridge-cable"
-                style={{ opacity: 0.3 + (i * 0.05) }}
-              />
-            ))}
-            
-            {/* Top cable curve */}
-            <path 
-              d="M 200 30 Q 600 -50 1000 30" 
-              fill="none" 
-              stroke="#00E5FF" 
-              strokeWidth="2"
-              opacity="0.5"
-              style={{ filter: 'drop-shadow(0 0 6px #00E5FF)' }}
-            />
-          </svg>
-        </div>
-
-        {/* Animated car */}
-        <div className="hero-car">
-          <div className="relative">
-            <svg width="60" height="25" viewBox="0 0 60 25" fill="none">
-              <path d="M5 20 L10 12 L20 8 L45 8 L55 14 L55 20 Z" fill="#1a2030" stroke="#00E5FF" strokeWidth="1" />
-              <circle cx="15" cy="22" r="4" fill="#1a2030" stroke="#00E5FF" strokeWidth="1" />
-              <circle cx="45" cy="22" r="4" fill="#1a2030" stroke="#00E5FF" strokeWidth="1" />
-              <rect x="52" y="12" width="8" height="4" fill="#00E5FF" opacity="0.8" />
-            </svg>
-            <div className="car-headlight" />
-          </div>
-        </div>
-
-        {/* Hero content */}
+      {/* Hero Section */}
+      <section className="relative pt-32 pb-16 topo-bg overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center pt-16 pb-32 md:pb-48">
-            {/* Main heading */}
-            <h1 className="font-inter font-bold text-[28px] md:text-[48px] lg:text-[56px] text-white leading-tight mb-6 hero-text-glow max-w-4xl mx-auto">
-              Мы не продаём автомобили.{' '}
-              <br className="hidden sm:block" />
-              Мы создаём <span className="text-[#00E5FF]">честные сделки</span>.
-            </h1>
-            
-            {/* Subtitle */}
-            <p className="font-inter font-normal text-[14px] md:text-[18px] text-[#B0B0B0] mb-10 max-w-2xl mx-auto">
-              Первая прозрачная система импорта авто из Китая в Беларусь
-            </p>
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="fade-in">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#00E5FF]/10 border border-[#00E5FF]/20 rounded-full mb-6">
+                <span className="w-2 h-2 bg-[#00E5FF] rounded-full animate-pulse" />
+                <span className="text-[#00E5FF] text-sm font-medium">Импорт авто из Китая</span>
+              </div>
+              
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
+                Мы не продаём автомобили — мы помогаем совершить{' '}
+                <span className="text-[#00E5FF]">безопасную сделку</span>
+              </h1>
+              
+              <p className="text-lg text-slate-400 mb-8 max-w-lg">
+                CarBridge — прозрачная цифровая платформа для безопасного импорта автомобилей из Китая. Тендер среди проверенных дилеров, AI-подбор и полный контроль каждого этапа сделки.
+              </p>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-wrap justify-center gap-4 mb-12">
-              <Link to="/catalog">
-                <Button data-testid="hero-catalog-btn" className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black font-semibold px-8 py-6 rounded-sm btn-glow text-base">
-                  <Car className="mr-2" size={20} />
-                  Каталог авто
-                </Button>
-              </Link>
-              <a href="#ai-agent">
-                <Button data-testid="hero-cta-btn" variant="outline" className="border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 px-8 py-6 rounded-sm text-base">
-                  <Sparkles className="mr-2" size={20} />
-                  AI Подбор
-                </Button>
-              </a>
-              <Link to="/calculator">
-                <Button data-testid="hero-calc-btn" variant="outline" className="border-[#27272A] text-white hover:border-[#00E5FF] hover:text-[#00E5FF] px-8 py-6 rounded-sm text-base">
-                  <Calculator className="mr-2" size={20} />
-                  Калькулятор
-                </Button>
-              </Link>
+              <div className="flex flex-wrap gap-4">
+                <Link to="/catalog">
+                  <Button data-testid="hero-catalog-btn" className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black font-semibold px-8 py-6 rounded-sm btn-glow">
+                    <Car className="mr-2" size={20} />
+                    Каталог авто
+                  </Button>
+                </Link>
+                <a href="#ai-agent">
+                  <Button data-testid="hero-cta-btn" variant="outline" className="border-[#27272A] text-white hover:border-[#00E5FF] hover:text-[#00E5FF] px-8 py-6 rounded-sm">
+                    <Sparkles className="mr-2" size={20} />
+                    AI Подбор
+                  </Button>
+                </a>
+                <Link to="/calculator">
+                  <Button data-testid="hero-calc-btn" variant="outline" className="border-[#27272A] text-white hover:border-[#00E5FF] hover:text-[#00E5FF] px-8 py-6 rounded-sm">
+                    Калькулятор
+                  </Button>
+                </Link>
+              </div>
+
+              <div className="flex items-center gap-8 mt-10 pt-8 border-t border-[#27272A]">
+                <div>
+                  <p className="text-3xl font-bold text-white">500+</p>
+                  <p className="text-slate-500 text-sm">Доставленных авто</p>
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-white">4.9</p>
+                  <p className="text-slate-500 text-sm">Рейтинг клиентов</p>
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-white">3%</p>
+                  <p className="text-slate-500 text-sm">Комиссия</p>
+                </div>
+              </div>
             </div>
 
-            {/* Stats row */}
-            <div className="flex items-center justify-center gap-8 md:gap-16 pt-8 border-t border-[#27272A]/50 max-w-xl mx-auto">
-              <div className="text-center">
-                <p className="text-2xl md:text-3xl font-bold text-white">500+</p>
-                <p className="text-slate-500 text-xs md:text-sm">Доставленных авто</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl md:text-3xl font-bold text-white">4.9</p>
-                <p className="text-slate-500 text-xs md:text-sm">Рейтинг клиентов</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl md:text-3xl font-bold text-white">3%</p>
-                <p className="text-slate-500 text-xs md:text-sm">Комиссия</p>
-              </div>
-            </div>
-          </div>
-        </div>
+            <div className="relative fade-in fade-in-delay-2">
+              <div className="relative rounded-lg overflow-hidden border border-[#27272A] glow-cyan">
+                {/* Carousel Navigation Arrows */}
+                <button
+                  onClick={prevSlide}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-black/50 hover:bg-[#00E5FF]/30 rounded-full flex items-center justify-center transition-all"
+                  data-testid="carousel-prev"
+                >
+                  <ChevronLeft className="text-white" size={24} />
+                </button>
+                <button
+                  onClick={nextSlide}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-black/50 hover:bg-[#00E5FF]/30 rounded-full flex items-center justify-center transition-all"
+                  data-testid="carousel-next"
+                >
+                  <ChevronRight className="text-white" size={24} />
+                </button>
 
-        {/* "7 steps without risk" badge with animated car */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20">
-          <div className="flex items-center gap-4 bg-[#0d1117]/80 backdrop-blur-sm border border-[#00E5FF]/30 rounded-full px-6 py-3">
-            <span className="text-white font-inter font-medium text-sm md:text-base">7 шагов без риска</span>
-            <div className="w-32 h-1 bg-[#27272A] rounded-full relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-[#00E5FF] to-transparent animate-pulse" style={{ width: '70%' }} />
-            </div>
-            <div className="w-8 h-8 rounded-full border border-[#00E5FF] flex items-center justify-center">
-              <Car size={16} className="text-[#00E5FF]" />
+                {/* Car Image with Fade Animation */}
+                <div className={`transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+                  <img 
+                    src={popularCars[currentCarIndex].image}
+                    alt={popularCars[currentCarIndex].name}
+                    className="w-full h-[400px] object-cover"
+                  />
+                </div>
+                
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0B0F14] via-transparent to-transparent" />
+                
+                {/* Car Info Overlay */}
+                <div className={`absolute bottom-0 left-0 right-0 p-6 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+                  <p className="text-slate-400 text-sm mb-1">Популярный выбор</p>
+                  <p className="text-white text-xl font-semibold mb-2">{popularCars[currentCarIndex].name}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#00E5FF] text-2xl font-bold">
+                      ${popularCars[currentCarIndex].priceUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-slate-500 text-sm">под ключ в Беларуси</span>
+                  </div>
+                </div>
+
+                {/* Dots Navigation */}
+                <div className="absolute bottom-24 left-0 right-0 flex justify-center gap-2 z-20">
+                  {popularCars.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => goToSlide(index)}
+                      data-testid={`carousel-dot-${index}`}
+                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                        index === currentCarIndex 
+                          ? 'bg-[#00E5FF] w-6' 
+                          : 'bg-white/30 hover:bg-white/50'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -594,9 +556,9 @@ const LandingPage = () => {
               <Sparkles size={16} className="text-[#00E5FF]" />
               <span className="text-[#00E5FF] text-sm font-medium">AI-агент подбора</span>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Подберите авто с помощью AI</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">AI-консультант CarBridge</h2>
             <p className="text-slate-400 max-w-2xl mx-auto">
-              Расскажите о ваших требованиях, бюджете и предпочтениях — AI поможет найти идеальный автомобиль из Китая
+              Подберёт авто из каталога, рассчитает стоимость, объяснит этапы сделки и поможет сориентироваться в работе платформы
             </p>
           </div>
 
@@ -677,7 +639,7 @@ const LandingPage = () => {
                   </Button>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-3">
-                  {['Электромобиль до $30000', 'Семейный кроссовер', 'BYD или Li Auto'].map((suggestion) => (
+                  {['Электромобиль до $30000', 'Как работает тендер?', 'Какие этапы сделки?', 'Подобрать кроссовер'].map((suggestion) => (
                     <button
                       key={suggestion}
                       onClick={() => setChatInput(suggestion)}
@@ -693,58 +655,37 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Process Section - "Why CarBridge" */}
-      <section id="process" className="py-16 bg-[#0d1117]">
+      {/* Process Section */}
+      <section id="process" className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-white font-inter">Why CarBridge</h2>
+          <div className="text-center mb-16">
+            <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">Как это работает</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white">7 шагов к честной машине</h2>
+            <p className="text-slate-400 mt-4 max-w-2xl mx-auto">
+              CarBridge берёт вас за руку и проводит через каждый этап — от первого запроса до получения ключей
+            </p>
           </div>
 
-          {/* 7 Steps with connected icons - Desktop */}
-          <div className="hidden lg:flex items-center justify-between mb-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {processSteps.map((step, idx) => (
-              <div key={idx} className="flex items-center">
-                {/* Step icon */}
-                <div className="flex flex-col items-center">
-                  <div className="process-step-icon mb-3">
-                    <step.icon size={28} className="text-[#00E5FF]" />
+              <div 
+                key={idx}
+                className="bg-[#15191E] border border-[#27272A] rounded-sm p-6 card-hover group"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-[#00E5FF]/10 rounded-sm flex items-center justify-center text-[#00E5FF] group-hover:bg-[#00E5FF] group-hover:text-black transition-colors">
+                    <step.icon size={24} />
                   </div>
-                  <p className="text-white font-medium text-sm text-center mb-1">{step.num}. {step.title}</p>
-                  <p className="text-slate-500 text-xs text-center max-w-[100px]">{step.desc}</p>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[#00E5FF] font-mono text-sm">{step.num}</span>
+                      <h3 className="text-white font-semibold">{step.title}</h3>
+                    </div>
+                    <p className="text-slate-400 text-sm">{step.desc}</p>
+                  </div>
                 </div>
-                
-                {/* Connector arrow */}
-                {idx < processSteps.length - 1 && (
-                  <div className="flex items-center mx-3">
-                    <div className="w-10 h-0.5 bg-[#00E5FF] opacity-50" />
-                    <svg width="10" height="12" viewBox="0 0 10 12" className="text-[#00E5FF] opacity-50">
-                      <path d="M0 0 L10 6 L0 12 Z" fill="currentColor" />
-                    </svg>
-                  </div>
-                )}
               </div>
             ))}
-          </div>
-
-          {/* 7 Steps - Mobile Grid */}
-          <div className="lg:hidden grid grid-cols-2 sm:grid-cols-4 gap-6">
-            {processSteps.map((step, idx) => (
-              <div key={idx} className="flex flex-col items-center text-center">
-                <div className="process-step-icon mb-3">
-                  <step.icon size={24} className="text-[#00E5FF]" />
-                </div>
-                <p className="text-white font-medium text-sm mb-1">{step.num}. {step.title}</p>
-                <p className="text-slate-500 text-xs">{step.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* CTA Link */}
-          <div className="mt-8 pt-6 border-t border-[#27272A]/50">
-            <Link to="/dashboard" className="inline-flex items-center gap-2 text-[#00E5FF] hover:underline text-sm">
-              <div className="w-2 h-2 rounded-full bg-[#00E5FF]" />
-              Посмотреть весь процесс в личном кабинете
-            </Link>
           </div>
         </div>
       </section>

@@ -30,12 +30,23 @@ from routes import auth as auth_routes
 from routes import affiliate as affiliate_routes
 from routes import user as user_routes
 from routes import catalog as catalog_routes
+from routes import telegram as telegram_routes
+from routes import deals as deals_routes
 
 # Import Bitrix24 service
 from services.bitrix24 import init_bitrix24, get_bitrix24, Bitrix24Service
 
+# Import shared constants from config
+from config import (
+    DEAL_STAGES, CONSULTANT_FEE, COMMISSION_RATE,
+    AFFILIATE_SHARE, PARTNER_THRESHOLD
+)
+
 # Import Telegram service
 from services import telegram_service
+
+# Import Che168 API
+from services.che168 import Che168API
 
 # Uploads directory
 UPLOADS_DIR = Path(__file__).parent / "uploads"
@@ -1275,7 +1286,7 @@ async def get_user_account_admin(user_id: str, current_user: dict = Depends(requ
 # ==================== MODERATOR USER MANAGEMENT ENDPOINTS ====================
 
 # Deal stages that require moderator approval
-DEAL_STAGES = ["verification", "contract", "inspection", "payment", "export", "logistics", "delivery"]
+# DEAL_STAGES imported from config
 
 @api_router.get("/moderator/users/{user_id}/full-profile")
 async def get_user_full_profile(user_id: str, current_user: dict = Depends(require_role(["moderator", "admin"]))):
@@ -1688,1954 +1699,7 @@ async def get_deal_details(deal_id: str, current_user: dict = Depends(require_ro
         "stages": DEAL_STAGES
     }
 
-@api_router.post("/deals/create")
-async def create_deal(data: dict, current_user: dict = Depends(get_current_user)):
-    """Create a new deal from a car in garage"""
-    car_id = data.get("car_id")
-    
-    car = await db.garage.find_one({"id": car_id, "user_id": current_user["id"]})
-    if not car:
-        raise HTTPException(status_code=404, detail="Автомобиль не найден")
-    
-    # Check if user is verified
-    account = await db.accounts.find_one({"user_id": current_user["id"]})
-    if not account or not account.get("is_verified"):
-        raise HTTPException(status_code=403, detail="Для создания сделки необходима верификация")
-    
-    deal_id = str(uuid.uuid4())
-    
-    deal_doc = {
-        "id": deal_id,
-        "user_id": current_user["id"],
-        "car_id": car_id,
-        "car_info": {
-            "brand": car.get("brand"),
-            "model": car.get("model"),
-            "year": car.get("year"),
-            "price_cny": car.get("price_cny"),
-            "calculated_price_usd": car.get("calculated_price_usd"),
-            "image_url": car.get("image_url", "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800")
-        },
-        "status": "active",
-        "current_stage": "verification",
-        "can_proceed": False,  # Needs moderator approval
-        "stage_approvals": {},
-        "stages": {
-            "verification": {"status": "pending", "moderator_approved": False},
-            "contract": {"status": "pending", "moderator_approved": False},
-            "inspection": {"status": "pending", "moderator_approved": False},
-            "payment": {"status": "pending", "moderator_approved": False},
-            "export": {"status": "pending", "moderator_approved": False},
-            "logistics": {"status": "pending", "moderator_approved": False},
-            "delivery": {"status": "pending", "moderator_approved": False}
-        },
-        "contractors": car.get("contractors", {}),
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.deals.insert_one(deal_doc)
-    
-    # Update car status
-    await db.garage.update_one(
-        {"id": car_id},
-        {"$set": {"status": "in_deal", "deal_id": deal_id}}
-    )
-    
-    return {
-        "message": "Сделка создана",
-        "deal_id": deal_id,
-        "current_stage": "verification"
-    }
-
-@api_router.get("/deals")
-async def get_user_deals(current_user: dict = Depends(get_current_user)):
-    """Get all deals for current user"""
-    deals = await db.deals.find(
-        {"user_id": current_user["id"]},
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(100)
-    
-    return deals
-
-@api_router.get("/deals/completed")
-async def get_completed_deals(current_user: dict = Depends(get_current_user)):
-    """Get all completed deals (purchased cars) for user"""
-    completed_deals = await db.deals.find(
-        {"user_id": current_user["id"], "status": "completed"},
-        {"_id": 0}
-    ).sort("completed_at", -1).to_list(100)
-    
-    # Enrich with car info
-    for deal in completed_deals:
-        if deal.get("car_id"):
-            car = await db.garage.find_one({"id": deal["car_id"]}, {"_id": 0})
-            if car:
-                deal["car_details"] = car
-    
-    return completed_deals
-
-@api_router.get("/deals/{deal_id}")
-async def get_deal(deal_id: str, current_user: dict = Depends(get_current_user)):
-    """Get specific deal for current user"""
-    deal = await db.deals.find_one(
-        {"id": deal_id, "user_id": current_user["id"]},
-        {"_id": 0}
-    )
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    return deal
-
-# ==================== DEAL MANAGEMENT ENDPOINTS ====================
-
-DEAL_ADD_FEE = 300  # $300 to add car to deal (free if from tender)
-CONSULTANT_FEE = 200  # $200 for consultant help
-
-@api_router.post("/deals/add-car")
-async def add_car_to_deal(data: dict, current_user: dict = Depends(get_current_user)):
-    """Add car to deal from garage (charges $300) or from tender (free)"""
-    car_id = data.get("car_id")
-    from_tender = data.get("from_tender", False)
-    tender_offer_id = data.get("tender_offer_id")
-    tender_id = data.get("tender_id")
-    
-    # Check verification
-    verification = await db.verifications.find_one({"user_id": current_user["id"]})
-    if not verification or verification.get("status") != "approved":
-        raise HTTPException(status_code=403, detail="Для создания сделки необходима верификация")
-    
-    # Check contract signed
-    if not verification.get("contract_signed"):
-        raise HTTPException(status_code=403, detail="Необходимо подписать договор")
-    
-    # Get account for balance
-    account = await db.accounts.find_one({"user_id": current_user["id"]})
-    balance = account.get("balance", 0) if account else 0
-    
-    # Charge $300 if not from tender
-    if not from_tender:
-        if balance < DEAL_ADD_FEE:
-            raise HTTPException(status_code=400, detail=f"Недостаточно средств. Необходимо ${DEAL_ADD_FEE}, баланс: ${balance}")
-        
-        # Deduct fee
-        await db.accounts.update_one(
-            {"user_id": current_user["id"]},
-            {"$inc": {"balance": -DEAL_ADD_FEE}}
-        )
-        
-        # Log transaction
-        await db.transactions.insert_one({
-            "id": str(uuid.uuid4()),
-            "user_id": current_user["id"],
-            "type": "deal_fee",
-            "amount": -DEAL_ADD_FEE,
-            "description": "Добавление авто в сделку",
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
-    
-    # Get car info - try garage first
-    car = None
-    if car_id:
-        car = await db.garage.find_one({"id": car_id, "user_id": current_user["id"]})
-    
-    # If car not found and this is from tender, try to get car info from tender offer
-    if not car and from_tender and tender_offer_id:
-        offer = await db.contractor_offers.find_one({"id": tender_offer_id})
-        if not offer:
-            # Try tender_offers collection
-            offer = await db.tender_offers.find_one({"id": tender_offer_id})
-        
-        # Also check mock offers inside tender
-        if not offer and tender_id:
-            tender_doc = await db.tenders.find_one({"id": tender_id})
-            if tender_doc:
-                mock_offers = tender_doc.get("offers", [])
-                for mock_offer in mock_offers:
-                    if mock_offer.get("id") == tender_offer_id:
-                        offer = mock_offer
-                        break
-        
-        if offer:
-            # Get tender to extract car_request info (brand, model) and car_info
-            tender = await db.tenders.find_one({"id": tender_id or offer.get("tender_id")})
-            car_request = tender.get("car_request", {}) if tender else {}
-            car_info = tender.get("car_info", {}) if tender else {}
-            
-            # Create car info from offer data + tender car_request/car_info
-            car = {
-                "id": str(uuid.uuid4()),
-                "user_id": current_user["id"],
-                "brand": offer.get("car_brand") or car_info.get("brand") or car_request.get("brand", "N/A"),
-                "model": offer.get("car_model") or car_info.get("model") or car_request.get("model", ""),
-                "year": offer.get("car_year") or car_info.get("year") or car_request.get("year_to") or car_request.get("year_from"),
-                "price_cny": offer.get("price_cny") or car_info.get("price_cny", 0),
-                "price_usd": offer.get("price_usd") or offer.get("price") or car_info.get("price_usd", 0),
-                "calculated_price_usd": offer.get("price_usd") or offer.get("price") or car_info.get("calculated_price_usd", 0),
-                "engine_type": offer.get("engine_type") or car_info.get("engine_type") or car_request.get("engine_type", "ice"),
-                "engine_volume": offer.get("engine_volume") or car_info.get("engine_volume"),
-                "mileage": offer.get("mileage") or car_info.get("mileage"),
-                "image_url": (offer.get("car_photos", [""])[0] if offer.get("car_photos") else None) or offer.get("image_url") or car_info.get("image_url", ""),
-                "source_url": offer.get("car_link") or offer.get("source_url") or car_info.get("source_url", ""),
-                "description": offer.get("car_details") or offer.get("description") or car_info.get("description", ""),
-                "from_tender_offer": True,
-                "tender_offer_id": tender_offer_id,
-                "contractor_name": offer.get("contractor_name"),
-                "status": "in_deal",
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            # Save to garage
-            await db.garage.insert_one(car)
-            car_id = car["id"]
-            logger.info(f"Created garage entry from tender offer: {car_id}, brand={car['brand']}, model={car['model']}")
-    
-    # If still no car, try to get from tender's car_info
-    if not car and from_tender and tender_id:
-        tender = await db.tenders.find_one({"id": tender_id, "user_id": current_user["id"]})
-        if tender and tender.get("car_info"):
-            car = tender["car_info"]
-            car_id = car.get("id")
-    
-    if not car:
-        raise HTTPException(status_code=404, detail="Автомобиль не найден")
-    
-    # Create deal
-    deal_id = str(uuid.uuid4())
-    
-    # Default stages structure
-    stages = {
-        "leasing": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "contractor_name": None, "price": None, "locked": False, "moderator_confirmed": False},
-        "inspection": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "contractor_name": None, "price": None, "locked": False, "moderator_confirmed": False},
-        "export": {"status": "pending", "completed": False, "contractor_id": None, "contractor_name": None, "price": None, "locked": False, "moderator_confirmed": False},
-        "logistics_china": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "contractor_name": None, "price": None, "locked": False, "moderator_confirmed": False},
-        "insurance": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "contractor_name": None, "price": None, "locked": False, "moderator_confirmed": False},
-        "delivery_rb": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "contractor_name": None, "price": None, "locked": False, "moderator_confirmed": False},
-        "customs": {"status": "pending", "completed": False, "skipped": False, "contractor_id": None, "contractor_name": None, "price": None, "locked": False, "moderator_confirmed": False},
-        "completion": {"status": "pending", "completed": False, "moderator_confirmed": False}
-    }
-    
-    contractor_info = {}
-    
-    # If from tender with selected offer, pre-fill stages from offer
-    if from_tender and tender_offer_id:
-        # Search for offer in multiple places
-        offer = await db.contractor_offers.find_one({"id": tender_offer_id})
-        if not offer:
-            offer = await db.tender_offers.find_one({"id": tender_offer_id})
-        
-        # Also check mock offers in tender
-        if not offer and tender_id:
-            tender_doc = await db.tenders.find_one({"id": tender_id})
-            if tender_doc:
-                for mock_offer in tender_doc.get("offers", []):
-                    if mock_offer.get("id") == tender_offer_id:
-                        offer = mock_offer
-                        break
-        
-        if offer:
-            contractor_id = offer.get("contractor_id")
-            contractor_name = offer.get("contractor_name")
-            
-            # Get contractor info from DB if we have contractor_id
-            if contractor_id:
-                contractor = await db.contractors.find_one({"id": contractor_id})
-                if contractor:
-                    contractor_name = contractor.get("company_name", contractor_name)
-            
-            contractor_info = {
-                "id": contractor_id,
-                "name": contractor_name
-            }
-            
-            # Get services from offer
-            included_services = offer.get("included_services", {})
-            service_prices = offer.get("service_prices", {})
-            services_list = offer.get("services", [])  # New format with array of services
-            
-            logger.info(f"Processing offer services: included={included_services}, prices={service_prices}")
-            
-            # Process services from offer and assign contractor to those stages
-            if services_list:
-                # New format: array of {stage, price} objects
-                for svc in services_list:
-                    stage_key = svc.get("stage")
-                    if stage_key and stage_key in stages:
-                        stages[stage_key]["contractor_id"] = contractor_id
-                        stages[stage_key]["contractor_name"] = contractor_name
-                        stages[stage_key]["price"] = float(svc.get("price", 0)) if svc.get("price") else None
-                        stages[stage_key]["locked"] = True  # Cannot change contractor
-                        stages[stage_key]["status"] = "contractor_assigned"
-                        stages[stage_key]["assigned_at"] = datetime.now(timezone.utc).isoformat()
-            elif included_services:
-                # Old format: included_services dict
-                for svc_key, is_included in included_services.items():
-                    if is_included and svc_key in stages:
-                        price_val = service_prices.get(svc_key)
-                        stages[svc_key]["contractor_id"] = contractor_id
-                        stages[svc_key]["contractor_name"] = contractor_name
-                        stages[svc_key]["price"] = float(price_val) if price_val else None
-                        stages[svc_key]["locked"] = True  # Cannot change contractor - from tender offer
-                        stages[svc_key]["status"] = "contractor_assigned"
-                        stages[svc_key]["assigned_at"] = datetime.now(timezone.utc).isoformat()
-                        logger.info(f"Assigned contractor {contractor_name} to stage {svc_key} with price {price_val}")
-            
-            # Create document exchange card for this deal
-            doc_card = {
-                "id": str(uuid.uuid4()),
-                "deal_id": deal_id,
-                "user_id": current_user["id"],
-                "contractor_id": contractor_id,
-                "type": "deal_documents",
-                "title": f"Документы: {car.get('brand', '')} {car.get('model', '')}",
-                "files": [],
-                "messages": [],
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            await db.deal_documents.insert_one(doc_card)
-    
-    deal_doc = {
-        "id": deal_id,
-        "user_id": current_user["id"],
-        "car_id": car_id,
-        "tender_offer_id": tender_offer_id,
-        "from_tender": from_tender,
-        "contractor": contractor_info,
-        "car_info": {
-            "brand": car.get("brand"),
-            "model": car.get("model"),
-            "year": car.get("year"),
-            "price_cny": car.get("price_cny"),
-            "price_usd": car.get("calculated_price_usd") or car.get("price_usd"),
-            "image_url": car.get("image_url") or "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800"
-        },
-        "status": "active",
-        "current_stage": "leasing",
-        "stages": stages,
-        "contractors": {},
-        "payments": [],
-        "total_paid": 0,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.deals.insert_one(deal_doc)
-    
-    # Update car status
-    await db.garage.update_one(
-        {"id": car_id},
-        {"$set": {"status": "in_deal", "deal_id": deal_id}}
-    )
-    
-    return {
-        "message": "Автомобиль добавлен в сделку",
-        "deal_id": deal_id,
-        "fee_charged": 0 if from_tender else DEAL_ADD_FEE
-    }
-
-@api_router.post("/deals/{deal_id}/select-contractor")
-async def select_contractor_for_stage(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
-    """Select contractor for a deal stage"""
-    stage = data.get("stage")  # inspection, export, logistics
-    contractor_id = data.get("contractor_id")
-    price = data.get("price", 0)
-    
-    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    # Allowed stages for contractor selection
-    allowed_stages = ["leasing", "inspection", "export", "logistics_china", "insurance", "delivery_rb", "customs"]
-    if stage not in allowed_stages:
-        raise HTTPException(status_code=400, detail="Неверный этап")
-    
-    # Get contractor info
-    contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0})
-    contractor_name = contractor.get("company_name", "") or contractor.get("name", "") if contractor else ""
-    contractor_email = contractor.get("email", "") if contractor else ""
-    
-    # Update deal with contractor selection - requires moderator approval
-    await db.deals.update_one(
-        {"id": deal_id},
-        {
-            "$set": {
-                f"stages.{stage}.contractor_id": contractor_id,
-                f"stages.{stage}.contractor_name": contractor_name,
-                f"stages.{stage}.price": price,
-                f"stages.{stage}.status": "pending_moderation",
-                f"stages.{stage}.awaiting_approval": True,
-                f"stages.{stage}.assigned_at": datetime.now(timezone.utc).isoformat(),
-                f"contractors.{stage}": contractor_id,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-        }
-    )
-    
-    # Create notification for contractor
-    stage_labels = {
-        "leasing": "Лизинг",
-        "inspection": "Инспекция авто",
-        "export": "Выкуп и экспорт",
-        "logistics_china": "Доставка до порта (Китай)",
-        "insurance": "Страхование авто",
-        "delivery_rb": "Доставка в Беларусь",
-        "customs": "Таможенное оформление"
-    }
-    
-    notification = {
-        "id": str(uuid.uuid4()),
-        "contractor_id": contractor_id,
-        "deal_id": deal_id,
-        "type": "contractor_selected",
-        "title": f"Вас выбрали на этап: {stage_labels.get(stage, stage)}",
-        "message": f"Клиент выбрал вас для выполнения этапа '{stage_labels.get(stage, stage)}'. Стоимость: ${price}. Свяжитесь с клиентом для обсуждения деталей.",
-        "is_read": False,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    await db.notifications.insert_one(notification)
-    
-    # Send Telegram notification to contractor
-    if contractor and contractor.get("telegram_chat_id"):
-        car_info = deal.get("car_info", {})
-        car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip() or "Авто"
-        client_name = current_user.get("name", "Клиент")
-        await telegram_service.notify_contractor_assigned(
-            contractor["telegram_chat_id"],
-            car_name,
-            stage,
-            client_name
-        )
-    
-    # Send Telegram notification to moderators about pending approval
-    try:
-        moderator_chat_ids = await get_moderator_chat_ids()
-        if moderator_chat_ids:
-            car_info = deal.get("car_info", {})
-            car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip() or "Авто"
-            await telegram_service.notify_moderators_contractor_assignment(
-                moderator_chat_ids,
-                current_user.get("name", "Клиент"),
-                car_name,
-                stage,
-                contractor_name,
-                price
-            )
-    except Exception as e:
-        logger.error(f"Telegram moderator notification error: {e}")
-    
-    # Bitrix24: Create task for contractor assignment
-    b24 = get_bitrix24()
-    if b24:
-        try:
-            car_info = deal.get("car_info", {})
-            asyncio.create_task(b24.create_deal(
-                title=f"Этап сделки: {stage_labels.get(stage, stage)} - {car_info.get('brand', '')} {car_info.get('model', '')}",
-                description=f"Подрядчик: {contractor_name}\nЭтап: {stage_labels.get(stage, stage)}\nСтоимость: ${price}",
-                contact_email=current_user.get("email"),
-                contact_phone=current_user.get("phone"),
-                amount=price,
-                source="contractor_selection",
-                stage="execution"
-            ))
-        except Exception as e:
-            logger.error(f"Bitrix24 deal creation error: {e}")
-    
-    return {"message": f"Подрядчик выбран для этапа {stage}", "contractor_name": contractor_name}
-
-@api_router.post("/deals/{deal_id}/pay-stage")
-async def pay_deal_stage(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
-    """Pay for a deal stage from user balance"""
-    stage = data.get("stage")
-    amount = data.get("amount", 0)
-    
-    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    # Get account balance
-    account = await db.accounts.find_one({"user_id": current_user["id"]})
-    balance = account.get("balance", 0) if account else 0
-    
-    if balance < amount:
-        raise HTTPException(status_code=400, detail=f"Недостаточно средств. Необходимо ${amount}, баланс: ${balance}")
-    
-    # Deduct from balance
-    await db.accounts.update_one(
-        {"user_id": current_user["id"]},
-        {"$inc": {"balance": -amount}}
-    )
-    
-    # Update deal
-    await db.deals.update_one(
-        {"id": deal_id},
-        {
-            "$set": {
-                f"stages.{stage}.paid": True,
-                f"stages.{stage}.paid_amount": amount,
-                f"stages.{stage}.paid_at": datetime.now(timezone.utc).isoformat()
-            },
-            "$inc": {"total_paid": amount},
-            "$push": {
-                "payments": {
-                    "id": str(uuid.uuid4()),
-                    "stage": stage,
-                    "amount": amount,
-                    "paid_at": datetime.now(timezone.utc).isoformat()
-                }
-            }
-        }
-    )
-    
-    # Log transaction
-    await db.transactions.insert_one({
-        "id": str(uuid.uuid4()),
-        "user_id": current_user["id"],
-        "deal_id": deal_id,
-        "type": "stage_payment",
-        "stage": stage,
-        "amount": -amount,
-        "description": f"Оплата этапа: {stage}",
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
-    
-    # Send Telegram notification to contractor about payment
-    stage_data = deal.get("stages", {}).get(stage, {})
-    contractor_id = stage_data.get("contractor_id")
-    if contractor_id:
-        contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0, "telegram_chat_id": 1, "company_name": 1})
-        if contractor and contractor.get("telegram_chat_id"):
-            car_info = deal.get("car_info", {})
-            car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip() or "Авто"
-            await telegram_service.notify_stage_status_change(
-                contractor["telegram_chat_id"],
-                car_name,
-                stage,
-                "paid",
-                None
-            )
-    
-    return {"message": "Оплата прошла успешно", "new_balance": balance - amount}
-
-@api_router.post("/deals/{deal_id}/skip-leasing")
-async def skip_leasing_stage(deal_id: str, current_user: dict = Depends(get_current_user)):
-    """Skip leasing request stage"""
-    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    await db.deals.update_one(
-        {"id": deal_id},
-        {
-            "$set": {
-                "stages.leasing_request.skipped": True,
-                "stages.leasing_request.completed": True,
-                "current_stage": "inspection",
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-        }
-    )
-    
-    return {"message": "Этап лизинга пропущен"}
-
-@api_router.post("/deals/{deal_id}/request-leasing")
-async def request_leasing(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
-    """Request leasing quote"""
-    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    await db.deals.update_one(
-        {"id": deal_id},
-        {
-            "$set": {
-                "stages.leasing_request.requested": True,
-                "stages.leasing_request.leasing_company_id": data.get("leasing_company_id"),
-                "stages.leasing_request.requested_at": datetime.now(timezone.utc).isoformat()
-            }
-        }
-    )
-    
-    return {"message": "Запрос на лизинг отправлен"}
-
-@api_router.post("/deals/{deal_id}/complete-stage")
-async def complete_deal_stage(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
-    """Mark stage as completed (awaits moderator confirmation)"""
-    stage = data.get("stage")
-    
-    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    await db.deals.update_one(
-        {"id": deal_id},
-        {
-            "$set": {
-                f"stages.{stage}.user_completed": True,
-                f"stages.{stage}.awaiting_moderator": True,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-        }
-    )
-    
-    return {"message": "Этап отмечен как выполненный, ожидает подтверждения модератора"}
-
-@api_router.post("/deals/{deal_id}/update-stage-price")
-async def update_stage_price(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
-    """Update price for a stage (before payment)"""
-    stage = data.get("stage")
-    new_price = data.get("price")
-    reason = data.get("reason", "")
-    
-    if not stage or new_price is None:
-        raise HTTPException(status_code=400, detail="Укажите этап и новую стоимость")
-    
-    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    # Check if stage is already paid
-    stage_data = deal.get("stages", {}).get(stage, {})
-    if stage_data.get("paid"):
-        raise HTTPException(status_code=400, detail="Этап уже оплачен, изменение стоимости невозможно")
-    
-    old_price = stage_data.get("price", 0)
-    
-    # Log price change
-    price_change_log = {
-        "id": str(uuid.uuid4()),
-        "stage": stage,
-        "old_price": old_price,
-        "new_price": new_price,
-        "reason": reason,
-        "changed_by": current_user["id"],
-        "changed_by_name": f"{current_user.get('name', '')} {current_user.get('last_name', '')}",
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.deals.update_one(
-        {"id": deal_id},
-        {
-            "$set": {
-                f"stages.{stage}.price": new_price,
-                f"stages.{stage}.price_modified": True,
-                f"stages.{stage}.price_change_reason": reason,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            },
-            "$push": {
-                "price_changes": price_change_log
-            }
-        }
-    )
-    
-    return {
-        "message": "Стоимость этапа обновлена",
-        "old_price": old_price,
-        "new_price": new_price
-    }
-
-# ==================== NEW DEAL STAGES ENDPOINTS ====================
-
-# Platform commission constants
-PLATFORM_COMMISSION = 0.03  # 3%
-PLATFORM_PAYMENT_FEE = 0.01  # +1% if paid through platform
-
-# New stages list
-NEW_DEAL_STAGES = [
-    "leasing", "inspection", "export", "logistics_china", 
-    "insurance", "delivery_rb", "customs", "completion"
-]
-
-@api_router.post("/deals/{deal_id}/skip-stage")
-async def skip_deal_stage(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
-    """Skip an optional stage"""
-    stage = data.get("stage")
-    
-    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    # Check if stage is optional
-    optional_stages = ["leasing", "inspection", "logistics_china", "insurance", "delivery_rb", "customs"]
-    if stage not in optional_stages:
-        raise HTTPException(status_code=400, detail="Этот этап нельзя пропустить")
-    
-    # Find next stage
-    current_idx = NEW_DEAL_STAGES.index(stage) if stage in NEW_DEAL_STAGES else 0
-    next_stage = NEW_DEAL_STAGES[current_idx + 1] if current_idx < len(NEW_DEAL_STAGES) - 1 else "completion"
-    
-    await db.deals.update_one(
-        {"id": deal_id},
-        {
-            "$set": {
-                f"stages.{stage}.skipped": True,
-                f"stages.{stage}.completed": True,
-                "current_stage": next_stage,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-        }
-    )
-    
-    return {"message": f"Этап '{stage}' пропущен", "next_stage": next_stage}
-
-@api_router.post("/deals/{deal_id}/leasing-request")
-async def submit_leasing_request(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
-    """Submit leasing request to selected companies"""
-    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    term = data.get("term", 36)
-    down_payment_percent = data.get("down_payment_percent", 20)
-    loan_amount = data.get("loan_amount", 0)
-    selected_companies = data.get("selected_companies", [])
-    
-    if not selected_companies:
-        raise HTTPException(status_code=400, detail="Выберите хотя бы одну лизинговую компанию")
-    
-    # Create leasing requests
-    leasing_requests = []
-    for company_id in selected_companies:
-        leasing_requests.append({
-            "id": str(uuid.uuid4()),
-            "company_id": company_id,
-            "term": term,
-            "down_payment_percent": down_payment_percent,
-            "loan_amount": loan_amount,
-            "status": "pending",
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
-    
-    await db.deals.update_one(
-        {"id": deal_id},
-        {
-            "$set": {
-                "stages.leasing.requested": True,
-                "stages.leasing.leasing_requests": leasing_requests,
-                "stages.leasing.term": term,
-                "stages.leasing.down_payment_percent": down_payment_percent,
-                "stages.leasing.completed": True,
-                "current_stage": "inspection",
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-        }
-    )
-    
-    return {
-        "message": f"Заявки на лизинг отправлены в {len(selected_companies)} компаний",
-        "next_stage": "inspection"
-    }
-
-@api_router.post("/deals/{deal_id}/pay-invoice")
-async def pay_deal_invoice(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
-    """Pay invoice for a deal stage"""
-    stage = data.get("stage")
-    amount = data.get("amount", 0)
-    through_platform = data.get("through_platform", False)
-    
-    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    if through_platform:
-        # Get account balance
-        account = await db.accounts.find_one({"user_id": current_user["id"]})
-        balance = account.get("balance", 0) if account else 0
-        
-        if balance < amount:
-            raise HTTPException(status_code=400, detail=f"Недостаточно средств. Необходимо ${amount:.2f}, баланс: ${balance:.2f}")
-        
-        # Deduct from balance
-        await db.accounts.update_one(
-            {"user_id": current_user["id"]},
-            {"$inc": {"balance": -amount}}
-        )
-        
-        # Log transaction
-        await db.transactions.insert_one({
-            "id": str(uuid.uuid4()),
-            "user_id": current_user["id"],
-            "deal_id": deal_id,
-            "type": "stage_payment",
-            "stage": stage,
-            "amount": -amount,
-            "payment_method": "platform",
-            "description": f"Оплата этапа: {stage}",
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
-    
-    # Find next stage
-    current_idx = NEW_DEAL_STAGES.index(stage) if stage in NEW_DEAL_STAGES else 0
-    next_stage = NEW_DEAL_STAGES[current_idx + 1] if current_idx < len(NEW_DEAL_STAGES) - 1 else "completion"
-    
-    # Update deal
-    await db.deals.update_one(
-        {"id": deal_id},
-        {
-            "$set": {
-                f"stages.{stage}.paid": True,
-                f"stages.{stage}.paid_amount": amount,
-                f"stages.{stage}.paid_through_platform": through_platform,
-                f"stages.{stage}.paid_at": datetime.now(timezone.utc).isoformat(),
-                f"stages.{stage}.completed": True,
-                "current_stage": next_stage,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            },
-            "$inc": {"total_paid": amount},
-            "$push": {
-                "payments": {
-                    "id": str(uuid.uuid4()),
-                    "stage": stage,
-                    "amount": amount,
-                    "through_platform": through_platform,
-                    "paid_at": datetime.now(timezone.utc).isoformat()
-                }
-            }
-        }
-    )
-    
-    return {
-        "message": "Оплата прошла успешно" if through_platform else "Счёт отмечен как оплаченный",
-        "next_stage": next_stage
-    }
-
-@api_router.post("/deals/{deal_id}/complete")
-async def complete_deal(deal_id: str, current_user: dict = Depends(get_current_user)):
-    """Complete the deal and process affiliate commission"""
-    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    # Check if already completed
-    if deal.get("status") == "completed":
-        raise HTTPException(status_code=400, detail="Сделка уже завершена")
-    
-    # Check if export stage is completed (minimum requirement)
-    export_stage = deal.get("stages", {}).get("export", {})
-    if not export_stage.get("completed") and not export_stage.get("paid"):
-        raise HTTPException(status_code=400, detail="Для завершения сделки необходимо завершить этап 'Экспорт'")
-    
-    total_paid = deal.get("total_paid", 0)
-    completed_at = datetime.now(timezone.utc).isoformat()
-    
-    await db.deals.update_one(
-        {"id": deal_id},
-        {
-            "$set": {
-                "status": "completed",
-                "stages.completion.completed": True,
-                "current_stage": "completed",
-                "completed_at": completed_at,
-                "updated_at": completed_at
-            }
-        }
-    )
-    
-    # Update car status
-    await db.garage.update_one(
-        {"id": deal.get("car_id")},
-        {"$set": {"status": "delivered"}}
-    )
-    
-    # Process affiliate commission if user is a referral
-    user = await db.users.find_one({"id": current_user["id"]})
-    affiliate_commission = 0
-    if user and user.get("referred_by"):
-        affiliate_id = user["referred_by"]
-        
-        # Calculate commission (20% of 3% platform commission)
-        platform_commission = total_paid * COMMISSION_RATE
-        affiliate_commission = platform_commission * AFFILIATE_SHARE
-        
-        # Update referral stats
-        await db.referrals.update_one(
-            {"referral_id": current_user["id"]},
-            {
-                "$inc": {
-                    "completed_deals": 1,
-                    "total_commission": affiliate_commission
-                }
-            }
-        )
-        
-        # Update affiliate stats and balance
-        update_result = await db.affiliates.find_one_and_update(
-            {"user_id": affiliate_id},
-            {
-                "$inc": {
-                    "completed_deals": 1,
-                    "total_earnings": affiliate_commission,
-                    "available_balance": affiliate_commission
-                }
-            },
-            return_document=True
-        )
-        
-        # Check if affiliate should become partner (3+ completed deals)
-        if update_result and update_result.get("completed_deals", 0) >= PARTNER_THRESHOLD and not update_result.get("is_partner"):
-            await db.affiliates.update_one(
-                {"user_id": affiliate_id},
-                {"$set": {"is_partner": True, "partner_since": completed_at}}
-            )
-        
-        # Also credit the affiliate's main account balance
-        await db.accounts.update_one(
-            {"user_id": affiliate_id},
-            {"$inc": {"balance": affiliate_commission}},
-            upsert=True
-        )
-        
-        # Record transaction
-        transaction_doc = {
-            "id": str(uuid.uuid4()),
-            "affiliate_id": affiliate_id,
-            "type": "commission",
-            "amount": affiliate_commission,
-            "deal_id": deal_id,
-            "referral_id": current_user["id"],
-            "referral_name": user.get("name", ""),
-            "description": f"Комиссия со сделки реферала: ${total_paid:,.2f}",
-            "created_at": completed_at
-        }
-        await db.affiliate_transactions.insert_one(transaction_doc)
-    
-    return {
-        "message": "Сделка успешно завершена!",
-        "affiliate_commission_paid": affiliate_commission
-    }
-
-# ==================== END NEW DEAL STAGES ENDPOINTS ====================
-
-# ==================== DEAL MESSAGES & FILES API ====================
-
-@api_router.get("/deals/{deal_id}/messages")
-async def get_deal_messages(deal_id: str, current_user: dict = Depends(get_current_user)):
-    """Get all messages for a deal"""
-    # Check if user has access to this deal
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    # User can be the deal owner
-    if deal.get("user_id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
-    
-    messages = await db.deal_messages.find(
-        {"deal_id": deal_id},
-        {"_id": 0}
-    ).sort("created_at", 1).to_list(500)
-    
-    return messages
-
-@api_router.post("/deals/{deal_id}/messages")
-async def send_deal_message(deal_id: str, data: dict, current_user: dict = Depends(get_current_user)):
-    """Send a message in a deal chat"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    if deal.get("user_id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
-    
-    message_id = str(uuid.uuid4())
-    message = {
-        "id": message_id,
-        "deal_id": deal_id,
-        "sender_id": current_user["id"],
-        "sender_name": current_user.get("name", current_user.get("email", "Пользователь")),
-        "sender_type": "client",
-        "content": data.get("content", ""),
-        "file_ids": data.get("file_ids", []),
-        "stage_key": data.get("stage_key"),
-        "read": False,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.deal_messages.insert_one(message)
-    
-    return {"message": "Сообщение отправлено", "id": message_id}
-
-@api_router.get("/deals/{deal_id}/files")
-async def get_deal_files(deal_id: str, current_user: dict = Depends(get_current_user)):
-    """Get all files for a deal"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    if deal.get("user_id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
-    
-    files = await db.deal_files.find(
-        {"deal_id": deal_id},
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(100)
-    
-    return files
-
-@api_router.post("/deals/{deal_id}/files")
-async def upload_deal_file(
-    deal_id: str,
-    file: UploadFile = File(...),
-    stage_key: str = Form(None),
-    file_type: str = Form("document"),
-    description: str = Form(""),
-    current_user: dict = Depends(get_current_user)
-):
-    """Upload a file for a deal"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    if deal.get("user_id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
-    
-    # Validate file size
-    file_content = await file.read()
-    if len(file_content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="Файл слишком большой (макс. 50MB)")
-    
-    # Generate unique filename
-    file_id = str(uuid.uuid4())
-    file_ext = Path(file.filename).suffix.lower() if file.filename else ""
-    safe_filename = f"{file_id}{file_ext}"
-    
-    # Create deal directory
-    deal_dir = UPLOADS_DIR / deal_id
-    deal_dir.mkdir(exist_ok=True)
-    
-    # Save file
-    file_path = deal_dir / safe_filename
-    with open(file_path, "wb") as f:
-        f.write(file_content)
-    
-    # Determine file category
-    image_exts = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
-    video_exts = [".mp4", ".mov", ".avi", ".webm"]
-    doc_exts = [".pdf", ".doc", ".docx", ".xls", ".xlsx"]
-    
-    if file_ext in image_exts:
-        category = "photo"
-    elif file_ext in video_exts:
-        category = "video"
-    elif file_ext in doc_exts:
-        category = "document"
-    else:
-        category = "other"
-    
-    # Save file info to database
-    file_doc = {
-        "id": file_id,
-        "deal_id": deal_id,
-        "uploader_id": current_user["id"],
-        "uploader_name": current_user.get("name", current_user.get("email", "Пользователь")),
-        "uploader_type": "client",
-        "original_name": file.filename,
-        "saved_name": safe_filename,
-        "file_type": file_type,
-        "category": category,
-        "stage_key": stage_key,
-        "description": description,
-        "size": len(file_content),
-        "mime_type": file.content_type,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.deal_files.insert_one(file_doc)
-    
-    return {
-        "message": "Файл загружен",
-        "file_id": file_id,
-        "filename": file.filename,
-        "size": len(file_content)
-    }
-
-@api_router.get("/deals/{deal_id}/files/{file_id}/download")
-async def download_deal_file(deal_id: str, file_id: str, current_user: dict = Depends(get_current_user)):
-    """Download a file from a deal"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    if deal.get("user_id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
-    
-    file_doc = await db.deal_files.find_one({"id": file_id, "deal_id": deal_id})
-    if not file_doc:
-        raise HTTPException(status_code=404, detail="Файл не найден")
-    
-    file_path = UPLOADS_DIR / deal_id / file_doc["saved_name"]
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="Файл не найден на сервере")
-    
-    return FileResponse(
-        path=str(file_path),
-        filename=file_doc["original_name"],
-        media_type=file_doc.get("mime_type", "application/octet-stream")
-    )
-
-@api_router.delete("/deals/{deal_id}/files/{file_id}")
-async def delete_deal_file(deal_id: str, file_id: str, current_user: dict = Depends(get_current_user)):
-    """Delete a file from a deal"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    if deal.get("user_id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
-    
-    file_doc = await db.deal_files.find_one({"id": file_id, "deal_id": deal_id, "uploader_id": current_user["id"]})
-    if not file_doc:
-        raise HTTPException(status_code=404, detail="Файл не найден или вы не можете его удалить")
-    
-    # Delete file from disk
-    file_path = UPLOADS_DIR / deal_id / file_doc["saved_name"]
-    if file_path.exists():
-        file_path.unlink()
-    
-    # Delete from database
-    await db.deal_files.delete_one({"id": file_id})
-    
-    return {"message": "Файл удалён"}
-
-# ==================== CONTRACTOR DEAL MESSAGES & FILES ====================
-
-@api_router.get("/contractor/deals/{deal_id}/messages")
-async def get_contractor_deal_messages(deal_id: str, current_user: dict = Depends(get_current_contractor)):
-    """Get messages for a deal (contractor view)"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    # Check if contractor has access (is assigned to any stage)
-    has_access = False
-    stages = deal.get("stages", {})
-    for stage_data in stages.values():
-        if stage_data.get("contractor_id") == current_user["id"]:
-            has_access = True
-            break
-    
-    if not has_access and deal.get("contractor", {}).get("id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
-    
-    messages = await db.deal_messages.find(
-        {"deal_id": deal_id},
-        {"_id": 0}
-    ).sort("created_at", 1).to_list(500)
-    
-    return messages
-
-@api_router.post("/contractor/deals/{deal_id}/messages")
-async def send_contractor_deal_message(deal_id: str, data: dict, current_user: dict = Depends(get_current_contractor)):
-    """Send a message in a deal chat (contractor)"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    # Check access
-    has_access = False
-    stages = deal.get("stages", {})
-    for stage_data in stages.values():
-        if stage_data.get("contractor_id") == current_user["id"]:
-            has_access = True
-            break
-    
-    if not has_access and deal.get("contractor", {}).get("id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
-    
-    message_id = str(uuid.uuid4())
-    message = {
-        "id": message_id,
-        "deal_id": deal_id,
-        "sender_id": current_user["id"],
-        "sender_name": current_user.get("company_name", "Подрядчик"),
-        "sender_type": "contractor",
-        "content": data.get("content", ""),
-        "file_ids": data.get("file_ids", []),
-        "stage_key": data.get("stage_key"),
-        "read": False,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.deal_messages.insert_one(message)
-    
-    return {"message": "Сообщение отправлено", "id": message_id}
-
-@api_router.get("/contractor/deals/{deal_id}/files")
-async def get_contractor_deal_files(deal_id: str, current_user: dict = Depends(get_current_contractor)):
-    """Get all files for a deal (contractor view)"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    # Check access
-    has_access = False
-    stages = deal.get("stages", {})
-    for stage_data in stages.values():
-        if stage_data.get("contractor_id") == current_user["id"]:
-            has_access = True
-            break
-    
-    if not has_access and deal.get("contractor", {}).get("id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
-    
-    files = await db.deal_files.find(
-        {"deal_id": deal_id},
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(100)
-    
-    return files
-
-@api_router.post("/contractor/deals/{deal_id}/files")
-async def upload_contractor_deal_file(
-    deal_id: str,
-    file: UploadFile = File(...),
-    stage_key: str = Form(None),
-    file_type: str = Form("document"),
-    description: str = Form(""),
-    current_user: dict = Depends(get_current_contractor)
-):
-    """Upload a file for a deal (contractor)"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    # Check access
-    has_access = False
-    stages = deal.get("stages", {})
-    for stage_data in stages.values():
-        if stage_data.get("contractor_id") == current_user["id"]:
-            has_access = True
-            break
-    
-    if not has_access and deal.get("contractor", {}).get("id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
-    
-    # Validate file size
-    file_content = await file.read()
-    if len(file_content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="Файл слишком большой (макс. 50MB)")
-    
-    # Generate unique filename
-    file_id = str(uuid.uuid4())
-    file_ext = Path(file.filename).suffix.lower() if file.filename else ""
-    safe_filename = f"{file_id}{file_ext}"
-    
-    # Create deal directory
-    deal_dir = UPLOADS_DIR / deal_id
-    deal_dir.mkdir(exist_ok=True)
-    
-    # Save file
-    file_path = deal_dir / safe_filename
-    with open(file_path, "wb") as f:
-        f.write(file_content)
-    
-    # Determine file category
-    image_exts = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
-    video_exts = [".mp4", ".mov", ".avi", ".webm"]
-    doc_exts = [".pdf", ".doc", ".docx", ".xls", ".xlsx"]
-    
-    if file_ext in image_exts:
-        category = "photo"
-    elif file_ext in video_exts:
-        category = "video"
-    elif file_ext in doc_exts:
-        category = "document"
-    else:
-        category = "other"
-    
-    # Save file info to database
-    file_doc = {
-        "id": file_id,
-        "deal_id": deal_id,
-        "uploader_id": current_user["id"],
-        "uploader_name": current_user.get("company_name", "Подрядчик"),
-        "uploader_type": "contractor",
-        "original_name": file.filename,
-        "saved_name": safe_filename,
-        "file_type": file_type,
-        "category": category,
-        "stage_key": stage_key,
-        "description": description,
-        "size": len(file_content),
-        "mime_type": file.content_type,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.deal_files.insert_one(file_doc)
-    
-    return {
-        "message": "Файл загружен",
-        "file_id": file_id,
-        "filename": file.filename,
-        "size": len(file_content)
-    }
-
-@api_router.get("/contractor/deals/{deal_id}/files/{file_id}/download")
-async def download_contractor_deal_file(deal_id: str, file_id: str, current_user: dict = Depends(get_current_contractor)):
-    """Download a file from a deal (contractor)"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    # Check access
-    has_access = False
-    stages = deal.get("stages", {})
-    for stage_data in stages.values():
-        if stage_data.get("contractor_id") == current_user["id"]:
-            has_access = True
-            break
-    
-    if not has_access and deal.get("contractor", {}).get("id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
-    
-    file_doc = await db.deal_files.find_one({"id": file_id, "deal_id": deal_id})
-    if not file_doc:
-        raise HTTPException(status_code=404, detail="Файл не найден")
-    
-    file_path = UPLOADS_DIR / deal_id / file_doc["saved_name"]
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="Файл не найден на сервере")
-    
-    return FileResponse(
-        path=str(file_path),
-        filename=file_doc["original_name"],
-        media_type=file_doc.get("mime_type", "application/octet-stream")
-    )
-
-@api_router.get("/contractor/deals")
-async def get_contractor_deals(current_user: dict = Depends(get_current_contractor)):
-    """Get all deals where contractor is assigned"""
-    contractor_id = current_user["id"]
-    
-    # Find deals where this contractor is assigned to any stage or is the main contractor
-    all_deals = await db.deals.find({"status": "active"}, {"_id": 0}).to_list(100)
-    
-    my_deals = []
-    for deal in all_deals:
-        is_my_deal = False
-        
-        # Check if contractor is main contractor
-        if deal.get("contractor", {}).get("id") == contractor_id:
-            is_my_deal = True
-        
-        # Check if contractor is assigned to any stage (handle both dict and list)
-        stages = deal.get("stages", {})
-        if isinstance(stages, dict):
-            for stage_data in stages.values():
-                if isinstance(stage_data, dict) and stage_data.get("contractor_id") == contractor_id:
-                    is_my_deal = True
-                    break
-        
-        if is_my_deal:
-            # Get client info
-            client = await db.users.find_one({"id": deal.get("user_id")}, {"_id": 0, "name": 1, "email": 1})
-            deal["client"] = client
-            my_deals.append(deal)
-    
-    return my_deals
-
-# ==================== STAGE-SPECIFIC MESSAGES API ====================
-
-@api_router.get("/deals/{deal_id}/stages/{stage_key}/messages")
-async def get_stage_messages(deal_id: str, stage_key: str, current_user: dict = Depends(get_current_user)):
-    """Get messages for a specific stage of a deal"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    if deal.get("user_id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
-    
-    # Get messages for this stage
-    messages = await db.deal_messages.find(
-        {"deal_id": deal_id, "stage_key": stage_key},
-        {"_id": 0}
-    ).sort("created_at", 1).to_list(500)
-    
-    # Mark messages as read by client
-    await db.deal_messages.update_many(
-        {"deal_id": deal_id, "stage_key": stage_key, "sender_type": "contractor"},
-        {"$set": {"read_by_client": True}}
-    )
-    
-    return messages
-
-@api_router.post("/deals/{deal_id}/stages/{stage_key}/messages")
-async def send_stage_message(deal_id: str, stage_key: str, data: dict, current_user: dict = Depends(get_current_user)):
-    """Send a message in a stage-specific chat"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    if deal.get("user_id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
-    
-    # Get stage contractor info
-    stage_data = deal.get("stages", {}).get(stage_key, {})
-    contractor_id = stage_data.get("contractor_id")
-    
-    message_id = str(uuid.uuid4())
-    message = {
-        "id": message_id,
-        "deal_id": deal_id,
-        "stage_key": stage_key,
-        "sender_id": current_user["id"],
-        "sender_name": current_user.get("name", current_user.get("email", "Клиент")),
-        "sender_type": "client",
-        "recipient_contractor_id": contractor_id,
-        "content": data.get("content", ""),
-        "file_ids": data.get("file_ids", []),
-        "read_by_client": True,
-        "read_by_contractor": False,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.deal_messages.insert_one(message)
-    
-    # Create notification for contractor
-    if contractor_id:
-        await db.contractor_notifications.insert_one({
-            "id": str(uuid.uuid4()),
-            "contractor_id": contractor_id,
-            "type": "new_message",
-            "title": "Новое сообщение",
-            "message": f"Новое сообщение от клиента по сделке",
-            "deal_id": deal_id,
-            "stage_key": stage_key,
-            "read": False,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
-        
-        # Send Telegram notification to contractor
-        contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0, "telegram_chat_id": 1})
-        if contractor and contractor.get("telegram_chat_id"):
-            car_info = deal.get("car_info", {})
-            car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')}"
-            stage_label = telegram_service.STAGE_LABELS.get(stage_key, stage_key)
-            await telegram_service.notify_new_message(
-                contractor["telegram_chat_id"],
-                current_user.get("name", "Клиент"),
-                car_name,
-                stage_label,
-                data.get("content", ""),
-                deal_id,
-                stage_key
-            )
-    
-    return {"message": "Сообщение отправлено", "id": message_id}
-
-@api_router.get("/deals/{deal_id}/stages/{stage_key}/files")
-async def get_stage_files(deal_id: str, stage_key: str, current_user: dict = Depends(get_current_user)):
-    """Get files for a specific stage of a deal"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    if deal.get("user_id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
-    
-    files = await db.deal_files.find(
-        {"deal_id": deal_id, "stage_key": stage_key},
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(100)
-    
-    return files
-
-@api_router.post("/deals/{deal_id}/stages/{stage_key}/files")
-async def upload_stage_file(
-    deal_id: str,
-    stage_key: str,
-    file: UploadFile = File(...),
-    description: str = Form(""),
-    current_user: dict = Depends(get_current_user)
-):
-    """Upload a file to a specific stage"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    if deal.get("user_id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
-    
-    file_content = await file.read()
-    if len(file_content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="Файл слишком большой (макс. 50MB)")
-    
-    file_id = str(uuid.uuid4())
-    original_name = file.filename
-    file_ext = original_name.split('.')[-1] if '.' in original_name else ''
-    saved_name = f"{file_id}.{file_ext}" if file_ext else file_id
-    
-    # Determine category
-    mime_type = file.content_type or "application/octet-stream"
-    category = "document"
-    if mime_type.startswith("image/"):
-        category = "photo"
-    elif mime_type.startswith("video/"):
-        category = "video"
-    
-    # Save file
-    deal_dir = UPLOADS_DIR / deal_id
-    deal_dir.mkdir(parents=True, exist_ok=True)
-    file_path = deal_dir / saved_name
-    with open(file_path, "wb") as f:
-        f.write(file_content)
-    
-    file_doc = {
-        "id": file_id,
-        "deal_id": deal_id,
-        "stage_key": stage_key,
-        "original_name": original_name,
-        "saved_name": saved_name,
-        "mime_type": mime_type,
-        "size": len(file_content),
-        "category": category,
-        "description": description,
-        "uploader_id": current_user["id"],
-        "uploader_name": current_user.get("name", "Клиент"),
-        "uploader_type": "client",
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.deal_files.insert_one(file_doc)
-    
-    return {"message": "Файл загружен", "file_id": file_id}
-
-# Contractor stage-specific endpoints
-@api_router.get("/contractor/deals/{deal_id}/stages/{stage_key}/messages")
-async def get_contractor_stage_messages(deal_id: str, stage_key: str, current_user: dict = Depends(get_current_contractor)):
-    """Get messages for a specific stage (contractor view) - only for their assigned stages"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    # Check if contractor is assigned to this specific stage
-    stage_data = deal.get("stages", {}).get(stage_key, {})
-    if stage_data.get("contractor_id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Вы не назначены на этот этап")
-    
-    messages = await db.deal_messages.find(
-        {"deal_id": deal_id, "stage_key": stage_key},
-        {"_id": 0}
-    ).sort("created_at", 1).to_list(500)
-    
-    # Mark messages as read by contractor
-    await db.deal_messages.update_many(
-        {"deal_id": deal_id, "stage_key": stage_key, "sender_type": "client"},
-        {"$set": {"read_by_contractor": True}}
-    )
-    
-    return messages
-
-@api_router.post("/contractor/deals/{deal_id}/stages/{stage_key}/messages")
-async def send_contractor_stage_message(deal_id: str, stage_key: str, data: dict, current_user: dict = Depends(get_current_contractor)):
-    """Send a message in a stage-specific chat (contractor) - only for their assigned stages"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    # Check if contractor is assigned to this specific stage
-    stage_data = deal.get("stages", {}).get(stage_key, {})
-    if stage_data.get("contractor_id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Вы не назначены на этот этап")
-    
-    client_id = deal.get("user_id")
-    
-    message_id = str(uuid.uuid4())
-    message = {
-        "id": message_id,
-        "deal_id": deal_id,
-        "stage_key": stage_key,
-        "sender_id": current_user["id"],
-        "sender_name": current_user.get("company_name", "Подрядчик"),
-        "sender_type": "contractor",
-        "recipient_client_id": client_id,
-        "content": data.get("content", ""),
-        "file_ids": data.get("file_ids", []),
-        "read_by_client": False,
-        "read_by_contractor": True,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.deal_messages.insert_one(message)
-    
-    # Create notification for client
-    if client_id:
-        await db.user_notifications.insert_one({
-            "id": str(uuid.uuid4()),
-            "user_id": client_id,
-            "type": "new_message",
-            "title": "Новое сообщение от подрядчика",
-            "message": f"Сообщение по этапу сделки",
-            "deal_id": deal_id,
-            "stage_key": stage_key,
-            "read": False,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
-        
-        # Send Telegram notification to client
-        user = await db.users.find_one({"id": client_id}, {"_id": 0, "telegram_chat_id": 1})
-        if user and user.get("telegram_chat_id"):
-            car_info = deal.get("car_info", {})
-            car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')}"
-            stage_label = telegram_service.STAGE_LABELS.get(stage_key, stage_key)
-            await telegram_service.notify_new_message(
-                user["telegram_chat_id"],
-                current_user.get("company_name", "Подрядчик"),
-                car_name,
-                stage_label,
-                data.get("content", ""),
-                deal_id,
-                stage_key
-            )
-    
-    return {"message": "Сообщение отправлено", "id": message_id}
-
-@api_router.post("/contractor/deals/{deal_id}/stages/{stage_key}/files")
-async def upload_contractor_stage_file(
-    deal_id: str,
-    stage_key: str,
-    file: UploadFile = File(...),
-    description: str = Form(""),
-    current_user: dict = Depends(get_current_contractor)
-):
-    """Upload a file to a specific stage (contractor) - only for their assigned stages"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    # Check if contractor is assigned to this specific stage
-    stage_data = deal.get("stages", {}).get(stage_key, {})
-    if stage_data.get("contractor_id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Вы не назначены на этот этап")
-    
-    file_content = await file.read()
-    if len(file_content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="Файл слишком большой (макс. 50MB)")
-    
-    file_id = str(uuid.uuid4())
-    original_name = file.filename
-    file_ext = original_name.split('.')[-1] if '.' in original_name else ''
-    saved_name = f"{file_id}.{file_ext}" if file_ext else file_id
-    
-    # Determine category
-    mime_type = file.content_type or "application/octet-stream"
-    category = "document"
-    if mime_type.startswith("image/"):
-        category = "photo"
-    elif mime_type.startswith("video/"):
-        category = "video"
-    
-    # Save file
-    deal_dir = UPLOADS_DIR / deal_id
-    deal_dir.mkdir(parents=True, exist_ok=True)
-    file_path = deal_dir / saved_name
-    with open(file_path, "wb") as f:
-        f.write(file_content)
-    
-    file_doc = {
-        "id": file_id,
-        "deal_id": deal_id,
-        "stage_key": stage_key,
-        "original_name": original_name,
-        "saved_name": saved_name,
-        "mime_type": mime_type,
-        "size": len(file_content),
-        "category": category,
-        "description": description,
-        "uploader_id": current_user["id"],
-        "uploader_name": current_user.get("company_name", "Подрядчик"),
-        "uploader_type": "contractor",
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.deal_files.insert_one(file_doc)
-    
-    return {"message": "Файл загружен", "file_id": file_id}
-
-# Get contractor's assigned stages for a deal
-@api_router.get("/contractor/deals/{deal_id}/my-stages")
-async def get_contractor_my_stages(deal_id: str, current_user: dict = Depends(get_current_contractor)):
-    """Get stages assigned to the current contractor for a specific deal"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    my_stages = []
-    stages = deal.get("stages", {})
-    for stage_key, stage_data in stages.items():
-        if stage_data.get("contractor_id") == current_user["id"]:
-            my_stages.append({
-                "stage_key": stage_key,
-                "status": stage_data.get("status", "pending"),
-                "price": stage_data.get("price"),
-                "assigned_at": stage_data.get("assigned_at")
-            })
-    
-    return my_stages
-
-# Get unread message counts
-@api_router.get("/deals/{deal_id}/unread-counts")
-async def get_deal_unread_counts(deal_id: str, current_user: dict = Depends(get_current_user)):
-    """Get unread message counts per stage for a deal"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    if deal.get("user_id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
-    
-    # Count unread messages per stage from contractors
-    pipeline = [
-        {"$match": {"deal_id": deal_id, "sender_type": "contractor", "read_by_client": {"$ne": True}}},
-        {"$group": {"_id": "$stage_key", "count": {"$sum": 1}}}
-    ]
-    
-    results = await db.deal_messages.aggregate(pipeline).to_list(100)
-    
-    unread_counts = {}
-    for r in results:
-        if r["_id"]:
-            unread_counts[r["_id"]] = r["count"]
-    
-    return unread_counts
-
-@api_router.get("/contractor/deals/{deal_id}/unread-counts")
-async def get_contractor_deal_unread_counts(deal_id: str, current_user: dict = Depends(get_current_contractor)):
-    """Get unread message counts per stage for contractor"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    # Get contractor's stages
-    my_stage_keys = []
-    stages = deal.get("stages", {})
-    for stage_key, stage_data in stages.items():
-        if stage_data.get("contractor_id") == current_user["id"]:
-            my_stage_keys.append(stage_key)
-    
-    if not my_stage_keys:
-        return {}
-    
-    # Count unread messages from client
-    pipeline = [
-        {"$match": {"deal_id": deal_id, "stage_key": {"$in": my_stage_keys}, "sender_type": "client", "read_by_contractor": {"$ne": True}}},
-        {"$group": {"_id": "$stage_key", "count": {"$sum": 1}}}
-    ]
-    
-    results = await db.deal_messages.aggregate(pipeline).to_list(100)
-    
-    unread_counts = {}
-    for r in results:
-        if r["_id"]:
-            unread_counts[r["_id"]] = r["count"]
-    
-    return unread_counts
-
-# Stage completion by client (send to moderator review)
-@api_router.post("/deals/{deal_id}/stages/{stage_key}/complete")
-async def complete_stage_for_review(deal_id: str, stage_key: str, current_user: dict = Depends(get_current_user)):
-    """Mark a stage as complete and send to moderator for review"""
-    deal = await db.deals.find_one({"id": deal_id})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    if deal.get("user_id") != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой сделке")
-    
-    # Get stage data
-    stage_data = deal.get("stages", {}).get(stage_key, {})
-    if not stage_data:
-        raise HTTPException(status_code=400, detail="Этап не найден")
-    
-    if not stage_data.get("contractor_id"):
-        raise HTTPException(status_code=400, detail="Подрядчик не назначен на этот этап")
-    
-    if stage_data.get("status") in ["completed", "paid"]:
-        raise HTTPException(status_code=400, detail="Этап уже завершён")
-    
-    if stage_data.get("status") == "pending_review":
-        raise HTTPException(status_code=400, detail="Этап уже отправлен на проверку")
-    
-    # Update stage status to pending_review
-    await db.deals.update_one(
-        {"id": deal_id},
-        {
-            "$set": {
-                f"stages.{stage_key}.status": "pending_review",
-                f"stages.{stage_key}.review_requested_at": datetime.now(timezone.utc).isoformat(),
-                f"stages.{stage_key}.review_requested_by": current_user["id"]
-            }
-        }
-    )
-    
-    # Get stage label for notification
-    stage_labels = {
-        "leasing": "Лизинг",
-        "inspection": "Инспекция",
-        "export": "Выкуп",
-        "logistics_china": "Доставка (Китай)",
-        "insurance": "Страхование",
-        "delivery_rb": "Доставка (РБ)",
-        "customs": "Таможня",
-        "completion": "Завершение"
-    }
-    
-    # Notify moderators (create notification in admin notifications or similar)
-    car_info = deal.get("car_info", {})
-    car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip() or "Авто"
-    
-    # Send Telegram notification to contractor about pending review
-    contractor_id = stage_data.get("contractor_id")
-    contractor_name = stage_data.get("contractor_name", "")
-    if contractor_id:
-        contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0, "telegram_chat_id": 1, "company_name": 1})
-        if contractor:
-            contractor_name = contractor.get("company_name", contractor_name)
-            if contractor.get("telegram_chat_id"):
-                await telegram_service.notify_stage_status_change(
-                    contractor["telegram_chat_id"],
-                    car_name,
-                    stage_key,
-                    "pending_review",
-                    None
-                )
-    
-    # Send Telegram notification to moderators
-    try:
-        moderator_chat_ids = await get_moderator_chat_ids()
-        if moderator_chat_ids:
-            client_name = current_user.get("name", "Клиент")
-            await telegram_service.notify_moderators_stage_review(
-                moderator_chat_ids,
-                client_name,
-                car_name,
-                stage_key,
-                contractor_name,
-                deal_id
-            )
-    except Exception as e:
-        logger.error(f"Telegram moderator notification error: {e}")
-    
-    return {"message": "Этап отправлен на проверку модератору"}
-
-# ==================== END STAGE-SPECIFIC MESSAGES API ====================
-
-# ==================== END DEAL MESSAGES & FILES API ====================
-
-@api_router.delete("/deals/{deal_id}")
-async def cancel_deal(deal_id: str, current_user: dict = Depends(get_current_user)):
-    """Cancel a deal and return car to garage"""
-    deal = await db.deals.find_one({"id": deal_id, "user_id": current_user["id"]})
-    if not deal:
-        raise HTTPException(status_code=404, detail="Сделка не найдена")
-    
-    # Check if deal is not completed
-    if deal.get("status") == "completed":
-        raise HTTPException(status_code=400, detail="Нельзя отменить завершённую сделку")
-    
-    # Check if any payments were made
-    total_paid = deal.get("total_paid", 0)
-    if total_paid > 0:
-        raise HTTPException(status_code=400, detail=f"Нельзя отменить сделку с оплаченными этапами (оплачено: ${total_paid})")
-    
-    # Update car status back to "in_garage"
-    car_id = deal.get("car_id")
-    if car_id:
-        await db.garage.update_one(
-            {"id": car_id},
-            {"$set": {"status": "in_garage"}}
-        )
-    
-    # Delete the deal
-    await db.deals.delete_one({"id": deal_id})
-    
-    return {"message": "Сделка отменена, авто возвращено в гараж"}
-
-@api_router.post("/consultant/request")
-async def request_consultant_help(data: dict, current_user: dict = Depends(get_current_user)):
-    """Request consultant help ($200)"""
-    context = data.get("context", "general")  # general, car, deal
-    car_id = data.get("car_id")
-    deal_id = data.get("deal_id")
-    message = data.get("message", "")
-    
-    # Get account balance
-    account = await db.accounts.find_one({"user_id": current_user["id"]})
-    balance = account.get("balance", 0) if account else 0
-    
-    if balance < CONSULTANT_FEE:
-        raise HTTPException(status_code=400, detail=f"Недостаточно средств. Необходимо ${CONSULTANT_FEE}, баланс: ${balance}")
-    
-    # Deduct fee
-    await db.accounts.update_one(
-        {"user_id": current_user["id"]},
-        {"$inc": {"balance": -CONSULTANT_FEE}}
-    )
-    
-    # Create consultant request
-    request_id = str(uuid.uuid4())
-    await db.consultant_requests.insert_one({
-        "id": request_id,
-        "user_id": current_user["id"],
-        "context": context,
-        "car_id": car_id,
-        "deal_id": deal_id,
-        "message": message,
-        "status": "pending",
-        "fee": CONSULTANT_FEE,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
-    
-    # Log transaction
-    await db.transactions.insert_one({
-        "id": str(uuid.uuid4()),
-        "user_id": current_user["id"],
-        "type": "consultant_fee",
-        "amount": -CONSULTANT_FEE,
-        "description": "Помощь консультанта",
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
-    
-    return {
-        "message": "Запрос отправлен. Консультант свяжется с вами в ближайшее время.",
-        "request_id": request_id,
-        "fee_charged": CONSULTANT_FEE
-    }
-
-@api_router.post("/legal-help/request")
-async def request_legal_help(data: dict, current_user: dict = Depends(get_current_user)):
-    """Request legal assistance in Belarus or China"""
-    country = data.get("country")
-    if country not in ["belarus", "china"]:
-        raise HTTPException(status_code=400, detail="Выберите страну: belarus или china")
-    
-    request_id = str(uuid.uuid4())
-    
-    legal_request = {
-        "id": request_id,
-        "user_id": current_user["id"],
-        "user_email": current_user.get("email"),
-        "user_name": current_user.get("name"),
-        "country": country,
-        "country_name": "Беларусь" if country == "belarus" else "Китай",
-        "status": "pending",  # pending, in_progress, completed
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.legal_requests.insert_one(legal_request)
-    
-    return {
-        "message": f"Запрос на юридическую помощь в {'Беларуси' if country == 'belarus' else 'Китае'} отправлен",
-        "request_id": request_id
-    }
-
-@api_router.get("/legal-help/requests")
-async def get_legal_help_requests(current_user: dict = Depends(get_current_user)):
-    """Get user's legal help requests"""
-    requests = await db.legal_requests.find(
-        {"user_id": current_user["id"]},
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(50)
-    
-    return requests
-
+# ==================== DEALS: Moved to routes/deals.py ====================
 @api_router.get("/account/summary")
 async def get_account_summary(current_user: dict = Depends(get_current_user)):
     """Get account summary for dashboard"""
@@ -3962,9 +2026,6 @@ async def deposit_to_account(amount: float, current_user: dict = Depends(get_cur
 
 # ==================== AFFILIATE PROGRAM ENDPOINTS ====================
 
-COMMISSION_RATE = 0.03  # 3% platform commission
-AFFILIATE_SHARE = 0.20  # 20% of commission goes to affiliate
-PARTNER_THRESHOLD = 3   # 3 completed deals to become partner
 
 def generate_referral_code(user_id: str) -> str:
     """Generate unique referral code from user id"""
@@ -4502,6 +2563,18 @@ def generate_mock_offers(tender_id: str, car: dict) -> List[dict]:
 async def get_tenders(current_user: dict = Depends(get_current_user)):
     tenders = await db.tenders.find({"user_id": current_user["id"]}, {"_id": 0}).to_list(100)
     
+    # Get user's garage cars for image matching
+    garage_cars = await db.garage.find(
+        {"user_id": current_user["id"]},
+        {"_id": 0, "brand": 1, "model": 1, "image_url": 1}
+    ).to_list(100)
+    garage_image_map = {}
+    for gc in garage_cars:
+        key = (gc.get("brand", "").lower(), gc.get("model", "").lower())
+        img = gc.get("image_url", "")
+        if img and "unsplash.com" not in img:
+            garage_image_map[key] = img
+    
     # Enrich each tender with real contractor offers from tender_offers collection
     for tender in tenders:
         real_offers = await db.tender_offers.find(
@@ -4513,6 +2586,29 @@ async def get_tenders(current_user: dict = Depends(get_current_user)):
         existing_offers = tender.get("offers", [])
         tender["offers"] = real_offers + existing_offers
         tender["offers_count"] = len(tender["offers"])
+        
+        # Fix image_url: prefer garage image over stock
+        ci = tender.get("car_info") or {}
+        cr = tender.get("car_request") or {}
+        current_img = ci.get("image_url") or tender.get("image_url") or ""
+        
+        if not current_img or "unsplash.com" in current_img:
+            brand = (ci.get("brand") or cr.get("brand") or "").lower()
+            model = (ci.get("model") or cr.get("model") or "").lower()
+            garage_img = garage_image_map.get((brand, model))
+            
+            if not garage_img:
+                # Try partial match (brand only)
+                for (gb, gm), gimg in garage_image_map.items():
+                    if gb and gb == brand:
+                        garage_img = gimg
+                        break
+            
+            if garage_img:
+                if isinstance(ci, dict):
+                    ci["image_url"] = garage_img
+                    tender["car_info"] = ci
+                tender["image_url"] = garage_img
     
     return [TenderResponse(**t) for t in tenders]
 
@@ -4532,6 +2628,25 @@ async def get_tender(tender_id: str, current_user: dict = Depends(get_current_us
     existing_offers = tender.get("offers", [])
     tender["offers"] = real_offers + existing_offers
     tender["offers_count"] = len(tender["offers"])
+    
+    # Fix image_url: prefer garage image over stock
+    ci = tender.get("car_info") or {}
+    cr = tender.get("car_request") or {}
+    current_img = ci.get("image_url") or tender.get("image_url") or ""
+    
+    if not current_img or "unsplash.com" in current_img:
+        brand = (ci.get("brand") or cr.get("brand") or "").lower()
+        model = (ci.get("model") or cr.get("model") or "").lower()
+        if brand:
+            garage_car = await db.garage.find_one(
+                {"user_id": current_user["id"], "brand": {"$regex": f"^{brand}$", "$options": "i"}},
+                {"_id": 0, "image_url": 1}
+            )
+            if garage_car and garage_car.get("image_url") and "unsplash.com" not in garage_car["image_url"]:
+                if isinstance(ci, dict):
+                    ci["image_url"] = garage_car["image_url"]
+                    tender["car_info"] = ci
+                tender["image_url"] = garage_car["image_url"]
     
     return TenderResponse(**tender)
 
@@ -4592,250 +2707,7 @@ async def select_offer(tender_id: str, offer_id: str, current_user: dict = Depen
 
 # ==================== CONTRACTOR ENDPOINTS ====================
 
-# Demo contractor data
-DEMO_CONTRACTORS = [
-    # Inspection companies
-    {
-        "id": "insp-001",
-        "name": "ChinaAutoCheck",
-        "contractor_type": "inspection",
-        "description": "Профессиональная проверка автомобилей в Китае с выездом на место. Полный технический осмотр, проверка документов и истории авто.",
-        "services": "Визуальный осмотр, диагностика ходовой, проверка ЛКП толщиномером, сканирование ошибок, проверка VIN и документов, фото/видео отчет",
-        "price_range": "$150 - $300",
-        "phone": "+86 138 1234 5678",
-        "email": "check@chinaautocheck.com",
-        "website": "https://chinaautocheck.com",
-        "whatsapp": "+86 138 1234 5678",
-        "wechat": "chinaautocheck",
-        "telegram": "@chinaautocheck",
-        "rating": 4.8,
-        "deals_count": 342,
-        "is_verified": True,
-        "logo_url": None,
-        "created_at": "2024-01-01T00:00:00Z"
-    },
-    {
-        "id": "insp-002",
-        "name": "AutoExpert China",
-        "contractor_type": "inspection",
-        "description": "Независимая экспертиза автомобилей. Работаем по всему Китаю. Гарантия объективной оценки.",
-        "services": "Полная диагностика, проверка на ДТП, юридическая чистота, оценка рыночной стоимости, онлайн-консультация",
-        "price_range": "$100 - $250",
-        "phone": "+86 139 8765 4321",
-        "email": "info@autoexpert-china.com",
-        "website": "https://autoexpert-china.com",
-        "whatsapp": "+86 139 8765 4321",
-        "wechat": "autoexpertcn",
-        "telegram": "@autoexpertchina",
-        "rating": 4.6,
-        "deals_count": 218,
-        "is_verified": True,
-        "logo_url": None,
-        "created_at": "2024-02-15T00:00:00Z"
-    },
-    {
-        "id": "insp-003",
-        "name": "DriveCheck Pro",
-        "contractor_type": "inspection",
-        "description": "Быстрая и качественная проверка авто перед покупкой. Специализируемся на электромобилях и гибридах.",
-        "services": "Проверка батареи EV, диагностика электросистем, тест-драйв, проверка зарядных систем",
-        "price_range": "$200 - $400",
-        "phone": "+86 186 5555 1234",
-        "email": "pro@drivecheck.cn",
-        "website": None,
-        "whatsapp": "+86 186 5555 1234",
-        "wechat": "drivecheckpro",
-        "telegram": None,
-        "rating": 4.9,
-        "deals_count": 156,
-        "is_verified": False,
-        "logo_url": None,
-        "created_at": "2024-03-20T00:00:00Z"
-    },
-    # Export companies
-    {
-        "id": "exp-001",
-        "name": "SinoExport Group",
-        "contractor_type": "export",
-        "description": "Крупнейшая экспортная компания в Китае. Полное сопровождение сделки от покупки до отправки.",
-        "services": "Выкуп авто, оформление экспортных документов, таможенное оформление в Китае, страхование груза",
-        "price_range": "$500 - $1500",
-        "phone": "+86 21 5888 8888",
-        "email": "export@sinoexport.com",
-        "website": "https://sinoexport.com",
-        "whatsapp": "+86 21 5888 8888",
-        "wechat": "sinoexport",
-        "telegram": "@sinoexport",
-        "rating": 4.7,
-        "deals_count": 1250,
-        "is_verified": True,
-        "logo_url": None,
-        "created_at": "2023-06-01T00:00:00Z"
-    },
-    {
-        "id": "exp-002",
-        "name": "Dragon Auto Export",
-        "contractor_type": "export",
-        "description": "Надежный партнер для экспорта авто из Китая. Работаем с 2015 года.",
-        "services": "Покупка на аукционах, переговоры с продавцом, экспортное оформление, контроль качества перед отправкой",
-        "price_range": "$400 - $1200",
-        "phone": "+86 755 2666 8888",
-        "email": "info@dragonexport.cn",
-        "website": "https://dragonexport.cn",
-        "whatsapp": "+86 755 2666 8888",
-        "wechat": "dragonautoexp",
-        "telegram": "@dragonautoexport",
-        "rating": 4.5,
-        "deals_count": 890,
-        "is_verified": True,
-        "logo_url": None,
-        "created_at": "2023-08-15T00:00:00Z"
-    },
-    {
-        "id": "exp-003",
-        "name": "FastTrade China",
-        "contractor_type": "export",
-        "description": "Быстрый экспорт автомобилей. Минимальные сроки оформления документов.",
-        "services": "Срочный выкуп, ускоренное оформление, VIP-сопровождение сделки",
-        "price_range": "$600 - $2000",
-        "phone": "+86 20 3888 6666",
-        "email": "fast@fasttrade.cn",
-        "website": None,
-        "whatsapp": "+86 20 3888 6666",
-        "wechat": "fasttradecn",
-        "telegram": "@fasttradechina",
-        "rating": 4.3,
-        "deals_count": 445,
-        "is_verified": False,
-        "logo_url": None,
-        "created_at": "2024-01-10T00:00:00Z"
-    },
-    # Logistics companies
-    {
-        "id": "log-001",
-        "name": "EuroAsia Logistics",
-        "contractor_type": "logistics",
-        "description": "Международная логистика автомобилей. Доставка из Китая в Беларусь, Россию, Казахстан.",
-        "services": "Морская доставка, ж/д перевозка, автовозы, страхование, отслеживание груза онлайн",
-        "price_range": "$1500 - $3500",
-        "phone": "+375 29 111 2233",
-        "email": "logistics@euroasia-log.com",
-        "website": "https://euroasia-logistics.com",
-        "whatsapp": "+375 29 111 2233",
-        "wechat": None,
-        "telegram": "@euroasialog",
-        "rating": 4.8,
-        "deals_count": 2100,
-        "is_verified": True,
-        "logo_url": None,
-        "created_at": "2022-03-01T00:00:00Z"
-    },
-    {
-        "id": "log-002",
-        "name": "Silk Road Transport",
-        "contractor_type": "logistics",
-        "description": "Перевозка по Новому Шелковому пути. Оптимальное сочетание цены и скорости.",
-        "services": "Контейнерные перевозки, доставка до двери, таможенное оформление в РБ, хранение на складе",
-        "price_range": "$1200 - $2800",
-        "phone": "+375 33 444 5566",
-        "email": "info@silkroad-transport.by",
-        "website": "https://silkroad-transport.by",
-        "whatsapp": "+375 33 444 5566",
-        "wechat": "silkroadtrans",
-        "telegram": "@silkroadtransport",
-        "rating": 4.6,
-        "deals_count": 1560,
-        "is_verified": True,
-        "logo_url": None,
-        "created_at": "2022-09-15T00:00:00Z"
-    },
-    {
-        "id": "log-003",
-        "name": "Belarus Auto Delivery",
-        "contractor_type": "logistics",
-        "description": "Специализируемся на доставке авто в Беларусь. Собственный автопарк.",
-        "services": "Доставка автовозами, временное хранение, помощь в растаможке, доставка до города",
-        "price_range": "$800 - $2000",
-        "phone": "+375 44 777 8899",
-        "email": "delivery@belauto.by",
-        "website": None,
-        "whatsapp": "+375 44 777 8899",
-        "wechat": None,
-        "telegram": "@belautodelivery",
-        "rating": 4.4,
-        "deals_count": 670,
-        "is_verified": False,
-        "logo_url": None,
-        "created_at": "2023-11-20T00:00:00Z"
-    },
-    # Leasing companies
-    {
-        "id": "leas-001",
-        "name": "АвтоЛизинг БЕЛ",
-        "contractor_type": "leasing",
-        "description": "Лидер автолизинга в Беларуси. Выгодные условия для физических и юридических лиц. Быстрое оформление.",
-        "services": "Лизинг новых и б/у авто, минимальный первый взнос от 10%, срок до 7 лет, досрочное погашение без штрафов",
-        "price_range": "от 8.5% годовых",
-        "phone": "+375 17 336 0000",
-        "email": "info@avtoleasing.by",
-        "website": "https://avtoleasing.by",
-        "whatsapp": "+375 29 336 0000",
-        "wechat": None,
-        "telegram": "@avtoleasingby",
-        "rating": 4.9,
-        "deals_count": 3500,
-        "is_verified": True,
-        "logo_url": None,
-        "leasing_rate": 8.5,
-        "min_down_payment": 10,
-        "max_term_months": 84,
-        "created_at": "2020-01-15T00:00:00Z"
-    },
-    {
-        "id": "leas-002",
-        "name": "ПромЛизинг",
-        "contractor_type": "leasing",
-        "description": "Надежный партнер для бизнеса. Специальные условия для корпоративных клиентов и автопарков.",
-        "services": "Корпоративный лизинг, возвратный лизинг, лизинг электромобилей, страхование КАСКО в подарок",
-        "price_range": "от 9.0% годовых",
-        "phone": "+375 17 299 8800",
-        "email": "leasing@promleasing.by",
-        "website": "https://promleasing.by",
-        "whatsapp": "+375 29 299 8800",
-        "wechat": None,
-        "telegram": "@promleasingby",
-        "rating": 4.7,
-        "deals_count": 2800,
-        "is_verified": True,
-        "logo_url": None,
-        "leasing_rate": 9.0,
-        "min_down_payment": 15,
-        "max_term_months": 60,
-        "created_at": "2019-06-01T00:00:00Z"
-    },
-    {
-        "id": "leas-003",
-        "name": "СмартЛиз",
-        "contractor_type": "leasing",
-        "description": "Современный подход к лизингу. Онлайн-оформление за 1 день. Гибкие условия.",
-        "services": "Экспресс-лизинг, онлайн заявка, одобрение за 2 часа, без справок о доходах",
-        "price_range": "от 10.5% годовых",
-        "phone": "+375 44 555 1234",
-        "email": "hello@smartlease.by",
-        "website": "https://smartlease.by",
-        "whatsapp": "+375 44 555 1234",
-        "wechat": None,
-        "telegram": "@smartleaseby",
-        "rating": 4.5,
-        "deals_count": 1200,
-        "is_verified": False,
-        "logo_url": None,
-        "leasing_rate": 10.5,
-        "min_down_payment": 20,
-        "max_term_months": 48,
-        "created_at": "2022-03-10T00:00:00Z"
-    }
-]
+DEMO_CONTRACTORS = []
 
 @api_router.get("/contractors", response_model=List[ContractorResponse])
 async def get_contractors(contractor_type: Optional[str] = None):
@@ -5124,6 +2996,23 @@ async def create_help_request(data: dict, current_user: dict = Depends(get_curre
         except Exception as e:
             logger.error(f"Bitrix24 lead creation error: {e}")
     
+    # Telegram: Notify moderators about new help request
+    try:
+        moderator_chat_ids = await get_moderator_chat_ids()
+        client_name = f"{current_user.get('name', '')} {current_user.get('last_name', '')}".strip()
+        for chat_id in moderator_chat_ids:
+            await telegram_service.send_telegram_message(
+                chat_id,
+                f"📋 Новый запрос помощи менеджера\n\n"
+                f"Клиент: {client_name}\n"
+                f"Email: {current_user.get('email', '')}\n"
+                f"Телефон: {current_user.get('phone', '')}\n"
+                f"Описание: {description[:200]}\n\n"
+                f"Назначьте менеджера в панели модератора."
+            )
+    except Exception as e:
+        logger.error(f"Telegram moderator notification error (help request): {e}")
+    
     return {
         "message": "Запрос на помощь менеджера отправлен",
         "request_id": request_id
@@ -5149,6 +3038,7 @@ async def get_help_request(request_id: str, current_user: dict = Depends(get_cur
         raise HTTPException(status_code=404, detail="Запрос не найден")
     return request
 
+# Also update the client message endpoint to notify the manager
 @api_router.post("/help-requests/{request_id}/messages")
 async def send_help_request_message(
     request_id: str, 
@@ -5176,6 +3066,30 @@ async def send_help_request_message(
         {"id": request_id},
         {"$push": {"messages": message}}
     )
+    
+    # Telegram: Notify assigned manager about new message from client
+    try:
+        manager_id = request.get("assigned_manager_id")
+        if manager_id:
+            manager_user = await db.users.find_one({"id": manager_id})
+            if manager_user and manager_user.get("telegram_chat_id"):
+                client_name = f"{current_user.get('name', '')} {current_user.get('last_name', '')}".strip()
+                await telegram_service.send_telegram_message(
+                    manager_user["telegram_chat_id"],
+                    f"💬 Новое сообщение от клиента {client_name} (запрос помощи):\n\n{message['content'][:200]}"
+                )
+        else:
+            # No manager assigned - notify all moderators
+            moderator_chat_ids = await get_moderator_chat_ids()
+            for chat_id in moderator_chat_ids:
+                await telegram_service.send_telegram_message(
+                    chat_id,
+                    f"💬 Новое сообщение в запросе помощи (без менеджера):\n"
+                    f"Клиент: {current_user.get('name', '')}\n"
+                    f"{message['content'][:200]}"
+                )
+    except Exception as e:
+        logger.error(f"Telegram notification error (client message): {e}")
     
     return {"message": "Сообщение отправлено", "message_data": message}
 
@@ -5242,6 +3156,153 @@ async def request_manager_help(car_id: str, current_user: dict = Depends(get_cur
         "cost": MANAGER_HELP_COST,
         "new_balance": balance - MANAGER_HELP_COST
     }
+
+# ==================== MODERATOR HELP REQUESTS ====================
+
+@api_router.get("/moderator/help-requests")
+async def get_all_help_requests(current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Get all help requests for moderators"""
+    requests = await db.help_requests.find(
+        {},
+        {"_id": 0, "messages": 0}
+    ).sort("created_at", -1).to_list(100)
+    return requests
+
+@api_router.get("/moderator/help-requests/{request_id}")
+async def get_help_request_moderator(request_id: str, current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Get specific help request with messages for moderator"""
+    request = await db.help_requests.find_one(
+        {"id": request_id},
+        {"_id": 0}
+    )
+    if not request:
+        raise HTTPException(status_code=404, detail="Запрос не найден")
+    return request
+
+@api_router.get("/moderator/available-managers")
+async def get_available_managers(current_user: dict = Depends(require_role(["moderator", "admin"]))):
+    """Get list of moderators/admins available for assignment as managers"""
+    managers = await db.users.find(
+        {"role": {"$in": ["moderator", "admin"]}},
+        {"_id": 0, "id": 1, "name": 1, "last_name": 1, "email": 1, "role": 1}
+    ).to_list(50)
+    return managers
+
+@api_router.post("/moderator/help-requests/{request_id}/assign")
+async def assign_manager_to_help_request(
+    request_id: str,
+    data: dict,
+    current_user: dict = Depends(require_role(["moderator", "admin"]))
+):
+    """Assign a moderator as manager to a help request"""
+    manager_id = data.get("manager_id")
+    if not manager_id:
+        raise HTTPException(status_code=400, detail="manager_id обязателен")
+    
+    # Find the manager
+    manager = await db.users.find_one(
+        {"id": manager_id, "role": {"$in": ["moderator", "admin"]}},
+        {"_id": 0}
+    )
+    if not manager:
+        raise HTTPException(status_code=404, detail="Менеджер не найден")
+    
+    # Find the help request
+    request = await db.help_requests.find_one({"id": request_id})
+    if not request:
+        raise HTTPException(status_code=404, detail="Запрос не найден")
+    
+    manager_name = f"{manager.get('name', '')} {manager.get('last_name', '')}".strip()
+    
+    # Update the help request
+    await db.help_requests.update_one(
+        {"id": request_id},
+        {"$set": {
+            "assigned_manager_id": manager_id,
+            "assigned_manager_name": manager_name,
+            "status": "active",
+            "assigned_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Add system message about assignment
+    system_msg = {
+        "id": str(uuid.uuid4()),
+        "sender_id": "system",
+        "sender_name": "Система",
+        "sender_type": "system",
+        "content": f"Назначен менеджер: {manager_name}",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.help_requests.update_one(
+        {"id": request_id},
+        {"$push": {"messages": system_msg}}
+    )
+    
+    # Telegram: Notify client about assigned manager
+    try:
+        client_user = await db.users.find_one({"id": request.get("user_id")})
+        if client_user and client_user.get("telegram_chat_id"):
+            await telegram_service.send_telegram_message(
+                client_user["telegram_chat_id"],
+                f"✅ Вам назначен менеджер: {manager_name}\n\n"
+                f"Вы можете общаться в чате «Помощь менеджера» в разделе Документы."
+            )
+    except Exception as e:
+        logger.error(f"Telegram notification error (manager assigned): {e}")
+    
+    return {"message": f"Менеджер {manager_name} назначен", "manager_name": manager_name}
+
+@api_router.post("/moderator/help-requests/{request_id}/messages")
+async def send_help_request_message_moderator(
+    request_id: str,
+    data: dict,
+    current_user: dict = Depends(require_role(["moderator", "admin"]))
+):
+    """Send a message in help request chat as moderator/manager"""
+    request = await db.help_requests.find_one({"id": request_id})
+    if not request:
+        raise HTTPException(status_code=404, detail="Запрос не найден")
+    
+    message = {
+        "id": str(uuid.uuid4()),
+        "sender_id": current_user["id"],
+        "sender_name": f"{current_user.get('name', '')} {current_user.get('last_name', '')}".strip(),
+        "sender_type": "manager",
+        "content": data.get("content", ""),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.help_requests.update_one(
+        {"id": request_id},
+        {"$push": {"messages": message}}
+    )
+    
+    # Telegram: Notify client about new message from manager
+    try:
+        client_user = await db.users.find_one({"id": request.get("user_id")})
+        if client_user and client_user.get("telegram_chat_id"):
+            sender_name = message["sender_name"]
+            await telegram_service.send_telegram_message(
+                client_user["telegram_chat_id"],
+                f"💬 Новое сообщение от менеджера {sender_name}:\n\n{message['content'][:200]}"
+            )
+    except Exception as e:
+        logger.error(f"Telegram notification error (manager message): {e}")
+    
+    return {"message": "Сообщение отправлено", "message_data": message}
+
+@api_router.post("/moderator/help-requests/{request_id}/close")
+async def close_help_request(
+    request_id: str,
+    current_user: dict = Depends(require_role(["moderator", "admin"]))
+):
+    """Close a help request"""
+    await db.help_requests.update_one(
+        {"id": request_id},
+        {"$set": {"status": "closed", "closed_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "Запрос закрыт"}
 
 # ==================== HOT DEALS ENDPOINTS ====================
 
@@ -5561,12 +3622,81 @@ async def create_contractor_application(application: ContractorApplicationCreate
     await db.contractor_applications.insert_one(app_data)
     return {"message": "Application submitted successfully", "application_id": app_id}
 
+# Contractor application file uploads
+APP_FILES_DIR = Path(__file__).parent / "uploads" / "applications"
+APP_FILES_DIR.mkdir(parents=True, exist_ok=True)
+
+@api_router.post("/contractor-applications/{app_id}/files")
+async def upload_application_file(
+    app_id: str,
+    file: UploadFile = File(...),
+    category: str = Form("document"),
+    title: str = Form("")
+):
+    """Upload a file to a contractor application (certificates, licenses, etc.)"""
+    app = await db.contractor_applications.find_one({"id": app_id})
+    if not app:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+    
+    content = await file.read()
+    if len(content) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Макс. размер 20MB")
+    
+    file_id = str(uuid.uuid4())
+    ext = Path(file.filename).suffix.lower() if file.filename else ""
+    saved_name = f"{file_id}{ext}"
+    
+    adir = APP_FILES_DIR / app_id
+    adir.mkdir(exist_ok=True)
+    with open(adir / saved_name, "wb") as f:
+        f.write(content)
+    
+    file_doc = {
+        "id": file_id,
+        "application_id": app_id,
+        "category": category,
+        "title": title or file.filename,
+        "original_name": file.filename,
+        "saved_name": saved_name,
+        "size": len(content),
+        "mime_type": file.content_type,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.application_files.insert_one(file_doc)
+    return {"id": file_id, "category": category, "original_name": file.filename}
+
+@api_router.get("/contractor-applications/{app_id}/files")
+async def get_application_files(app_id: str):
+    """Get files for a contractor application"""
+    files = await db.application_files.find({"application_id": app_id}, {"_id": 0}).to_list(50)
+    return files
+
+@api_router.get("/application-files/{file_id}/download")
+async def download_application_file(file_id: str):
+    """Download an application file (public for moderators)"""
+    file_doc = await db.application_files.find_one({"id": file_id}, {"_id": 0})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+    file_path = APP_FILES_DIR / file_doc["application_id"] / file_doc["saved_name"]
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Файл не найден на сервере")
+    return FileResponse(
+        path=str(file_path),
+        filename=file_doc["original_name"],
+        media_type=file_doc.get("mime_type", "application/octet-stream")
+    )
+
+
+
 # ==================== MODERATOR ENDPOINTS ====================
 
 @api_router.get("/moderator/applications")
 async def get_contractor_applications(current_user: dict = Depends(require_role(["admin", "moderator"]))):
     """Get all contractor applications (moderator only)"""
     applications = await db.contractor_applications.find({}, {"_id": 0}).to_list(100)
+    for app in applications:
+        files = await db.application_files.find({"application_id": app["id"]}, {"_id": 0}).to_list(50)
+        app["files"] = files
     return applications
 
 @api_router.post("/moderator/applications/{app_id}/approve")
@@ -5870,8 +4000,13 @@ async def get_moderator_stage_files(deal_id: str, stage_key: str, current_user: 
     return files
 
 @api_router.get("/moderator/deals/{deal_id}/files/{file_id}/download")
-async def download_moderator_deal_file(deal_id: str, file_id: str, current_user: dict = Depends(require_role(["admin", "moderator"]))):
-    """Download a file from a deal (moderator)"""
+async def download_moderator_deal_file(
+    deal_id: str, 
+    file_id: str, 
+    token: str = None,
+    current_user: dict = Depends(require_role(["admin", "moderator"]))
+):
+    """Download a file from a deal (moderator). Supports auth via query param for image previews."""
     file_doc = await db.deal_files.find_one({"id": file_id, "deal_id": deal_id}, {"_id": 0})
     if not file_doc:
         raise HTTPException(status_code=404, detail="Файл не найден")
@@ -5886,9 +4021,84 @@ async def download_moderator_deal_file(deal_id: str, file_id: str, current_user:
         media_type=file_doc.get("mime_type", "application/octet-stream")
     )
 
+@api_router.post("/moderator/deals/{deal_id}/stages/{stage_key}/messages")
+async def send_moderator_stage_message(
+    deal_id: str,
+    stage_key: str,
+    data: dict,
+    current_user: dict = Depends(require_role(["admin", "moderator"]))
+):
+    """Send a message to a deal stage chat as moderator"""
+    deal = await db.deals.find_one({"id": deal_id})
+    if not deal:
+        raise HTTPException(status_code=404, detail="Сделка не найдена")
+    
+    content = data.get("content", "").strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="Сообщение не может быть пустым")
+    
+    sender_name = f"{current_user.get('name', '')} {current_user.get('last_name', '')}".strip() or "Модератор"
+    
+    message_doc = {
+        "id": str(uuid.uuid4()),
+        "deal_id": deal_id,
+        "stage_key": stage_key,
+        "sender_id": current_user["id"],
+        "sender_name": sender_name,
+        "sender_type": "moderator",
+        "content": content,
+        "file_ids": [],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "read_by_client": False,
+        "read_by_contractor": False,
+        "source": "platform"
+    }
+    await db.deal_messages.insert_one(message_doc)
+    
+    # Telegram: Notify client
+    try:
+        client_user = await db.users.find_one({"id": deal.get("user_id")})
+        if client_user and client_user.get("telegram_chat_id"):
+            stage_labels = {
+                'leasing': 'Лизинг', 'inspection': 'Инспекция', 'export': 'Выкуп',
+                'logistics_china': 'Доставка (Китай)', 'insurance': 'Страхование',
+                'delivery_rb': 'Доставка (РБ)', 'customs': 'Таможня', 'completion': 'Завершение'
+            }
+            stage_label = stage_labels.get(stage_key, stage_key)
+            car_info = deal.get("car_info", {})
+            car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip()
+            await telegram_service.send_telegram_message(
+                client_user["telegram_chat_id"],
+                f"💬 Сообщение от модератора ({sender_name})\n"
+                f"Сделка: {car_name}\n"
+                f"Этап: {stage_label}\n\n"
+                f"{content[:200]}"
+            )
+    except Exception as e:
+        logger.error(f"Telegram notification error (moderator stage message): {e}")
+    
+    # Telegram: Notify contractor
+    try:
+        stages = deal.get("stages", {})
+        stage_data = stages.get(stage_key, {})
+        contractor_id = stage_data.get("contractor_id")
+        if contractor_id:
+            contractor = await db.contractors.find_one({"id": contractor_id})
+            if contractor and contractor.get("telegram_chat_id"):
+                await telegram_service.send_telegram_message(
+                    contractor["telegram_chat_id"],
+                    f"💬 Сообщение от модератора ({sender_name})\n"
+                    f"Этап: {stage_labels.get(stage_key, stage_key)}\n\n"
+                    f"{content[:200]}"
+                )
+    except Exception as e:
+        logger.error(f"Telegram notification error (moderator to contractor): {e}")
+    
+    return {"message": "Сообщение отправлено", "id": message_doc["id"]}
+
 @api_router.get("/moderator/tenders")
 async def get_all_tenders_moderator(current_user: dict = Depends(require_role(["admin", "moderator"]))):
-    """Get all tenders for moderator"""
+    """Get all tenders for moderator with full details and offers"""
     tenders = await db.tenders.find({}, {"_id": 0}).to_list(100)
     
     result = []
@@ -5898,17 +4108,38 @@ async def get_all_tenders_moderator(current_user: dict = Depends(require_role(["
         if car_id:
             car = await db.garage.find_one({"id": car_id}, {"_id": 0})
         
+        # Get user info
+        user = None
+        if tender.get("user_id"):
+            user = await db.users.find_one({"id": tender["user_id"]}, {"_id": 0, "password_hash": 0})
+        
+        # Get offers with files
+        offers = await db.tender_offers.find({"tender_id": tender["id"]}, {"_id": 0}).sort("created_at", -1).to_list(50)
+        for offer in offers:
+            files = await db.offer_files.find({"offer_id": offer["id"]}, {"_id": 0}).to_list(20)
+            offer["files"] = files
+        
+        cr = tender.get("car_request", {})
+        
         result.append({
             "id": tender["id"],
             "car_id": car_id,
-            "car_brand": car["brand"] if car else tender.get("brand", "Unknown"),
-            "car_model": car["model"] if car else tender.get("model", "Unknown"),
+            "car_brand": car["brand"] if car else (cr.get("brand") or tender.get("brand", "")),
+            "car_model": car["model"] if car else (cr.get("model") or tender.get("model", "")),
             "budget": car.get("calculated_price_usd", 0) if car else tender.get("budget", 0),
-            "offers_count": len(tender.get("offers", [])),
+            "car_request": cr,
+            "car_info": {"brand": car["brand"], "model": car["model"]} if car else None,
+            "user_name": f"{user.get('first_name', '')} {user.get('last_name', '')}".strip() if user else "",
+            "user_email": user.get("email", "") if user else "",
+            "offers": offers,
+            "offers_count": len(offers),
             "status": tender.get("status", "active"),
+            "type": tender.get("type", ""),
+            "application_id": tender.get("application_id"),
             "created_at": tender.get("created_at", "")
         })
     
+    result.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     return result
 
 class ModeratorTenderCreate(BaseModel):
@@ -6291,98 +4522,93 @@ async def chat_with_ai(message: ChatMessage):
     except Exception as e:
         logger.error(f"Failed to get catalog summary: {e}")
     
-    system_message = f"""Ты - AI-консультант платформы CARBRIDGE по подбору автомобилей из Китая.
-
-ТВОЯ ГЛАВНАЯ ЗАДАЧА: Помочь клиенту с подбором авто, ответить на вопросы о платформе, рассчитать стоимость и проконсультировать по этапам сделки.
+    system_message = f"""Ты - AI-консультант платформы CARBRIDGE. Твоя задача — помогать клиентам ориентироваться в работе платформы, подбирать авто из каталога и консультировать по всем вопросам импорта.
 
 {catalog_summary}
 
 === О ПЛАТФОРМЕ CARBRIDGE ===
 
-CARBRIDGE - это прозрачная платформа для импорта автомобилей из Китая в Беларусь.
+CARBRIDGE — это не автосалон, а мост доверия между покупателем и автомобилем. Мы не просто связываем клиента и продавца — мы создаём безопасный маршрут к покупке авто «под ключ».
 
-ПРЕИМУЩЕСТВА:
-✅ Тендерная система - подрядчики конкурируют за заказ, вы выбираете лучшее предложение
-✅ Полный контроль - отслеживайте каждый этап сделки в личном кабинете
-✅ Верифицированные подрядчики - все подрядчики проверены модераторами
-✅ AI-помощник - помогу подобрать авто и рассчитать стоимость
-✅ Защита сделки - деньги списываются только после одобрения каждого этапа
+ОСНОВНОЙ ПОСЫЛ: «Мы не продаём автомобили — мы соединяем доверие и выгоду»
 
-ЭТАПЫ СДЕЛКИ (8 этапов):
-1. 📋 ЛИЗИНГ - оформление лизинга в Китае (если нужно)
-2. 🔍 ИНСПЕКЦИЯ - проверка авто на месте в Китае
-3. 💰 ВЫКУП - покупка авто у продавца
-4. 🚢 ДОСТАВКА (КИТАЙ) - транспортировка до порта
-5. 🛡️ СТРАХОВАНИЕ - страховка на перевозку
-6. 🚛 ДОСТАВКА (РБ) - морская/ж.д. доставка в Беларусь
-7. 📦 ТАМОЖНЯ - таможенное оформление в РБ
-8. ✅ ЗАВЕРШЕНИЕ - получение авто
+МИССИЯ: Сделать покупку автомобиля из Китая и зарубежных рынков прозрачной, безопасной и простой.
 
-СТОИМОСТЬ ДОСТАВКИ (примерно):
+ЦЕННОСТИ БРЕНДА:
+- Прозрачность — все процессы видны клиенту: от выбора до логистики и растаможки
+- Безопасность — юридический контроль, проверка контрактов и VIN
+- Технологичность — цифровая платформа с личным кабинетом, тендером и калькулятором
+- Доверие — CarBridge берёт ответственность за проверку и сопровождение сделки
+
+КОМИССИЯ: 3% от стоимости автомобиля (FOB Китай) + 1.5% при оплате через платформу (включает банковские издержки и гарантию безопасности).
+
+=== 7 ШАГОВ К ЧЕСТНОЙ МАШИНЕ ===
+
+1. СОЗДАНИЕ ЗАПРОСА — Клиент описывает авто мечты или выбирает из каталога Che168. AI помогает определить параметры и бюджет.
+2. ПОДБОР ПОДРЯДЧИКОВ — Заявка попадает к проверенным подрядчикам со статусом Verified Partner.
+3. ТЕНДЕР — Подрядчики конкурируют за заказ, предлагая лучшие условия. Клиент сравнивает предложения и выбирает.
+4. ДОГОВОР И ОПЛАТА — Заключение договора через платформу. Деньги переводятся поэтапно — только после подтверждения.
+5. ПРОВЕРКА И ФОТО-ПАКЕТ — Инспекция авто в Китае: VIN-проверка, фото, видеообзор, отчёт о состоянии.
+6. ЛОГИСТИКА И GPS-ТРЕК — GPS-трекинг в реальном времени, фото/видео отчёты на каждом этапе.
+7. ПЕРЕДАЧА АВТО — Таможенное оформление и выдача с документами в Беларуси.
+
+=== ПРОВЕРКА ПОДРЯДЧИКОВ ===
+
+CarBridge допускает подрядчиков только после комплексной проверки:
+- Юридическое лицо (лицензии, регистрация, контакты)
+- Фото офиса или склада
+- История сделок и отзывы
+- Видеосвязь с менеджером CarBridge (раз в год)
+После допуска подрядчик получает статус Verified Partner.
+
+=== РАЗДЕЛЫ ЛИЧНОГО КАБИНЕТА ===
+
+Объясняй клиенту как пользоваться платформой:
+- ОБЗОР (/dashboard) — сводка по всем активным сделкам и уведомлениям
+- ГАРАЖ (/dashboard/garage) — сохранённые автомобили с расчётом стоимости. Авто можно добавить по ссылке с Che168, 58.com и др.
+- ЗАЯВКИ (/dashboard/applications) — создание и управление запросами на автомобиль
+- ТЕНДЕРЫ (/dashboard/tenders) — просмотр предложений от подрядчиков по заявке
+- ДОКУМЕНТЫ (/dashboard/documents) — этапы активной сделки, чаты, загрузка файлов, инфографика статуса
+- ПРИОБРЕТЁННЫЕ АВТО (/dashboard/purchased) — завершённые сделки
+- КАТАЛОГ (/catalog) — поиск автомобилей по каталогу Che168
+- КАЛЬКУЛЯТОР (/calculator) — расчёт полной стоимости под ключ в Беларуси (с учётом Указа 140)
+
+=== СТОИМОСТЬ ДОСТАВКИ (примерно) ===
 - Доставка из Китая: $1,500 - $3,000
-- Таможня РБ: ~50% от стоимости авто для физлиц
+- Таможня РБ: ~50% от стоимости авто для физлиц (электромобили — 0%)
 - Страхование: ~1-2% от стоимости авто
-- Общий срок: 30-60 дней
+- Общий срок: 30-45 дней
 
-КАЛЬКУЛЯТОР СТОИМОСТИ:
-Формула: Цена в Китае + Доставка (~$2,000) + Таможня (50%) + Услуги платформы (5%)
-Пример: Авто ¥100,000 (~$14,000) → Итого ~$25,000-27,000 в Беларуси
+УКАЗ 140: Многодетные семьи, инвалиды I-II групп и родители детей-инвалидов получают 50% скидку на таможенные пошлины.
 
 === СТРУКТУРА ОПРОСА ДЛЯ ПОДБОРА АВТО ===
 
-📋 ЭТАП 1 - ЗНАКОМСТВО:
-- Представься и спроси имя клиента
-- Уточни город доставки
+Когда клиент хочет подобрать авто, задавай вопросы последовательно:
+1. Имя и город доставки
+2. Марка/модель (или «любая»), год от, тип кузова, тип двигателя
+3. Коробка, привод, цвет
+4. Новый/с пробегом, макс. пробег
+5. Бюджет (цена в Китае или под ключ в РБ)
+6. Приоритеты: цена, надёжность, технологичность, престиж, экономичность
 
-📋 ЭТАП 2 - ОСНОВНЫЕ ТРЕБОВАНИЯ:
-- Какую марку/модель рассматривает? (или "любую")
-- Год выпуска: от какого года?
-- Тип кузова: седан, кроссовер, хэтчбек, минивэн, пикап?
-- Тип двигателя: бензин, дизель, электро, гибрид?
+После сбора данных — ОБЯЗАТЕЛЬНО предложи 3-5 вариантов авто из каталога.
 
-📋 ЭТАП 3 - ДЕТАЛИ:
-- Коробка передач: механика, автомат, робот, вариатор?
-- Привод: передний, задний, полный?
-- Предпочтения по цвету кузова и салона?
+=== КЛЮЧЕВЫЕ ПРАВИЛА ===
 
-📋 ЭТАП 4 - СОСТОЯНИЕ:
-- Новый или с пробегом?
-- Максимальный пробег (если б/у)?
-- Допустимы ли мелкие повреждения?
-
-📋 ЭТАП 5 - БЮДЖЕТ:
-- Бюджет в юанях/долларах (цена в Китае)?
-- Или общий бюджет с доставкой и таможней?
-- Срочность покупки?
-
-📋 ЭТАП 6 - ПРИОРИТЕТЫ (от 1 до 5):
-- Что важнее: цена, надёжность, технологичность, престиж, экономичность?
-
-=== ВАЖНЫЕ ПРАВИЛА ===
-
-1. После каждого ответа клиента КРАТКО подтверди понимание и задай следующий вопрос
-2. Когда соберёшь основные данные (марка/кузов, бюджет, год) - ОБЯЗАТЕЛЬНО предложи 5 вариантов авто
-3. Формат рекомендаций:
-
-🚗 ПОДОБРАННЫЕ ВАРИАНТЫ:
-1. [Марка Модель] - ¥[цена] ([год] г., [пробег] км, [тип двигателя])
-2. ...
-
-4. После рекомендаций ВСЕГДА предлагай:
-   - "Хотите посмотреть детали любого авто? Перейдите в каталог: /catalog"
-   - "Готовы оформить заявку? Зарегистрируйтесь и создайте заявку в личном кабинете"
-
-5. Если клиент спрашивает о платформе/услугах - отвечай на основе информации выше
-
-6. Если спрашивает о расчёте стоимости - используй формулу калькулятора
-
-7. Если спрашивает об этапах сделки - опиши 8 этапов
+1. После каждого ответа клиента кратко подтверди понимание и задай следующий вопрос
+2. Если клиент спрашивает о платформе — давай конкретную навигацию: «Перейдите в раздел Гараж → добавьте авто по ссылке»
+3. При рекомендациях авто используй формат:
+   [Марка Модель] — ¥[цена] ([год], [пробег], [двигатель])
+4. Всегда предлагай следующий шаг: «Хотите посмотреть каталог? /catalog» или «Создайте заявку в кабинете: /dashboard/applications»
+5. Если спрашивают про расчёт — направь в калькулятор: /calculator
+6. Если интересуют горящие предложения — направь на /hot-deals
 
 СТИЛЬ ОБЩЕНИЯ:
-- Дружелюбный, профессиональный
+- Профессиональный и дружелюбный
 - Краткие ответы (2-4 предложения + вопрос)
-- Используй эмодзи умеренно
-- Отвечай ТОЛЬКО на русском языке"""
+- Без избыточных эмодзи
+- Отвечай ТОЛЬКО на русском языке
+- Позиционируй CarBridge как арбитра и гаранта безопасности, а не как продавца авто"""
 
     try:
         # Get chat history from database
@@ -6402,13 +4628,13 @@ CARBRIDGE - это прозрачная платформа для импорта
         car_context = ""
         
         # If user mentions budget or specific requirements, search catalog
-        if any(word in user_text for word in ['бюджет', 'цена', 'юаней', 'долларов', 'подбери', 'покажи', 'варианты', 'рекомендуй']):
+        if any(word in user_text for word in ['бюджет', 'цена', 'юаней', 'долларов', 'подбери', 'покажи', 'варианты', 'рекомендуй', 'авто', 'машин', 'кроссовер', 'седан', 'электро', 'электромобиль', 'каталог']):
             try:
                 # Parse potential filters from message
                 search_params = {}
                 
                 # Try to extract brand
-                brands = ['byd', 'geely', 'changan', 'haval', 'chery', 'nio', 'li auto', 'xpeng', 'jac', 'dfsk', 'faw', 'gac', 'saic']
+                brands = ['byd', 'geely', 'changan', 'haval', 'chery', 'nio', 'li auto', 'xpeng', 'jac', 'dfsk', 'faw', 'gac', 'saic', 'zeekr', 'avatr', 'aito', 'tank', 'wey', 'bmw', 'mercedes', 'audi', 'mazda', 'honda', 'toyota', 'volkswagen', 'icar', 'jetour', 'omoda', 'exeed', 'lixiang', 'lynk', 'dongfeng', 'greatwall', 'leap', 'smart', 'mini', 'volvo', 'tesla']
                 for brand in brands:
                     if brand in user_text:
                         search_params['mark'] = brand.upper()
@@ -6466,12 +4692,13 @@ CARBRIDGE - это прозрачная платформа для импорта
 
 @api_router.post("/parse-url", response_model=ParsedCarData)
 async def parse_car_url(request: ParseUrlRequest):
-    """Parse car listing URL from Chinese platforms and extract car data using AI"""
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    """Parse car listing URL from Chinese platforms and extract car data"""
+    import json
+    import re
+    from services.che168 import Che168API
     
     url = request.url.strip()
     
-    # Validate URL
     supported_domains = ['che168.com', '58.com', 'guazi.com', 'dongchedi.com', 'autohome.com.cn', 'taoche.com']
     is_supported = any(domain in url for domain in supported_domains)
     
@@ -6483,13 +4710,117 @@ async def parse_car_url(request: ParseUrlRequest):
         )
     
     try:
-        # Fetch the page content
+        # --- CHE168 / AUTOHOME: use API instead of scraping ---
+        if 'che168.com' in url or 'autohome.com.cn' in url or 'taoche.com' in url:
+            # Extract inner_id from URL: last number before .html
+            id_match = re.search(r'/(\d{5,})\.html', url)
+            if not id_match:
+                # Fallback: last sequence of 5+ digits
+                id_matches = re.findall(r'(\d{5,})', url)
+                if id_matches:
+                    id_match_val = id_matches[-1]
+                else:
+                    return ParsedCarData(
+                        success=False, source_url=url,
+                        error="Не удалось определить ID объявления из ссылки. Проверьте URL."
+                    )
+            else:
+                id_match_val = id_match.group(1)
+            
+            inner_id = id_match_val
+            logger.info(f"Parsing che168 URL, inner_id={inner_id}")
+            
+            offer = await Che168API.get_offer_details(inner_id)
+            if not offer:
+                return ParsedCarData(
+                    success=False, source_url=url,
+                    error="Объявление не найдено или удалено. Попробуйте другую ссылку."
+                )
+            
+            # offer can be {"result": {...}} or flat dict
+            data = offer.get("result", {}).get("data", {}) if isinstance(offer.get("result"), dict) else offer
+            if not data.get("mark") and not data.get("model"):
+                data = offer  # flat response
+            
+            # Parse images
+            images = data.get("images", [])
+            if isinstance(images, str):
+                try:
+                    images = json.loads(images)
+                except:
+                    images = []
+            image_url = images[0] if images else None
+            
+            # Parse price (in CNY)
+            price_raw = data.get("price", 0)
+            try:
+                price_cny = float(price_raw) if price_raw else None
+            except:
+                price_cny = None
+            
+            # Parse year
+            year_raw = data.get("year")
+            try:
+                year = int(year_raw) if year_raw else None
+            except:
+                year = None
+            
+            # Parse mileage (in km)
+            km_raw = data.get("km_age", 0)
+            try:
+                mileage = int(km_raw) if km_raw else None
+            except:
+                mileage = None
+            
+            # Engine type
+            engine_type = Che168API.map_engine_type(data.get("engine_type", ""))
+            
+            # Engine volume (displacement in liters -> cc)
+            disp = data.get("displacement", "0")
+            try:
+                disp_float = float(disp) if disp else 0
+                engine_volume = int(disp_float * 1000) if disp_float else None
+            except:
+                engine_volume = None
+            
+            # Description
+            desc_parts = []
+            if data.get("color"):
+                desc_parts.append(f"Цвет: {data['color']}")
+            if data.get("transmission_type"):
+                desc_parts.append(f"КПП: {data['transmission_type']}")
+            if data.get("drive_type"):
+                desc_parts.append(f"Привод: {data['drive_type']}")
+            if data.get("power"):
+                desc_parts.append(f"Мощность: {data['power']} л.с.")
+            if data.get("body_type"):
+                desc_parts.append(f"Кузов: {data['body_type']}")
+            if data.get("address"):
+                desc_parts.append(f"Местоположение: {data['address']}")
+            description = ". ".join(desc_parts) if desc_parts else data.get("description", "")
+            
+            return ParsedCarData(
+                success=True,
+                brand=data.get("mark"),
+                model=data.get("model"),
+                year=year,
+                price_cny=price_cny,
+                engine_type=engine_type,
+                engine_volume=engine_volume,
+                mileage=mileage,
+                image_url=image_url,
+                description=description,
+                source_url=url
+            )
+        
+        # --- OTHER PLATFORMS: scrape + AI ---
         req_headers = {
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-            'Accept-Encoding': 'gzip, deflate',
+            'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
+            'Referer': 'https://www.baidu.com/',
         }
         
         async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as http_client:
@@ -6497,33 +4828,29 @@ async def parse_car_url(request: ParseUrlRequest):
             
             if response.status_code != 200:
                 return ParsedCarData(
-                    success=False,
-                    source_url=url,
+                    success=False, source_url=url,
                     error=f"Не удалось загрузить страницу (код {response.status_code}). Попробуйте ввести данные вручную."
                 )
             
             html_content = response.text
             
-            # Check if page has meaningful content
-            if len(html_content) < 1000:
+            if len(html_content) < 500:
                 return ParsedCarData(
-                    success=False,
-                    source_url=url,
+                    success=False, source_url=url,
                     error="Страница пуста или защищена. Введите данные вручную."
                 )
             
-            # Limit content size for AI processing
             if len(html_content) > 50000:
                 html_content = html_content[:50000]
         
-        # Use AI to extract car data from HTML
         api_key = os.environ.get("EMERGENT_LLM_KEY")
         if not api_key:
             return ParsedCarData(
-                success=False,
-                source_url=url,
+                success=False, source_url=url,
                 error="AI сервис не настроен"
             )
+        
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
         
         extraction_prompt = f"""Извлеки информацию об автомобиле из HTML-страницы китайской площадки.
 
@@ -6540,15 +4867,15 @@ HTML содержимое (фрагмент):
 
 Верни данные в формате JSON:
 {{
-    "brand": "марка авто (BYD, Li Auto, Geely, Chery, Haval, NIO, Changan, Hongqi, Zeekr, Xpeng, Volkswagen, Toyota и др.)",
+    "brand": "марка авто",
     "model": "модель авто",
-    "year": число (год выпуска, 2015-2025),
-    "price_cny": число (цена в юанях. ВАЖНО: если цена в 万, умножь на 10000. Например 15.8万 = 158000),
-    "engine_type": "ice" или "hybrid" или "electric" (определи по названию модели или характеристикам),
+    "year": число (год выпуска),
+    "price_cny": число (цена в юанях. Если цена в 万, умножь на 10000),
+    "engine_type": "ice" или "hybrid" или "electric",
     "engine_volume": число (объем в см³) или null,
-    "mileage": число (пробег в км. ВАЖНО: если в 万公里, умножь на 10000) или null,
+    "mileage": число (пробег в км. Если в 万公里, умножь на 10000) или null,
     "image_url": "URL фото авто" или null,
-    "description": "краткое описание на русском (цвет, комплектация, состояние)"
+    "description": "краткое описание на русском"
 }}
 
 Верни ТОЛЬКО валидный JSON без пояснений."""
@@ -6561,49 +4888,33 @@ HTML содержимое (фрагмент):
         
         ai_response = await chat.send_message(UserMessage(text=extraction_prompt))
         
-        # Parse AI response
-        import json
-        import re
-        
-        # Try to extract JSON from response - handle nested braces
         json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', ai_response, re.DOTALL)
         if not json_match:
-            # Try simpler pattern
             json_match = re.search(r'\{.*?\}', ai_response, re.DOTALL)
         
         if json_match:
             try:
                 data = json.loads(json_match.group())
                 
-                # Check if we got at least brand or model
                 if not data.get('brand') and not data.get('model'):
                     return ParsedCarData(
-                        success=False,
-                        source_url=url,
-                        error="Не удалось определить марку/модель авто. Страница может быть защищена. Введите данные вручную."
+                        success=False, source_url=url,
+                        error="Не удалось определить марку/модель авто. Введите данные вручную."
                     )
                 
-                # Validate and convert data
                 engine_type = data.get('engine_type', 'ice')
                 if engine_type not in ['ice', 'hybrid', 'electric']:
                     engine_type = 'ice'
                 
-                # Safe number conversion
                 def safe_int(val):
-                    if val is None:
-                        return None
-                    try:
-                        return int(float(val))
-                    except:
-                        return None
+                    if val is None: return None
+                    try: return int(float(val))
+                    except: return None
                 
                 def safe_float(val):
-                    if val is None:
-                        return None
-                    try:
-                        return float(val)
-                    except:
-                        return None
+                    if val is None: return None
+                    try: return float(val)
+                    except: return None
                 
                 return ParsedCarData(
                     success=True,
@@ -6622,22 +4933,19 @@ HTML содержимое (фрагмент):
                 logger.error(f"Failed to parse AI response: {e}, response: {ai_response[:500]}")
         
         return ParsedCarData(
-            success=False,
-            source_url=url,
-            error="Не удалось извлечь данные. Страница может быть защищена от парсинга. Введите данные вручную."
+            success=False, source_url=url,
+            error="Не удалось извлечь данные. Попробуйте ввести данные вручную."
         )
         
     except httpx.TimeoutException:
         return ParsedCarData(
-            success=False,
-            source_url=url,
+            success=False, source_url=url,
             error="Превышено время ожидания. Китайский сайт не отвечает."
         )
     except Exception as e:
         logger.error(f"URL parsing error: {e}")
         return ParsedCarData(
-            success=False,
-            source_url=url,
+            success=False, source_url=url,
             error=f"Ошибка при обработке ссылки: {str(e)}"
         )
 
@@ -7431,7 +5739,30 @@ async def start_tender_from_application(application_id: str, current_user: dict 
             "year_to": app.get("year_to"),
             "budget_min": app.get("budget_min"),
             "budget_max": app.get("budget_max"),
-            "budget_currency": app.get("budget_currency")
+            "budget_currency": app.get("budget_currency"),
+            "budget_china_from": app.get("budget_china_from"),
+            "budget_china_to": app.get("budget_china_to"),
+            "budget_total": app.get("budget_total"),
+            "drive_type": app.get("drive_type"),
+            "transmission": app.get("transmission"),
+            "mileage_max": app.get("mileage_max"),
+            "car_condition": app.get("car_condition"),
+            "body_color": app.get("body_color"),
+            "interior_color": app.get("interior_color"),
+            "interior_material": app.get("interior_material"),
+            "purchase_timeline": app.get("purchase_timeline"),
+            "payment_method": app.get("payment_method"),
+            "customs_clearance": app.get("customs_clearance"),
+            "delivery_city": app.get("delivery_city"),
+            "full_name": app.get("full_name"),
+            "additional_requirements": app.get("additional_requirements"),
+            "options_electronic": app.get("options_electronic", []),
+            "options_comfort": app.get("options_comfort", []),
+            "options_exterior": app.get("options_exterior", []),
+            "options_other": app.get("options_other", []),
+            "power_from": app.get("power_from"),
+            "power_to": app.get("power_to"),
+            "engine_volume": app.get("engine_volume"),
         },
         "offers": [],
         "created_at": datetime.now(timezone.utc).isoformat()
@@ -7772,7 +6103,8 @@ async def register_contractor(data: ContractorRegister):
     
     return {
         "message": "Заявка на регистрацию подрядчика отправлена. После одобрения вы сможете войти с указанным паролем.",
-        "contractor_id": contractor_id
+        "contractor_id": contractor_id,
+        "application_id": contractor_id
     }
 
 @api_router.post("/contractors/login")
@@ -7848,11 +6180,54 @@ async def get_contractor_dashboard(contractor: dict = Depends(get_current_contra
         {"_id": 0}
     ).to_list(100)
     
-    # Get applications looking for contractors
-    applications = await db.applications.find(
-        {"status": {"$in": ["new", "in_progress"]}},
+    # Get active deals for this contractor
+    active_deals_cursor = db.deals.find(
+        {"status": {"$ne": "completed"}},
         {"_id": 0}
-    ).sort("created_at", -1).to_list(50)
+    )
+    all_active_deals = await active_deals_cursor.to_list(200)
+    active_deals_count = 0
+    for d in all_active_deals:
+        stages = d.get("stages", {})
+        if isinstance(stages, dict):
+            for sv in stages.values():
+                if sv.get("contractor_id") == contractor["id"]:
+                    active_deals_count += 1
+                    break
+    
+    # Enrich tenders with full application data
+    enriched_tenders = []
+    for tender in tenders[:10]:
+        t = dict(tender)
+        app_id = t.get("application_id")
+        if app_id:
+            app = await db.applications.find_one({"id": app_id}, {"_id": 0})
+            if app:
+                # Merge application fields into car_request (application is the source of truth)
+                cr = t.get("car_request", {})
+                app_fields = [
+                    "client_type", "full_name", "delivery_city",
+                    "brand", "model", "year_from", "year_to", "body_type", "engine_type",
+                    "engine_volume", "power_from", "power_to", "transmission", "drive_type",
+                    "body_color", "body_color_other", "exact_color", "color_importance",
+                    "interior_color", "interior_color_other", "interior_material",
+                    "mileage_max", "car_condition", "allow_damage", "damage_level", "damage_comment",
+                    "options_electronic", "options_comfort", "options_exterior", "options_other",
+                    "required_options", "preferred_options",
+                    "budget_china_from", "budget_china_to", "budget_total",
+                    "budget_min", "budget_max", "budget_currency",
+                    "purchase_timeline", "payment_method", "car_purpose", "customs_clearance",
+                    "priority_price", "priority_reliability", "priority_technology",
+                    "priority_prestige", "priority_fuel",
+                    "additional_requirements", "has_decree_140", "decree_140_category"
+                ]
+                for field in app_fields:
+                    val = app.get(field)
+                    if val is not None and val != "" and val != []:
+                        cr[field] = val
+                t["car_request"] = cr
+                t["application_number"] = app.get("application_number")
+        enriched_tenders.append(t)
     
     return {
         "contractor": {
@@ -7866,11 +6241,179 @@ async def get_contractor_dashboard(contractor: dict = Depends(get_current_contra
         "active_tenders": len(tenders),
         "my_offers": len(my_offers),
         "completed_deals": len(completed_deals),
-        "new_applications": len([a for a in applications if a.get("status") == "new"]),
-        "tenders": tenders[:10],
-        "recent_offers": my_offers[:10],
-        "applications": applications[:10]
+        "active_deals": active_deals_count,
+        "tenders": enriched_tenders,
+        "recent_offers": my_offers[:10]
     }
+
+# ---- Contractor Profile Page ----
+PROFILE_UPLOADS_DIR = Path(__file__).parent / "uploads" / "profiles"
+PROFILE_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+@api_router.get("/contractor/profile")
+async def get_contractor_profile(contractor: dict = Depends(get_current_contractor)):
+    """Get contractor's own profile page data"""
+    profile = await db.contractor_profiles.find_one({"contractor_id": contractor["id"]}, {"_id": 0})
+    if not profile:
+        profile = {
+            "contractor_id": contractor["id"],
+            "about": "",
+            "slogan": "",
+            "founded_year": "",
+            "city": "",
+            "address": "",
+            "employees_count": "",
+            "staff": [],
+            "certificates": [],
+            "portfolio_cases": [],
+            "facility_photos": [],
+            "working_hours": "",
+            "languages": [],
+            "social_links": {}
+        }
+        await db.contractor_profiles.insert_one({**profile, "_id": None})
+        await db.contractor_profiles.update_one({"contractor_id": contractor["id"]}, {"$unset": {"_id": ""}})
+    
+    # Attach files
+    files = await db.profile_files.find({"contractor_id": contractor["id"]}, {"_id": 0}).to_list(100)
+    profile["files"] = files
+    profile["contractor"] = {
+        "id": contractor["id"],
+        "company_name": contractor.get("company_name", ""),
+        "services": contractor.get("services", []),
+        "service_prices": contractor.get("service_prices", {}),
+        "verified": contractor.get("verified", False),
+        "rating": contractor.get("rating", 5.0),
+        "deals_count": contractor.get("deals_count", 0),
+        "phone": contractor.get("phone", ""),
+        "email": contractor.get("email", ""),
+        "telegram": contractor.get("telegram", ""),
+        "whatsapp": contractor.get("whatsapp", ""),
+        "wechat": contractor.get("wechat", ""),
+        "website": contractor.get("website", ""),
+        "contact_person": contractor.get("contact_person", ""),
+        "description": contractor.get("description", ""),
+    }
+    return profile
+
+@api_router.put("/contractor/profile")
+async def update_contractor_profile(data: dict, contractor: dict = Depends(get_current_contractor)):
+    """Update contractor's profile page"""
+    allowed_fields = [
+        "about", "slogan", "founded_year", "city", "address",
+        "employees_count", "staff", "certificates", "portfolio_cases",
+        "working_hours", "languages", "social_links"
+    ]
+    update_data = {k: v for k, v in data.items() if k in allowed_fields}
+    
+    await db.contractor_profiles.update_one(
+        {"contractor_id": contractor["id"]},
+        {"$set": update_data},
+        upsert=True
+    )
+    return {"message": "Профиль обновлён"}
+
+@api_router.post("/contractor/profile/files")
+async def upload_profile_file(
+    file: UploadFile = File(...),
+    category: str = Form("facility"),
+    title: str = Form(""),
+    contractor: dict = Depends(get_current_contractor)
+):
+    """Upload file to contractor profile (certificates, facility photos, portfolio)"""
+    content = await file.read()
+    if len(content) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Макс. размер 20MB")
+    
+    file_id = str(uuid.uuid4())
+    ext = Path(file.filename).suffix.lower() if file.filename else ""
+    saved_name = f"{file_id}{ext}"
+    
+    cdir = PROFILE_UPLOADS_DIR / contractor["id"]
+    cdir.mkdir(exist_ok=True)
+    with open(cdir / saved_name, "wb") as f:
+        f.write(content)
+    
+    file_doc = {
+        "id": file_id,
+        "contractor_id": contractor["id"],
+        "category": category,
+        "title": title,
+        "original_name": file.filename,
+        "saved_name": saved_name,
+        "size": len(content),
+        "mime_type": file.content_type,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.profile_files.insert_one(file_doc)
+    return {"id": file_id, "category": category, "original_name": file.filename}
+
+@api_router.delete("/contractor/profile/files/{file_id}")
+async def delete_profile_file(file_id: str, contractor: dict = Depends(get_current_contractor)):
+    """Delete a profile file"""
+    file_doc = await db.profile_files.find_one({"id": file_id, "contractor_id": contractor["id"]})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+    
+    file_path = PROFILE_UPLOADS_DIR / contractor["id"] / file_doc["saved_name"]
+    if file_path.exists():
+        file_path.unlink()
+    await db.profile_files.delete_one({"id": file_id})
+    return {"message": "Файл удалён"}
+
+@api_router.get("/profile-files/{file_id}/download")
+async def download_profile_file(file_id: str, token: str = None):
+    """Download a profile file (public with token)"""
+    file_doc = await db.profile_files.find_one({"id": file_id}, {"_id": 0})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+    file_path = PROFILE_UPLOADS_DIR / file_doc["contractor_id"] / file_doc["saved_name"]
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Файл не найден на сервере")
+    return FileResponse(
+        path=str(file_path),
+        filename=file_doc["original_name"],
+        media_type=file_doc.get("mime_type", "application/octet-stream")
+    )
+
+@api_router.get("/contractors/{contractor_id}/page")
+async def get_contractor_public_page(contractor_id: str):
+    """Get contractor's public page for clients"""
+    contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0, "password_hash": 0})
+    if not contractor:
+        raise HTTPException(status_code=404, detail="Подрядчик не найден")
+    
+    profile = await db.contractor_profiles.find_one({"contractor_id": contractor_id}, {"_id": 0})
+    if not profile:
+        profile = {}
+    
+    files = await db.profile_files.find({"contractor_id": contractor_id}, {"_id": 0}).to_list(100)
+    completed = await db.deals.count_documents({"contractor_id": contractor_id, "status": "completed"})
+    
+    return {
+        "contractor": {
+            "id": contractor["id"],
+            "company_name": contractor.get("company_name", ""),
+            "services": contractor.get("services", []),
+            "service_prices": contractor.get("service_prices", {}),
+            "verified": contractor.get("verified", False),
+            "rating": contractor.get("rating", 5.0),
+            "deals_count": contractor.get("deals_count", 0),
+            "completed_deals": completed,
+            "phone": contractor.get("phone", ""),
+            "email": contractor.get("email", ""),
+            "telegram": contractor.get("telegram", ""),
+            "whatsapp": contractor.get("whatsapp", ""),
+            "website": contractor.get("website", ""),
+            "contact_person": contractor.get("contact_person", ""),
+            "description": contractor.get("description", ""),
+            "created_at": contractor.get("created_at", "")
+        },
+        "profile": profile,
+        "files": files
+    }
+
+
 
 @api_router.post("/contractor-offers")
 async def submit_contractor_offer(data: dict, contractor: dict = Depends(get_current_contractor)):
@@ -7896,13 +6439,22 @@ async def submit_contractor_offer(data: dict, contractor: dict = Depends(get_cur
         "delivery_cost": data.get("delivery_cost"),
         "car_details": data.get("car_details"),
         "car_link": data.get("car_link"),
+        "car_brand": data.get("car_brand"),
+        "car_model": data.get("car_model"),
+        "car_year": data.get("car_year"),
+        "car_mileage": data.get("car_mileage"),
+        "car_engine_type": data.get("car_engine_type"),
+        "car_engine_volume": data.get("car_engine_volume"),
+        "car_color": data.get("car_color"),
+        "car_transmission": data.get("car_transmission"),
+        "car_vin": data.get("car_vin"),
         "car_photos": data.get("car_photos", []),
         "car_videos": data.get("car_videos", []),
         "notes": data.get("notes"),
         "valid_until": data.get("valid_until"),
         "included_services": data.get("included_services", {}),
         "service_prices": data.get("service_prices", {}),
-        "status": "pending",  # pending, accepted, rejected
+        "status": "pending",
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
@@ -7922,14 +6474,126 @@ async def submit_contractor_offer(data: dict, contractor: dict = Depends(get_cur
     
     return {"message": "Предложение отправлено", "offer_id": offer_id}
 
+# ---- Offer file uploads ----
+OFFER_UPLOADS_DIR = Path(__file__).parent / "uploads" / "offers"
+OFFER_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+@api_router.post("/contractor-offers/{offer_id}/files")
+async def upload_offer_file(
+    offer_id: str,
+    file: UploadFile = File(...),
+    file_type: str = Form("photo"),
+    contractor: dict = Depends(get_current_contractor)
+):
+    """Upload a photo/video file to an offer"""
+    offer = await db.tender_offers.find_one({"id": offer_id, "contractor_id": contractor["id"]})
+    if not offer:
+        raise HTTPException(status_code=404, detail="Предложение не найдено")
+
+    file_content = await file.read()
+    if len(file_content) > 50 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Файл слишком большой (макс. 50MB)")
+
+    file_id = str(uuid.uuid4())
+    file_ext = Path(file.filename).suffix.lower() if file.filename else ""
+    safe_filename = f"{file_id}{file_ext}"
+
+    offer_dir = OFFER_UPLOADS_DIR / offer_id
+    offer_dir.mkdir(exist_ok=True)
+    file_path = offer_dir / safe_filename
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+
+    image_exts = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
+    video_exts = [".mp4", ".mov", ".avi", ".webm"]
+    category = "photo" if file_ext in image_exts else ("video" if file_ext in video_exts else "other")
+
+    file_doc = {
+        "id": file_id,
+        "offer_id": offer_id,
+        "contractor_id": contractor["id"],
+        "original_name": file.filename,
+        "saved_name": safe_filename,
+        "category": category,
+        "size": len(file_content),
+        "mime_type": file.content_type,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.offer_files.insert_one(file_doc)
+    return {"id": file_id, "category": category, "original_name": file.filename, "size": len(file_content)}
+
+@api_router.get("/offers/{offer_id}/files")
+async def get_offer_files(offer_id: str):
+    """Get files for an offer (public for authorized users)"""
+    files = await db.offer_files.find({"offer_id": offer_id}, {"_id": 0}).to_list(50)
+    return files
+
+@api_router.get("/offer-files/{file_id}/download")
+async def download_offer_file(file_id: str, token: str = None):
+    """Download an offer file using token query param"""
+    if not token:
+        raise HTTPException(status_code=401, detail="Токен обязателен")
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if not payload.get("sub"):
+            raise HTTPException(status_code=401, detail="Неверный токен")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Неверный токен")
+
+    file_doc = await db.offer_files.find_one({"id": file_id}, {"_id": 0})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+
+    file_path = OFFER_UPLOADS_DIR / file_doc["offer_id"] / file_doc["saved_name"]
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Файл не найден на сервере")
+
+    return FileResponse(
+        path=str(file_path),
+        filename=file_doc["original_name"],
+        media_type=file_doc.get("mime_type", "application/octet-stream")
+    )
+
+@api_router.get("/contractors/{contractor_id}/public-profile")
+async def get_contractor_public_profile(contractor_id: str):
+    """Get contractor's public profile"""
+    contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0, "password_hash": 0})
+    if not contractor:
+        raise HTTPException(status_code=404, detail="Подрядчик не найден")
+
+    completed = await db.deals.count_documents({"contractor_id": contractor_id, "status": "completed"})
+    active_offers = await db.tender_offers.count_documents({"contractor_id": contractor_id, "status": "pending"})
+    accepted_offers = await db.tender_offers.count_documents({"contractor_id": contractor_id, "status": "accepted"})
+
+    return {
+        "id": contractor["id"],
+        "company_name": contractor.get("company_name", ""),
+        "contact_person": contractor.get("contact_person", ""),
+        "services": contractor.get("services", []),
+        "rating": contractor.get("rating", 5.0),
+        "verified": contractor.get("verified", False),
+        "experience": contractor.get("experience", ""),
+        "description": contractor.get("description", ""),
+        "city": contractor.get("city", ""),
+        "completed_deals": completed,
+        "active_offers": active_offers,
+        "accepted_offers": accepted_offers,
+        "created_at": contractor.get("created_at", "")
+    }
+
 # Moderator endpoints for contractor management
 @api_router.get("/moderator/contractor-applications")
 async def get_contractor_applications(current_user: dict = Depends(require_role(["moderator", "admin"]))):
-    """Get all contractor applications"""
+    """Get all contractor applications with attached files"""
     applications = await db.contractor_applications.find(
         {},
         {"_id": 0}
     ).sort("created_at", -1).to_list(100)
+    
+    # Enrich each application with its files
+    for app in applications:
+        files = await db.application_files.find({"application_id": app["id"]}, {"_id": 0}).to_list(50)
+        app["files"] = files
     
     return applications
 
@@ -8247,652 +6911,19 @@ async def get_bitrix24_users(current_user: dict = Depends(require_role(["admin"]
     result = await b24.get_user_list()
     return result
 
-# Include router and configure app
-# ==================== TELEGRAM INTEGRATION ====================
-
-import random
-import string
-
-# Store pending telegram verifications (in production, use Redis or DB)
-telegram_pending_verifications = {}
-
-# Store pending message context for two-way messaging
-# Format: {chat_id: {"deal_id": ..., "stage_key": ..., "user_id": ..., "user_type": ...}}
-telegram_message_context = {}
+# ==================== TELEGRAM: Moved to routes/telegram.py ====================
+# Import shared state for backward compat (used by other parts of server.py)
+from routes.telegram import telegram_pending_verifications, get_moderator_chat_ids
 
 
-async def get_moderator_chat_ids() -> list:
-    """Get list of Telegram chat_ids for all moderators and admins"""
-    moderators = await db.users.find(
-        {
-            "role": {"$in": ["moderator", "admin"]},
-            "telegram_chat_id": {"$exists": True, "$ne": None}
-        },
-        {"_id": 0, "telegram_chat_id": 1}
-    ).to_list(50)
-    return [m["telegram_chat_id"] for m in moderators]
-
-
-async def get_user_active_chats(user_id: str, user_type: str = "user"):
-    """Get list of active chats for user/contractor"""
-    active_chats = []
-    
-    if user_type == "user":
-        # Get user's deals with assigned contractors
-        deals = await db.deals.find({"user_id": user_id}).to_list(50)
-        for deal in deals:
-            car_name = deal.get("car_info", {}).get("brand", "") + " " + deal.get("car_info", {}).get("model", "")
-            stages = deal.get("stages", {})
-            if isinstance(stages, dict):
-                for stage_key, stage_data in stages.items():
-                    if stage_data.get("contractor_id"):
-                        active_chats.append({
-                            "deal_id": deal["id"],
-                            "stage_key": stage_key,
-                            "car_name": car_name.strip() or "Авто",
-                            "contractor_name": stage_data.get("contractor_name", "")
-                        })
-    else:
-        # Get contractor's assigned stages
-        deals = await db.deals.find({}).to_list(100)
-        for deal in deals:
-            car_name = deal.get("car_info", {}).get("brand", "") + " " + deal.get("car_info", {}).get("model", "")
-            stages = deal.get("stages", {})
-            if isinstance(stages, dict):
-                for stage_key, stage_data in stages.items():
-                    if stage_data.get("contractor_id") == user_id:
-                        active_chats.append({
-                            "deal_id": deal["id"],
-                            "stage_key": stage_key,
-                            "car_name": car_name.strip() or "Авто",
-                            "client_id": deal.get("user_id")
-                        })
-    
-    return active_chats
-
-
-async def send_message_to_deal_chat(
-    deal_id: str,
-    stage_key: str,
-    sender_id: str,
-    sender_type: str,
-    sender_name: str,
-    content: str
-):
-    """Send a message to deal stage chat from Telegram"""
-    message_doc = {
-        "id": str(uuid.uuid4()),
-        "deal_id": deal_id,
-        "stage_key": stage_key,
-        "sender_id": sender_id,
-        "sender_name": sender_name,
-        "sender_type": sender_type,
-        "content": content,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "read_by_client": sender_type == "client",
-        "read_by_contractor": sender_type == "contractor",
-        "source": "telegram"
-    }
-    await db.deal_messages.insert_one(message_doc)
-    return message_doc
-
-
-@api_router.post("/telegram/webhook")
-async def telegram_webhook(request: Request):
-    """Webhook for Telegram bot updates - handles two-way messaging"""
-    try:
-        data = await request.json()
-        logger.info(f"Telegram webhook received: {data.get('message', {}).get('text', '')[:50] if data.get('message') else 'callback'}")
-        
-        # Handle callback queries (button presses)
-        if data.get("callback_query"):
-            callback = data["callback_query"]
-            callback_id = callback.get("id")
-            chat_id = callback.get("message", {}).get("chat", {}).get("id")
-            callback_data = callback.get("data", "")
-            
-            # Parse callback data
-            parts = callback_data.split(":")
-            action = parts[0] if parts else ""
-            
-            if action == "reply" and len(parts) >= 3:
-                # User clicked "Reply" button
-                deal_id = parts[1]
-                stage_key = parts[2]
-                
-                # Find user by chat_id
-                user = await db.users.find_one({"telegram_chat_id": chat_id})
-                contractor = await db.contractors.find_one({"telegram_chat_id": chat_id})
-                
-                if user:
-                    user_id = user["id"]
-                    user_type = "user"
-                    user_name = user.get("name", "Клиент")
-                elif contractor:
-                    user_id = contractor["id"]
-                    user_type = "contractor"
-                    user_name = contractor.get("company_name", "Подрядчик")
-                else:
-                    await telegram_service.answer_callback_query(callback_id, "Аккаунт не привязан")
-                    return {"ok": True}
-                
-                # Get deal info for confirmation
-                deal = await db.deals.find_one({"id": deal_id})
-                car_name = ""
-                if deal:
-                    car_name = deal.get("car_info", {}).get("brand", "") + " " + deal.get("car_info", {}).get("model", "")
-                
-                # Store context for next message
-                telegram_message_context[chat_id] = {
-                    "deal_id": deal_id,
-                    "stage_key": stage_key,
-                    "user_id": user_id,
-                    "user_type": user_type,
-                    "user_name": user_name,
-                    "car_name": car_name.strip() or "Авто"
-                }
-                
-                await telegram_service.answer_callback_query(callback_id, "Напишите ответ")
-                await telegram_service.send_awaiting_message_prompt(chat_id, car_name.strip() or "Авто", stage_key)
-                
-            elif action == "select" and len(parts) >= 3:
-                # User selected a chat from the list
-                deal_id = parts[1]
-                stage_key = parts[2]
-                
-                # Find user by chat_id
-                user = await db.users.find_one({"telegram_chat_id": chat_id})
-                contractor = await db.contractors.find_one({"telegram_chat_id": chat_id})
-                
-                if user:
-                    user_id = user["id"]
-                    user_type = "user"
-                    user_name = user.get("name", "Клиент")
-                elif contractor:
-                    user_id = contractor["id"]
-                    user_type = "contractor"
-                    user_name = contractor.get("company_name", "Подрядчик")
-                else:
-                    await telegram_service.answer_callback_query(callback_id, "Аккаунт не привязан")
-                    return {"ok": True}
-                
-                # Get deal info
-                deal = await db.deals.find_one({"id": deal_id})
-                car_name = ""
-                if deal:
-                    car_name = deal.get("car_info", {}).get("brand", "") + " " + deal.get("car_info", {}).get("model", "")
-                
-                # Store context
-                telegram_message_context[chat_id] = {
-                    "deal_id": deal_id,
-                    "stage_key": stage_key,
-                    "user_id": user_id,
-                    "user_type": user_type,
-                    "user_name": user_name,
-                    "car_name": car_name.strip() or "Авто"
-                }
-                
-                await telegram_service.answer_callback_query(callback_id, "Чат выбран")
-                await telegram_service.send_awaiting_message_prompt(chat_id, car_name.strip() or "Авто", stage_key)
-            
-            return {"ok": True}
-        
-        # Handle regular messages
-        if data.get("message"):
-            message = data["message"]
-            chat_id = message.get("chat", {}).get("id")
-            text = message.get("text", "")
-            username = message.get("from", {}).get("username")
-            first_name = message.get("from", {}).get("first_name", "")
-            
-            # Handle commands
-            if text.startswith("/start"):
-                # Check if there's a deep link parameter
-                parts = text.split(" ")
-                if len(parts) > 1:
-                    verification_code = parts[1]
-                    # Try to verify user
-                    if verification_code in telegram_pending_verifications:
-                        user_id = telegram_pending_verifications[verification_code]["user_id"]
-                        user_type = telegram_pending_verifications[verification_code]["type"]
-                        
-                        # Update user's telegram_chat_id
-                        if user_type == "user":
-                            await db.users.update_one(
-                                {"id": user_id},
-                                {"$set": {"telegram_chat_id": chat_id, "telegram_username": username}}
-                            )
-                            user = await db.users.find_one({"id": user_id})
-                            user_name = user.get("name", first_name) if user else first_name
-                        else:
-                            await db.contractors.update_one(
-                                {"id": user_id},
-                                {"$set": {"telegram_chat_id": chat_id, "telegram_username": username}}
-                            )
-                            contractor = await db.contractors.find_one({"id": user_id})
-                            user_name = contractor.get("company_name", first_name) if contractor else first_name
-                        
-                        # Remove from pending
-                        del telegram_pending_verifications[verification_code]
-                        
-                        # Send welcome message
-                        await telegram_service.send_welcome_message(chat_id, user_name)
-                        return {"ok": True}
-                
-                # AUTO-LINK: Try to find user/contractor by Telegram username
-                auto_linked = False
-                if username:
-                    # Normalize username (remove @ if present)
-                    normalized_username = username.lstrip('@').lower()
-                    
-                    # Check if already linked
-                    existing_user = await db.users.find_one({"telegram_chat_id": chat_id})
-                    existing_contractor = await db.contractors.find_one({"telegram_chat_id": chat_id})
-                    
-                    if not existing_user and not existing_contractor:
-                        # Try to find user by telegram username
-                        user = await db.users.find_one({
-                            "$or": [
-                                {"telegram": {"$regex": f"^@?{normalized_username}$", "$options": "i"}},
-                                {"telegram_username": {"$regex": f"^@?{normalized_username}$", "$options": "i"}}
-                            ],
-                            "telegram_chat_id": {"$exists": False}
-                        })
-                        
-                        if user:
-                            await db.users.update_one(
-                                {"id": user["id"]},
-                                {"$set": {"telegram_chat_id": chat_id, "telegram_username": username}}
-                            )
-                            await telegram_service.send_welcome_message(chat_id, user.get("name", first_name))
-                            auto_linked = True
-                            logger.info(f"Auto-linked user {user.get('email')} to Telegram chat {chat_id}")
-                        else:
-                            # Try to find contractor by telegram username
-                            contractor = await db.contractors.find_one({
-                                "$or": [
-                                    {"telegram": {"$regex": f"^@?{normalized_username}$", "$options": "i"}},
-                                    {"telegram_username": {"$regex": f"^@?{normalized_username}$", "$options": "i"}}
-                                ],
-                                "telegram_chat_id": {"$exists": False}
-                            })
-                            
-                            if contractor:
-                                await db.contractors.update_one(
-                                    {"id": contractor["id"]},
-                                    {"$set": {"telegram_chat_id": chat_id, "telegram_username": username}}
-                                )
-                                await telegram_service.send_welcome_message(chat_id, contractor.get("company_name", first_name))
-                                auto_linked = True
-                                logger.info(f"Auto-linked contractor {contractor.get('email')} to Telegram chat {chat_id}")
-                    else:
-                        # Already linked
-                        auto_linked = True
-                        user_name = existing_user.get("name") if existing_user else existing_contractor.get("company_name", first_name)
-                        await telegram_service.send_telegram_message(
-                            chat_id,
-                            f"👋 С возвращением, {user_name}!\n\n"
-                            "Ваш Telegram уже привязан к аккаунту.\n\n"
-                            "<b>Команды:</b>\n"
-                            "/chats - Показать активные чаты\n"
-                            "/help - Справка"
-                        )
-                
-                if not auto_linked:
-                    # Regular /start - show instructions
-                    await telegram_service.send_telegram_message(
-                        chat_id,
-                        f"👋 Привет, {first_name}!\n\n"
-                        "Для получения уведомлений привяжите Telegram в личном кабинете на сайте:\n"
-                        "Настройки → Привязать Telegram\n\n"
-                        "<b>Команды:</b>\n"
-                        "/chats - Показать активные чаты\n"
-                        "/help - Справка"
-                    )
-            
-            elif text.startswith("/help"):
-                await telegram_service.send_telegram_message(
-                    chat_id,
-                    "📋 <b>Команды бота:</b>\n\n"
-                    "/start - Начать работу с ботом\n"
-                    "/chats - Показать активные чаты\n"
-                    "/cancel - Отменить выбор чата\n"
-                    "/help - Показать справку\n\n"
-                    "Вы можете отвечать на уведомления о сообщениях прямо в Telegram."
-                )
-            
-            elif text.startswith("/chats"):
-                # Show list of active chats
-                user = await db.users.find_one({"telegram_chat_id": chat_id})
-                contractor = await db.contractors.find_one({"telegram_chat_id": chat_id})
-                
-                if user:
-                    active_chats = await get_user_active_chats(user["id"], "user")
-                elif contractor:
-                    active_chats = await get_user_active_chats(contractor["id"], "contractor")
-                else:
-                    await telegram_service.send_telegram_message(
-                        chat_id,
-                        "❌ Ваш Telegram не привязан к аккаунту.\n\n"
-                        "Привяжите Telegram в личном кабинете на сайте."
-                    )
-                    return {"ok": True}
-                
-                if active_chats:
-                    await telegram_service.send_chat_selection(chat_id, active_chats)
-                else:
-                    await telegram_service.send_no_active_chats(chat_id)
-            
-            elif text.startswith("/cancel"):
-                # Clear context
-                if chat_id in telegram_message_context:
-                    del telegram_message_context[chat_id]
-                await telegram_service.send_telegram_message(
-                    chat_id,
-                    "✖️ Выбор чата отменён.\n\nИспользуйте /chats для выбора чата."
-                )
-            
-            elif not text.startswith("/"):
-                # Regular message - check if we have context
-                if chat_id in telegram_message_context:
-                    ctx = telegram_message_context[chat_id]
-                    
-                    # Send message to deal chat
-                    await send_message_to_deal_chat(
-                        deal_id=ctx["deal_id"],
-                        stage_key=ctx["stage_key"],
-                        sender_id=ctx["user_id"],
-                        sender_type="client" if ctx["user_type"] == "user" else "contractor",
-                        sender_name=ctx["user_name"],
-                        content=text
-                    )
-                    
-                    # Send confirmation
-                    await telegram_service.send_message_confirmation(
-                        chat_id,
-                        ctx["car_name"],
-                        ctx["stage_key"]
-                    )
-                    
-                    # Notify the other party
-                    deal = await db.deals.find_one({"id": ctx["deal_id"]})
-                    if deal and ctx["user_type"] == "user":
-                        # User sent message, notify contractor
-                        stage_data = deal.get("stages", {}).get(ctx["stage_key"], {})
-                        contractor_id = stage_data.get("contractor_id")
-                        if contractor_id:
-                            contractor = await db.contractors.find_one({"id": contractor_id})
-                            if contractor and contractor.get("telegram_chat_id"):
-                                await telegram_service.notify_new_message(
-                                    contractor["telegram_chat_id"],
-                                    ctx["user_name"],
-                                    ctx["car_name"],
-                                    telegram_service.STAGE_LABELS.get(ctx["stage_key"], ctx["stage_key"]),
-                                    text,
-                                    ctx["deal_id"],
-                                    ctx["stage_key"]
-                                )
-                    elif deal and ctx["user_type"] == "contractor":
-                        # Contractor sent message, notify user
-                        client_id = deal.get("user_id")
-                        if client_id:
-                            client = await db.users.find_one({"id": client_id})
-                            if client and client.get("telegram_chat_id"):
-                                await telegram_service.notify_new_message(
-                                    client["telegram_chat_id"],
-                                    ctx["user_name"],
-                                    ctx["car_name"],
-                                    telegram_service.STAGE_LABELS.get(ctx["stage_key"], ctx["stage_key"]),
-                                    text,
-                                    ctx["deal_id"],
-                                    ctx["stage_key"]
-                                )
-                    
-                    # Keep context for continuous conversation
-                    # Clear only if user explicitly uses /cancel
-                    
-                else:
-                    # No context - show chat selection
-                    user = await db.users.find_one({"telegram_chat_id": chat_id})
-                    contractor = await db.contractors.find_one({"telegram_chat_id": chat_id})
-                    
-                    if user:
-                        active_chats = await get_user_active_chats(user["id"], "user")
-                    elif contractor:
-                        active_chats = await get_user_active_chats(contractor["id"], "contractor")
-                    else:
-                        await telegram_service.send_telegram_message(
-                            chat_id,
-                            "❌ Ваш Telegram не привязан к аккаунту.\n\n"
-                            "Привяжите Telegram в личном кабинете на сайте."
-                        )
-                        return {"ok": True}
-                    
-                    if active_chats:
-                        if len(active_chats) == 1:
-                            # Auto-select single chat
-                            chat = active_chats[0]
-                            user_id = user["id"] if user else contractor["id"]
-                            user_type = "user" if user else "contractor"
-                            user_name = user.get("name", "Клиент") if user else contractor.get("company_name", "Подрядчик")
-                            
-                            telegram_message_context[chat_id] = {
-                                "deal_id": chat["deal_id"],
-                                "stage_key": chat["stage_key"],
-                                "user_id": user_id,
-                                "user_type": user_type,
-                                "user_name": user_name,
-                                "car_name": chat["car_name"]
-                            }
-                            
-                            # Send message directly
-                            await send_message_to_deal_chat(
-                                deal_id=chat["deal_id"],
-                                stage_key=chat["stage_key"],
-                                sender_id=user_id,
-                                sender_type="client" if user_type == "user" else "contractor",
-                                sender_name=user_name,
-                                content=text
-                            )
-                            
-                            await telegram_service.send_message_confirmation(
-                                chat_id,
-                                chat["car_name"],
-                                chat["stage_key"]
-                            )
-                        else:
-                            # Multiple chats - ask user to select
-                            await telegram_service.send_chat_selection(
-                                chat_id,
-                                active_chats,
-                                "Выберите чат для отправки сообщения:"
-                            )
-                    else:
-                        await telegram_service.send_no_active_chats(chat_id)
-        
-        return {"ok": True}
-    except Exception as e:
-        logger.error(f"Telegram webhook error: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
-        return {"ok": False}
-
-@api_router.post("/telegram/link")
-async def link_telegram(current_user: dict = Depends(get_current_user)):
-    """Generate link for user to connect their Telegram"""
-    # Generate verification code
-    code = ''.join(random.choices(string.ascii_letters + string.digits, k=16))
-    
-    # Store pending verification
-    telegram_pending_verifications[code] = {
-        "user_id": current_user["id"],
-        "type": "user",
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    # Get bot username
-    bot_info = await telegram_service.get_bot_info()
-    bot_username = bot_info.get("result", {}).get("username", "your_bot")
-    
-    return {
-        "link": f"https://t.me/{bot_username}?start={code}",
-        "code": code,
-        "bot_username": bot_username
-    }
-
-@api_router.post("/contractor/telegram/link")
-async def link_contractor_telegram(current_user: dict = Depends(get_current_contractor)):
-    """Generate link for contractor to connect their Telegram"""
-    # Generate verification code
-    code = ''.join(random.choices(string.ascii_letters + string.digits, k=16))
-    
-    # Store pending verification
-    telegram_pending_verifications[code] = {
-        "user_id": current_user["id"],
-        "type": "contractor",
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    # Get bot username
-    bot_info = await telegram_service.get_bot_info()
-    bot_username = bot_info.get("result", {}).get("username", "your_bot")
-    
-    return {
-        "link": f"https://t.me/{bot_username}?start={code}",
-        "code": code,
-        "bot_username": bot_username
-    }
-
-@api_router.get("/telegram/status")
-async def get_telegram_status(current_user: dict = Depends(get_current_user)):
-    """Check if user has linked Telegram"""
-    user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0, "telegram_chat_id": 1, "telegram_username": 1})
-    return {
-        "linked": bool(user.get("telegram_chat_id")),
-        "username": user.get("telegram_username")
-    }
-
-@api_router.post("/telegram/unlink")
-async def unlink_telegram(current_user: dict = Depends(get_current_user)):
-    """Unlink Telegram from user account"""
-    await db.users.update_one(
-        {"id": current_user["id"]},
-        {"$unset": {"telegram_chat_id": "", "telegram_username": ""}}
-    )
-    return {"message": "Telegram отвязан"}
-
-@api_router.post("/telegram/test")
-async def test_telegram_notification(current_user: dict = Depends(get_current_user)):
-    """Send test notification to user's Telegram"""
-    user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0, "telegram_chat_id": 1, "name": 1})
-    
-    if not user.get("telegram_chat_id"):
-        raise HTTPException(status_code=400, detail="Telegram не привязан")
-    
-    success = await telegram_service.send_telegram_message(
-        user["telegram_chat_id"],
-        f"🔔 <b>Тестовое уведомление</b>\n\nПривет, {user.get('name', 'пользователь')}! Уведомления работают корректно."
-    )
-    
-    if success:
-        return {"message": "Тестовое уведомление отправлено"}
-    else:
-        raise HTTPException(status_code=500, detail="Ошибка отправки уведомления")
-
-@api_router.get("/admin/telegram/stats")
-async def get_telegram_stats(current_user: dict = Depends(require_role(["admin"]))):
-    """Get statistics about Telegram connections"""
-    # Count users
-    total_users = await db.users.count_documents({})
-    linked_users = await db.users.count_documents({"telegram_chat_id": {"$exists": True, "$ne": None}})
-    users_with_telegram_field = await db.users.count_documents({"telegram": {"$exists": True, "$ne": None, "$ne": ""}})
-    
-    # Count contractors
-    total_contractors = await db.contractors.count_documents({})
-    linked_contractors = await db.contractors.count_documents({"telegram_chat_id": {"$exists": True, "$ne": None}})
-    contractors_with_telegram_field = await db.contractors.count_documents({"telegram": {"$exists": True, "$ne": None, "$ne": ""}})
-    
-    # Get users with telegram username but not linked
-    unlinked_users = await db.users.find(
-        {"telegram": {"$exists": True, "$ne": None, "$ne": ""}, "telegram_chat_id": {"$exists": False}},
-        {"_id": 0, "id": 1, "name": 1, "email": 1, "telegram": 1}
-    ).to_list(100)
-    
-    unlinked_contractors = await db.contractors.find(
-        {"telegram": {"$exists": True, "$ne": None, "$ne": ""}, "telegram_chat_id": {"$exists": False}},
-        {"_id": 0, "id": 1, "company_name": 1, "email": 1, "telegram": 1}
-    ).to_list(100)
-    
-    return {
-        "users": {
-            "total": total_users,
-            "linked": linked_users,
-            "with_telegram_username": users_with_telegram_field,
-            "unlinked_with_username": len(unlinked_users)
-        },
-        "contractors": {
-            "total": total_contractors,
-            "linked": linked_contractors,
-            "with_telegram_username": contractors_with_telegram_field,
-            "unlinked_with_username": len(unlinked_contractors)
-        },
-        "unlinked_users": unlinked_users,
-        "unlinked_contractors": unlinked_contractors
-    }
-
-@api_router.post("/admin/telegram/send-invites")
-async def send_telegram_invites(current_user: dict = Depends(require_role(["admin"]))):
-    """Send invitation messages to all linked Telegram users to verify their accounts are working"""
-    results = {"users_notified": 0, "contractors_notified": 0, "errors": []}
-    
-    # Get all linked users
-    linked_users = await db.users.find(
-        {"telegram_chat_id": {"$exists": True, "$ne": None}},
-        {"_id": 0, "telegram_chat_id": 1, "name": 1}
-    ).to_list(500)
-    
-    for user in linked_users:
-        try:
-            success = await telegram_service.send_telegram_message(
-                user["telegram_chat_id"],
-                f"👋 Привет, {user.get('name', 'пользователь')}!\n\n"
-                "Это напоминание о том, что ваш Telegram подключен к CarBridge.\n"
-                "Вы будете получать уведомления о сделках и сообщениях.\n\n"
-                "/chats - Показать активные чаты"
-            )
-            if success:
-                results["users_notified"] += 1
-        except Exception as e:
-            results["errors"].append(f"User {user.get('name')}: {str(e)}")
-    
-    # Get all linked contractors
-    linked_contractors = await db.contractors.find(
-        {"telegram_chat_id": {"$exists": True, "$ne": None}},
-        {"_id": 0, "telegram_chat_id": 1, "company_name": 1}
-    ).to_list(500)
-    
-    for contractor in linked_contractors:
-        try:
-            success = await telegram_service.send_telegram_message(
-                contractor["telegram_chat_id"],
-                f"👋 Привет, {contractor.get('company_name', 'подрядчик')}!\n\n"
-                "Это напоминание о том, что ваш Telegram подключен к CarBridge.\n"
-                "Вы будете получать уведомления о тендерах и сообщениях клиентов.\n\n"
-                "/chats - Показать активные чаты"
-            )
-            if success:
-                results["contractors_notified"] += 1
-        except Exception as e:
-            results["errors"].append(f"Contractor {contractor.get('company_name')}: {str(e)}")
-    
-    return results
-
-# ==================== END TELEGRAM INTEGRATION ====================
+# ==================== END OF ROUTES ====================
 
 app.include_router(api_router)
 
 # Include modular routers (new refactored routes)
 app.include_router(catalog_routes.router, prefix="/api")
+app.include_router(telegram_routes.router, prefix="/api")
+app.include_router(deals_routes.router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,

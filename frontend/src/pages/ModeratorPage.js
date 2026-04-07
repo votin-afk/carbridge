@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
@@ -60,7 +60,22 @@ import {
   Image,
   Download,
   ExternalLink,
-  Trash2
+  Trash2,
+  Headphones,
+  Send,
+  Star,
+  Truck,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  Gauge,
+  Palette,
+  Settings,
+  BadgeCheck,
+  MapPin,
+  Package,
+  Ship
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -73,6 +88,163 @@ const statusConfig = {
   approved: { label: 'Одобрено', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
   rejected: { label: 'Отклонено', color: 'text-red-400', bg: 'bg-red-500/10' }
 };
+
+// Image preview component that loads images with auth headers
+const FileImagePreview = ({ api, dealId, fileId, fileName, token }) => {
+  const publicUrl = `${api}/files/${fileId}/public-download?token=${encodeURIComponent(token)}`;
+  return (
+    <img
+      src={publicUrl}
+      alt={fileName}
+      className="w-16 h-16 object-cover rounded cursor-pointer border border-[#27272A] hover:border-purple-500 transition-colors"
+      onClick={() => window.open(publicUrl, '_blank')}
+      onError={(e) => { e.target.style.display = 'none'; }}
+    />
+  );
+};
+
+
+// Moderator Offer Card - displays contractor offer as a car card
+const ModeratorOfferCard = ({ offer, photos, isFirst, serviceLabelsMap, engineLabelsMap, transLabelsMap, token }) => {
+  const [currentPhoto, setCurrentPhoto] = useState(0);
+  const [showProfile, setShowProfile] = useState(false);
+  const [profile, setProfile] = useState(null);
+  
+  const photoUrl = (fileId) => `${API}/offer-files/${fileId}/download?token=${encodeURIComponent(token)}`;
+
+  const loadProfile = async () => {
+    if (profile) { setShowProfile(!showProfile); return; }
+    try {
+      const res = await axios.get(`${API}/contractors/${offer.contractor_id}/public-profile`);
+      setProfile(res.data);
+      setShowProfile(true);
+    } catch { toast.error('Ошибка загрузки профиля'); }
+  };
+
+  return (
+    <div className={`bg-[#0B0F14] border rounded-sm overflow-hidden ${isFirst ? 'border-[#00E5FF]/40' : 'border-[#27272A]'}`}>
+      {isFirst && (
+        <div className="bg-[#00E5FF]/10 px-2 py-1 text-center">
+          <span className="text-[#00E5FF] text-xs font-medium">Лучшее предложение</span>
+        </div>
+      )}
+      
+      {/* Photo Gallery */}
+      {photos.length > 0 ? (
+        <div className="relative h-36 bg-[#15191E]">
+          <img src={photoUrl(photos[currentPhoto]?.id)} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+          {photos.length > 1 && (
+            <>
+              <button onClick={() => setCurrentPhoto(p => p > 0 ? p - 1 : photos.length - 1)} className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center text-white"><ChevronLeft size={14} /></button>
+              <button onClick={() => setCurrentPhoto(p => p < photos.length - 1 ? p + 1 : 0)} className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center text-white"><ChevronRight size={14} /></button>
+              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-black/60 px-2 py-0.5 rounded-full text-white text-[10px]">{currentPhoto + 1}/{photos.length}</div>
+            </>
+          )}
+          <div className="absolute top-1 right-1 bg-black/70 px-2 py-1 rounded">
+            <p className="text-[#00E5FF] font-bold text-sm">${offer.price_usd?.toLocaleString()}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="h-20 bg-[#15191E] flex items-center justify-center relative">
+          <Car size={28} className="text-slate-700" />
+          <div className="absolute top-1 right-1 bg-black/70 px-2 py-1 rounded">
+            <p className="text-[#00E5FF] font-bold text-sm">${offer.price_usd?.toLocaleString()}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="p-3">
+        <h5 className="text-white font-medium text-sm mb-1">
+          {(offer.car_brand || '').toUpperCase()} {offer.car_model || ''}
+        </h5>
+        
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-400 mb-2">
+          {offer.car_year && <span>{offer.car_year} г.</span>}
+          {offer.car_mileage && <span>{Number(offer.car_mileage).toLocaleString()} км</span>}
+          {offer.car_engine_type && <span>{engineLabelsMap[offer.car_engine_type] || offer.car_engine_type}</span>}
+          {offer.car_color && <span>{offer.car_color}</span>}
+          {offer.car_transmission && <span>{transLabelsMap[offer.car_transmission] || offer.car_transmission}</span>}
+        </div>
+
+        {offer.car_vin && <p className="text-slate-600 text-[10px] mb-1 font-mono">VIN: {offer.car_vin}</p>}
+        
+        {offer.car_details && <p className="text-slate-400 text-xs mb-2 line-clamp-2">{offer.car_details}</p>}
+
+        {offer.car_link && (
+          <a href={offer.car_link} target="_blank" rel="noopener noreferrer" className="text-[#00E5FF] text-xs hover:underline flex items-center gap-1 mb-2">
+            <ExternalLink size={10} /> Ссылка на авто
+          </a>
+        )}
+
+        {/* Services */}
+        {offer.included_services && Object.values(offer.included_services).some(v => v) && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {Object.entries(offer.included_services).map(([key, inc]) => {
+              if (!inc) return null;
+              const svc = serviceLabelsMap[key];
+              if (!svc) return null;
+              const SvcIcon = svc.icon;
+              return (
+                <span key={key} className="flex items-center gap-0.5 px-1.5 py-0.5 bg-[#15191E] rounded text-[10px]">
+                  <SvcIcon size={8} className={svc.color} />
+                  <span className="text-slate-300">{svc.label}</span>
+                  {offer.service_prices?.[key] && <span className="text-slate-500">${offer.service_prices[key]}</span>}
+                </span>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 text-xs text-slate-400 mb-2">
+          {offer.delivery_days && <span><Clock size={10} className="inline mr-0.5" />{offer.delivery_days} дн.</span>}
+          {offer.price_cny && <span className="text-amber-400">¥{offer.price_cny.toLocaleString()}</span>}
+        </div>
+
+        {/* Contractor */}
+        <div className="border-t border-[#27272A] pt-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Building2 size={12} className="text-slate-500" />
+              <span className="text-white text-xs font-medium">{offer.contractor_name}</span>
+              <div className="flex items-center gap-0.5">
+                {[1,2,3,4,5].map(s => (
+                  <Star key={s} size={8} className={s <= (offer.contractor_rating || 5) ? 'text-amber-400 fill-amber-400' : 'text-slate-700'} />
+                ))}
+              </div>
+            </div>
+            <button onClick={loadProfile} className="text-[#00E5FF] text-[10px] hover:underline" data-testid={`mod-view-profile-${offer.id}`}>
+              Профиль
+            </button>
+          </div>
+          
+          {showProfile && profile && (
+            <div className="mt-2 p-2 bg-[#15191E] rounded text-xs">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-white font-medium flex items-center gap-1">
+                  {profile.company_name}
+                  {profile.verified && <BadgeCheck size={10} className="text-[#00E5FF]" />}
+                </span>
+                <button onClick={() => setShowProfile(false)} className="text-slate-500 hover:text-white text-[10px]">x</button>
+              </div>
+              {profile.city && <p className="text-slate-400 text-[10px] mb-1"><MapPin size={8} className="inline mr-0.5" />{profile.city}</p>}
+              <div className="flex flex-wrap gap-1 mb-1">
+                {profile.services?.map(s => <span key={s} className="px-1 py-0.5 bg-[#0B0F14] text-[#00E5FF] text-[9px] rounded">{s}</span>)}
+              </div>
+              <div className="grid grid-cols-3 gap-1 text-center">
+                <div className="p-1 bg-[#0B0F14] rounded"><p className="text-emerald-400 font-bold">{profile.completed_deals}</p><p className="text-slate-600 text-[9px]">Сделок</p></div>
+                <div className="p-1 bg-[#0B0F14] rounded"><p className="text-amber-400 font-bold">{profile.accepted_offers}</p><p className="text-slate-600 text-[9px]">Принято</p></div>
+                <div className="p-1 bg-[#0B0F14] rounded"><p className="text-[#00E5FF] font-bold">{profile.rating}</p><p className="text-slate-600 text-[9px]">Рейтинг</p></div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <p className="text-slate-600 text-[10px] mt-2">{new Date(offer.created_at).toLocaleDateString('ru-RU')}</p>
+      </div>
+    </div>
+  );
+};
+
 
 const roleConfig = {
   admin: { label: 'Администратор', color: 'text-amber-400', bg: 'bg-amber-500/10', icon: Crown },
@@ -115,6 +287,8 @@ const ModeratorPage = () => {
   const [stageMessages, setStageMessages] = useState([]);
   const [stageFiles, setStageFiles] = useState([]);
   const [loadingStageDetails, setLoadingStageDetails] = useState(false);
+  const [moderatorStageMessage, setModeratorStageMessage] = useState('');
+  const [sendingStageMessage, setSendingStageMessage] = useState(false);
   
   // Balance management states
   const [balanceDialogUser, setBalanceDialogUser] = useState(null);
@@ -125,6 +299,15 @@ const ModeratorPage = () => {
   
   // Delete confirmation dialog state
   const [deleteDialog, setDeleteDialog] = useState(null); // { type: 'user'|'tender'|..., id: string, title: string }
+  
+  // Help requests management state
+  const [helpRequests, setHelpRequests] = useState([]);
+  const [selectedHelpRequest, setSelectedHelpRequest] = useState(null);
+  const [helpMessages, setHelpMessages] = useState([]);
+  const [newHelpMessage, setNewHelpMessage] = useState('');
+  const [sendingHelpMsg, setSendingHelpMsg] = useState(false);
+  const [availableManagers, setAvailableManagers] = useState([]);
+  const [assigningManager, setAssigningManager] = useState(false);
   
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -172,6 +355,13 @@ const ModeratorPage = () => {
         // Fetch pending stage confirmations
         const response = await axios.get(`${API}/moderator/deals/pending-stages`, { headers });
         setPendingStages(response.data);
+      } else if (activeTab === 'help-requests') {
+        const [reqRes, mgrRes] = await Promise.all([
+          axios.get(`${API}/moderator/help-requests`, { headers }),
+          axios.get(`${API}/moderator/available-managers`, { headers })
+        ]);
+        setHelpRequests(reqRes.data);
+        setAvailableManagers(mgrRes.data);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -195,6 +385,69 @@ const ModeratorPage = () => {
       fetchData();
     } catch (error) {
       toast.error('Ошибка при обновлении роли');
+    }
+  };
+
+  // Help request management functions
+  const fetchHelpRequestMessages = async (requestId) => {
+    try {
+      const response = await axios.get(`${API}/moderator/help-requests/${requestId}`, { headers });
+      setHelpMessages(response.data.messages || []);
+      // Update the selected request with latest data
+      setSelectedHelpRequest(response.data);
+    } catch (error) {
+      console.error('Error fetching help request messages:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedHelpRequest && activeTab === 'help-requests') {
+      fetchHelpRequestMessages(selectedHelpRequest.id);
+      const interval = setInterval(() => fetchHelpRequestMessages(selectedHelpRequest.id), 5000);
+      return () => clearInterval(interval);
+    }
+  }, [selectedHelpRequest?.id, activeTab]);
+
+  const assignManager = async (requestId, managerId) => {
+    setAssigningManager(true);
+    try {
+      const response = await axios.post(`${API}/moderator/help-requests/${requestId}/assign`, {
+        manager_id: managerId
+      }, { headers });
+      toast.success(response.data.message);
+      fetchData();
+      fetchHelpRequestMessages(requestId);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка при назначении менеджера');
+    } finally {
+      setAssigningManager(false);
+    }
+  };
+
+  const sendHelpMessage = async () => {
+    if (!newHelpMessage.trim() || !selectedHelpRequest) return;
+    setSendingHelpMsg(true);
+    try {
+      await axios.post(`${API}/moderator/help-requests/${selectedHelpRequest.id}/messages`, {
+        content: newHelpMessage
+      }, { headers });
+      setNewHelpMessage('');
+      fetchHelpRequestMessages(selectedHelpRequest.id);
+    } catch (error) {
+      toast.error('Ошибка отправки сообщения');
+    } finally {
+      setSendingHelpMsg(false);
+    }
+  };
+
+  const closeHelpRequest = async (requestId) => {
+    try {
+      await axios.post(`${API}/moderator/help-requests/${requestId}/close`, {}, { headers });
+      toast.success('Запрос закрыт');
+      setSelectedHelpRequest(null);
+      fetchData();
+    } catch (error) {
+      toast.error('Ошибка при закрытии запроса');
     }
   };
 
@@ -234,22 +487,44 @@ const ModeratorPage = () => {
     }
   };
 
-  const downloadStageFile = async (dealId, fileId, filename) => {
+  const downloadStageFile = (dealId, fileId, filename) => {
+    const url = `${API}/files/${fileId}/public-download?token=${encodeURIComponent(token)}`;
+    window.open(url, '_blank');
+  };
+
+  const refreshStageMessages = async () => {
+    if (!stageDetailsDialog) return;
     try {
-      const response = await axios.get(
-        `${API}/moderator/deals/${dealId}/files/${fileId}/download`,
-        { headers, responseType: 'blob' }
+      const res = await axios.get(
+        `${API}/moderator/deals/${stageDetailsDialog.deal_id}/stages/${stageDetailsDialog.stage_key}/messages`,
+        { headers }
       );
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      setStageMessages(res.data);
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    if (stageDetailsDialog) {
+      const interval = setInterval(refreshStageMessages, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [stageDetailsDialog?.deal_id, stageDetailsDialog?.stage_key]);
+
+  const sendModeratorStageMessage = async () => {
+    if (!moderatorStageMessage.trim() || !stageDetailsDialog) return;
+    setSendingStageMessage(true);
+    try {
+      await axios.post(
+        `${API}/moderator/deals/${stageDetailsDialog.deal_id}/stages/${stageDetailsDialog.stage_key}/messages`,
+        { content: moderatorStageMessage },
+        { headers }
+      );
+      setModeratorStageMessage('');
+      refreshStageMessages();
     } catch (error) {
-      toast.error('Ошибка скачивания файла');
+      toast.error('Ошибка отправки сообщения');
+    } finally {
+      setSendingStageMessage(false);
     }
   };
 
@@ -609,6 +884,15 @@ const ModeratorPage = () => {
               {verifications.length > 0 && (
                 <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
                   {verifications.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="help-requests" className="data-[state=active]:bg-amber-500 data-[state=active]:text-black">
+              <Headphones size={16} className="mr-2" />
+              Помощь менеджера
+              {helpRequests.filter(r => r.status === 'pending').length > 0 && (
+                <span className="ml-2 px-2 py-0.5 bg-amber-600 text-white text-xs rounded-full">
+                  {helpRequests.filter(r => r.status === 'pending').length}
                 </span>
               )}
             </TabsTrigger>
@@ -1015,52 +1299,156 @@ const ModeratorPage = () => {
             {loading ? (
               <LoadingState />
             ) : tenders.length > 0 ? (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {tenders.map(tender => (
-                  <div key={tender.id} className="bg-[#15191E] border border-[#27272A] rounded-sm p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[#00E5FF] text-xs">#{tender.id?.slice(0, 8)}</span>
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        tender.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' :
-                        tender.status === 'closed' ? 'bg-slate-500/10 text-slate-400' :
-                        'bg-amber-500/10 text-amber-400'
-                      }`}>
-                        {tender.status === 'active' ? 'Активен' : 
-                         tender.status === 'closed' ? 'Закрыт' : tender.status}
-                      </span>
+              <div className="space-y-6">
+                {tenders.map(tender => {
+                  const cr = tender.car_request || {};
+                  const engineLabelsMap = { gasoline: 'Бензин', diesel: 'Дизель', electric: 'Электро', hybrid: 'Гибрид', phev: 'Плагин-гибрид' };
+                  const bodyLabelsMap = { sedan: 'Седан', suv: 'Кроссовер/Внедорожник', hatchback: 'Хэтчбек', wagon: 'Универсал', coupe: 'Купе', minivan: 'Минивэн', pickup: 'Пикап', convertible: 'Кабриолет', any: 'Любой' };
+                  const driveLabelsMap = { fwd: 'Передний', rwd: 'Задний', awd: 'Полный', any: 'Любой' };
+                  const transLabelsMap = { automatic: 'АКПП', manual: 'МКПП', robot: 'Робот', cvt: 'Вариатор' };
+                  const serviceLabelsMap = {
+                    inspection: { label: 'Осмотр', icon: Search, color: 'text-blue-400' },
+                    export: { label: 'Выкуп/Экспорт', icon: Package, color: 'text-purple-400' },
+                    logistics_china: { label: 'Логистика Китай', icon: Ship, color: 'text-cyan-400' },
+                    delivery_rb: { label: 'Доставка РБ', icon: Truck, color: 'text-emerald-400' },
+                    insurance: { label: 'Страхование', icon: Shield, color: 'text-amber-400' }
+                  };
+                  
+                  return (
+                  <div key={tender.id} className="bg-[#15191E] border border-[#27272A] rounded-sm overflow-hidden">
+                    {/* Tender Header */}
+                    <div className="p-4 border-b border-[#27272A]">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <span className="text-[#00E5FF] text-xs font-mono">#{tender.id?.slice(0, 8)}</span>
+                          <span className={`px-2 py-0.5 rounded text-xs ${
+                            tender.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' :
+                            tender.status === 'closed' ? 'bg-slate-500/10 text-slate-400' :
+                            'bg-amber-500/10 text-amber-400'
+                          }`}>
+                            {tender.status === 'active' ? 'Активен' : tender.status === 'closed' ? 'Закрыт' : tender.status}
+                          </span>
+                          {tender.type === 'application' && (
+                            <span className="px-2 py-0.5 bg-purple-500/10 text-purple-400 text-xs rounded">Из заявки</span>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteTender(tender.id); }}
+                          className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      </div>
+                      
+                      <h3 className="text-white font-bold text-xl mb-1">
+                        {(tender.car_brand || cr.brand || '').toUpperCase()} {tender.car_model || cr.model || ''}
+                      </h3>
+                      
+                      {tender.user_name && (
+                        <p className="text-slate-400 text-sm mb-2">
+                          <User size={12} className="inline mr-1" />
+                          Клиент: {tender.user_name} {tender.user_email && `(${tender.user_email})`}
+                        </p>
+                      )}
+                      <p className="text-slate-500 text-xs">
+                        Создан: {new Date(tender.created_at).toLocaleDateString('ru-RU')} • Предложений: {tender.offers_count || 0}
+                      </p>
                     </div>
-                    <h3 className="text-white font-medium mb-1">{tender.car_brand} {tender.car_model}</h3>
-                    <p className="text-slate-400 text-sm mb-3">
-                      Бюджет: до ${tender.budget?.toLocaleString() || '—'}
-                    </p>
-                    <p className="text-slate-500 text-xs mb-3">
-                      Предложений: {tender.offers_count || 0}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 border-[#27272A] text-slate-300"
-                      >
-                        <Eye size={14} className="mr-1" />
-                        Детали
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleDeleteTender(tender.id);
-                        }}
-                        className="border-red-500/30 text-red-400 hover:bg-red-500/10"
-                      >
-                        <Trash2 size={14} />
-                      </Button>
+
+                    {/* Car Request Details */}
+                    {Object.keys(cr).length > 0 && (
+                      <div className="p-4 border-b border-[#27272A]">
+                        <p className="text-slate-500 text-xs font-medium mb-2">ТРЕБОВАНИЯ КЛИЕНТА</p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                          {(cr.budget_china_from || cr.budget_china_to) && (
+                            <div className="bg-[#0B0F14] p-2 rounded">
+                              <p className="text-slate-500 text-xs">Бюджет Китай</p>
+                              <p className="text-[#00E5FF] font-medium">${cr.budget_china_from?.toLocaleString() || '—'} - ${cr.budget_china_to?.toLocaleString() || '—'}</p>
+                            </div>
+                          )}
+                          {cr.budget_total && (
+                            <div className="bg-[#0B0F14] p-2 rounded">
+                              <p className="text-slate-500 text-xs">Общий бюджет</p>
+                              <p className="text-emerald-400 font-medium">${cr.budget_total?.toLocaleString()}</p>
+                            </div>
+                          )}
+                          {(cr.year_from || cr.year_to) && (
+                            <div className="bg-[#0B0F14] p-2 rounded">
+                              <p className="text-slate-500 text-xs">Год выпуска</p>
+                              <p className="text-white">{cr.year_from || '—'} - {cr.year_to || '—'}</p>
+                            </div>
+                          )}
+                          {cr.engine_type && (
+                            <div className="bg-[#0B0F14] p-2 rounded">
+                              <p className="text-slate-500 text-xs">Двигатель</p>
+                              <p className="text-white">{engineLabelsMap[cr.engine_type] || cr.engine_type}</p>
+                            </div>
+                          )}
+                          {cr.body_type && (
+                            <div className="bg-[#0B0F14] p-2 rounded">
+                              <p className="text-slate-500 text-xs">Кузов</p>
+                              <p className="text-white">{bodyLabelsMap[cr.body_type] || cr.body_type}</p>
+                            </div>
+                          )}
+                          {cr.drive_type && (
+                            <div className="bg-[#0B0F14] p-2 rounded">
+                              <p className="text-slate-500 text-xs">Привод</p>
+                              <p className="text-white">{driveLabelsMap[cr.drive_type] || cr.drive_type}</p>
+                            </div>
+                          )}
+                          {cr.mileage_max && (
+                            <div className="bg-[#0B0F14] p-2 rounded">
+                              <p className="text-slate-500 text-xs">Пробег</p>
+                              <p className="text-white">{cr.mileage_max}</p>
+                            </div>
+                          )}
+                          {cr.delivery_city && (
+                            <div className="bg-[#0B0F14] p-2 rounded">
+                              <p className="text-slate-500 text-xs">Город доставки</p>
+                              <p className="text-white">{cr.delivery_city}</p>
+                            </div>
+                          )}
+                        </div>
+                        {cr.additional_requirements && (
+                          <div className="mt-2 p-2 bg-[#0B0F14] rounded">
+                            <p className="text-slate-500 text-xs mb-1">Доп. требования</p>
+                            <p className="text-slate-300 text-sm">{cr.additional_requirements}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Offers */}
+                    <div className="p-4">
+                      <p className="text-slate-500 text-xs font-medium mb-3">ПРЕДЛОЖЕНИЯ ПОДРЯДЧИКОВ ({tender.offers?.length || 0})</p>
+                      {tender.offers?.length > 0 ? (
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {tender.offers.map((offer, idx) => {
+                            const photos = (offer.files || []).filter(f => f.category === 'photo');
+                            return (
+                            <ModeratorOfferCard
+                              key={offer.id}
+                              offer={offer}
+                              photos={photos}
+                              isFirst={idx === 0}
+                              serviceLabelsMap={serviceLabelsMap}
+                              engineLabelsMap={engineLabelsMap}
+                              transLabelsMap={transLabelsMap}
+                              token={token}
+                            />
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-slate-600 text-sm text-center py-4">Пока нет предложений</p>
+                      )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <EmptyState text="Нет активных тендеров" />
@@ -1085,6 +1473,219 @@ const ModeratorPage = () => {
               </div>
             ) : (
               <EmptyState text="Нет документов на проверку" />
+            )}
+          </TabsContent>
+
+          {/* Help Requests Tab */}
+          <TabsContent value="help-requests">
+            {loading ? (
+              <LoadingState />
+            ) : (
+              <div className="grid lg:grid-cols-3 gap-6">
+                {/* Requests List */}
+                <div className="lg:col-span-1 space-y-3">
+                  <h3 className="text-white font-medium">Запросы на помощь ({helpRequests.length})</h3>
+                  {helpRequests.length === 0 ? (
+                    <div className="bg-[#15191E] border border-[#27272A] rounded-lg p-6 text-center">
+                      <Headphones size={48} className="mx-auto mb-3 text-slate-600" />
+                      <p className="text-slate-400">Нет запросов</p>
+                    </div>
+                  ) : (
+                    helpRequests.map(req => (
+                      <div
+                        key={req.id}
+                        onClick={() => { setSelectedHelpRequest(req); setHelpMessages([]); }}
+                        data-testid={`help-request-${req.id}`}
+                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                          selectedHelpRequest?.id === req.id
+                            ? 'bg-amber-500/10 border-amber-500'
+                            : 'bg-[#15191E] border-[#27272A] hover:border-amber-500/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-white font-medium text-sm truncate">{req.user_name || 'Клиент'}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs ${
+                            req.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
+                            req.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' :
+                            'bg-slate-500/20 text-slate-400'
+                          }`}>
+                            {req.status === 'pending' ? 'Ожидает' : req.status === 'active' ? 'В работе' : 'Закрыт'}
+                          </span>
+                        </div>
+                        <p className="text-slate-400 text-xs truncate">{req.description || req.request_type}</p>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-xs text-slate-500">
+                            {new Date(req.created_at).toLocaleDateString('ru-RU')}
+                          </span>
+                          {req.assigned_manager_name && (
+                            <span className="text-xs text-emerald-400">
+                              {req.assigned_manager_name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Request Detail + Chat */}
+                <div className="lg:col-span-2">
+                  {!selectedHelpRequest ? (
+                    <div className="bg-[#15191E] border border-[#27272A] rounded-lg p-12 text-center">
+                      <Headphones size={64} className="mx-auto mb-4 text-slate-600" />
+                      <p className="text-slate-400">Выберите запрос для управления</p>
+                    </div>
+                  ) : (
+                    <div className="bg-[#15191E] border border-[#27272A] rounded-lg overflow-hidden">
+                      {/* Header */}
+                      <div className="p-4 border-b border-[#27272A]">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <h3 className="text-white font-semibold">{selectedHelpRequest.user_name || 'Клиент'}</h3>
+                            <p className="text-slate-400 text-sm">
+                              {selectedHelpRequest.user_email} {selectedHelpRequest.user_phone && `• ${selectedHelpRequest.user_phone}`}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-3 py-1 rounded-full text-sm ${
+                              selectedHelpRequest.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
+                              selectedHelpRequest.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' :
+                              'bg-slate-500/20 text-slate-400'
+                            }`}>
+                              {selectedHelpRequest.status === 'pending' ? 'Ожидает' : selectedHelpRequest.status === 'active' ? 'В работе' : 'Закрыт'}
+                            </span>
+                            {selectedHelpRequest.status !== 'closed' && (
+                              <Button
+                                onClick={() => closeHelpRequest(selectedHelpRequest.id)}
+                                variant="outline"
+                                size="sm"
+                                className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                              >
+                                Закрыть
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Description */}
+                        {selectedHelpRequest.description && (
+                          <div className="p-3 bg-[#0B0F14] rounded-lg mb-3">
+                            <p className="text-xs text-slate-500 mb-1">Описание запроса:</p>
+                            <p className="text-white text-sm">{selectedHelpRequest.description}</p>
+                          </div>
+                        )}
+
+                        {/* Manager Assignment */}
+                        {selectedHelpRequest.assigned_manager_name ? (
+                          <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                            <User size={20} className="text-emerald-400" />
+                            <div>
+                              <p className="text-emerald-400 text-sm font-medium">Назначенный менеджер</p>
+                              <p className="text-white">{selectedHelpRequest.assigned_manager_name}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                            <p className="text-amber-400 text-sm mb-2 flex items-center gap-2">
+                              <AlertCircle size={14} />
+                              Менеджер не назначен
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Select onValueChange={(val) => assignManager(selectedHelpRequest.id, val)}>
+                                <SelectTrigger className="bg-[#0B0F14] border-[#27272A] text-white flex-1" data-testid="assign-manager-select">
+                                  <SelectValue placeholder="Выберите менеджера" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-[#15191E] border-[#27272A]">
+                                  {availableManagers.map(mgr => (
+                                    <SelectItem key={mgr.id} value={mgr.id} className="text-white">
+                                      {mgr.name} {mgr.last_name} ({mgr.role === 'admin' ? 'Админ' : 'Модератор'})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Chat Messages */}
+                      <div className="flex flex-col h-[400px]">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                          {helpMessages.length === 0 ? (
+                            <div className="text-center py-8">
+                              <MessageSquare size={48} className="mx-auto mb-3 text-slate-600" />
+                              <p className="text-slate-400">Нет сообщений</p>
+                            </div>
+                          ) : (
+                            helpMessages.map(msg => (
+                              <div
+                                key={msg.id}
+                                className={`flex ${
+                                  msg.sender_type === 'manager' ? 'justify-end' : 
+                                  msg.sender_type === 'system' ? 'justify-center' : 'justify-start'
+                                }`}
+                              >
+                                {msg.sender_type === 'system' ? (
+                                  <div className="px-3 py-1 bg-slate-800 rounded-full">
+                                    <p className="text-slate-400 text-xs">{msg.content}</p>
+                                  </div>
+                                ) : (
+                                  <div className={`max-w-[70%] rounded-lg p-3 ${
+                                    msg.sender_type === 'manager'
+                                      ? 'bg-emerald-500/10 border border-emerald-500/30'
+                                      : 'bg-amber-500/10 border border-amber-500/30'
+                                  }`}>
+                                    <div className="flex items-center gap-2 mb-1">
+                                      {msg.sender_type === 'manager' ? (
+                                        <Headphones size={12} className="text-emerald-400" />
+                                      ) : (
+                                        <User size={12} className="text-amber-400" />
+                                      )}
+                                      <span className={`text-xs font-medium ${
+                                        msg.sender_type === 'manager' ? 'text-emerald-400' : 'text-amber-400'
+                                      }`}>
+                                        {msg.sender_name}
+                                      </span>
+                                      <span className="text-xs text-slate-500">
+                                        {new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                    </div>
+                                    <p className="text-white text-sm whitespace-pre-wrap">{msg.content}</p>
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                        {/* Message Input */}
+                        {selectedHelpRequest.status !== 'closed' && (
+                          <div className="p-4 border-t border-[#27272A]">
+                            <div className="flex gap-2">
+                              <input
+                                value={newHelpMessage}
+                                onChange={(e) => setNewHelpMessage(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendHelpMessage()}
+                                placeholder="Напишите сообщение клиенту..."
+                                className="flex-1 bg-[#0B0F14] border border-[#27272A] rounded-md px-3 py-2 text-white text-sm placeholder-slate-500 outline-none focus:border-emerald-500/50"
+                                data-testid="manager-chat-input"
+                              />
+                              <Button
+                                onClick={sendHelpMessage}
+                                disabled={sendingHelpMsg || !newHelpMessage.trim()}
+                                className="bg-emerald-500 hover:bg-emerald-600 text-black"
+                                data-testid="manager-send-btn"
+                              >
+                                {sendingHelpMsg ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </TabsContent>
 
@@ -1676,13 +2277,82 @@ const ModeratorPage = () => {
                           purchase: 'Выкуп авто',
                           export: 'Экспорт',
                           logistics: 'Логистика',
+                          logistics_china: 'Логистика Китай',
                           leasing: 'Лизинг',
-                          customs: 'Растаможка'
+                          customs: 'Растаможка',
+                          insurance: 'Страхование',
+                          delivery_rb: 'Доставка РБ',
+                          legal_belarus: 'Юр. услуги РБ',
+                          legal_china: 'Юр. услуги Китай'
                         };
+                        let displayPrice = '';
+                        if (typeof price === 'object' && price !== null) {
+                          displayPrice = price.rate ? `${price.rate}% ${price.currency || ''}` : JSON.stringify(price);
+                        } else {
+                          displayPrice = `$${price}`;
+                        }
                         return (
                           <div key={service} className="flex justify-between text-sm">
                             <span className="text-slate-400">{serviceNames[service] || service}</span>
-                            <span className="text-white font-medium">${price} USD</span>
+                            <span className="text-white font-medium">{displayPrice}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Attached Files */}
+                {selectedContractor.files?.length > 0 && (
+                  <div className="p-4 bg-[#0B0F14] rounded-sm border border-[#27272A]">
+                    <h4 className="text-[#00E5FF] font-medium mb-3">Прикреплённые документы</h4>
+                    <div className="space-y-2">
+                      {selectedContractor.files.map(file => {
+                        const categoryLabels = {
+                          certificate: 'Сертификат',
+                          license: 'Лицензия',
+                          photo: 'Фото',
+                          portfolio: 'Портфолио',
+                          document: 'Документ'
+                        };
+                        const isImage = file.mime_type?.startsWith('image');
+                        return (
+                          <div key={file.id} className="bg-[#15191E] p-3 rounded">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                {isImage ? (
+                                  <img
+                                    src={`${API}/application-files/${file.id}/download`}
+                                    alt={file.title}
+                                    className="w-14 h-14 object-cover rounded border border-[#27272A] cursor-pointer"
+                                    onClick={() => window.open(`${API}/application-files/${file.id}/download`, '_blank')}
+                                  />
+                                ) : (
+                                  <div className="w-14 h-14 bg-[#0B0F14] rounded flex items-center justify-center border border-[#27272A]">
+                                    <FileText size={20} className="text-slate-500" />
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <p className="text-white text-sm truncate">{file.title || file.original_name}</p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="px-1.5 py-0.5 bg-[#00E5FF]/10 text-[#00E5FF] text-[10px] rounded">
+                                      {categoryLabels[file.category] || file.category}
+                                    </span>
+                                    <span className="text-slate-600 text-[10px]">
+                                      {file.size ? `${(file.size / 1024).toFixed(0)} KB` : ''}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <a
+                                href={`${API}/application-files/${file.id}/download`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#00E5FF] text-xs hover:underline flex-shrink-0 ml-2"
+                              >
+                                Скачать
+                              </a>
+                            </div>
                           </div>
                         );
                       })}
@@ -1754,7 +2424,7 @@ const ModeratorPage = () => {
 
         {/* Stage Details Dialog */}
         <Dialog open={!!stageDetailsDialog} onOpenChange={() => setStageDetailsDialog(null)}>
-          <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogContent className="bg-[#15191E] border-[#27272A] text-white max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
@@ -1783,7 +2453,7 @@ const ModeratorPage = () => {
                 <Loader2 size={32} className="animate-spin text-purple-400" />
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto space-y-4 mt-4">
+              <div className="space-y-4 mt-4">
                 {/* Deal Info */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="bg-[#0B0F14] p-3 rounded-lg">
@@ -1813,25 +2483,38 @@ const ModeratorPage = () => {
                   {stageFiles.length === 0 ? (
                     <p className="text-slate-500 text-sm">Нет загруженных файлов</p>
                   ) : (
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
                       {stageFiles.map(file => (
                         <div key={file.id} className="flex items-center gap-3 p-2 bg-[#15191E] rounded">
-                          <div className="w-8 h-8 bg-[#27272A] rounded flex items-center justify-center">
-                            {file.category === 'photo' ? <Image size={14} className="text-emerald-400" /> : <FileText size={14} className="text-blue-400" />}
-                          </div>
+                          {file.category === 'photo' ? (
+                            <FileImagePreview
+                              api={API}
+                              dealId={stageDetailsDialog.deal_id}
+                              fileId={file.id}
+                              fileName={file.original_name}
+                              token={token}
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-[#27272A] rounded flex items-center justify-center flex-shrink-0">
+                              <FileText size={18} className="text-blue-400" />
+                            </div>
+                          )}
                           <div className="flex-1 min-w-0">
                             <p className="text-white text-sm truncate">{file.original_name}</p>
                             <p className="text-slate-500 text-xs">
-                              {file.uploader_name} • {new Date(file.created_at).toLocaleDateString('ru-RU')}
+                              {file.uploader_name} • {file.source === 'telegram' ? 'Telegram' : 'Платформа'} • {new Date(file.created_at).toLocaleDateString('ru-RU')}
                             </p>
+                            <p className="text-slate-600 text-xs">{(file.size / 1024).toFixed(1)} KB</p>
                           </div>
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => downloadStageFile(stageDetailsDialog.deal_id, file.id, file.original_name)}
-                            className="h-8 w-8 p-0"
+                            className="h-8 px-2"
+                            data-testid={`download-file-${file.id}`}
                           >
-                            <Download size={14} />
+                            <Download size={14} className="mr-1" />
+                            <span className="text-xs">Скачать</span>
                           </Button>
                         </div>
                       ))}
@@ -1853,22 +2536,31 @@ const ModeratorPage = () => {
                         <div
                           key={msg.id}
                           className={`p-3 rounded-lg ${
-                            msg.sender_type === 'client'
+                            msg.sender_type === 'moderator'
+                              ? 'bg-amber-500/10 border border-amber-500/30'
+                              : msg.sender_type === 'client'
                               ? 'bg-[#00E5FF]/10 border border-[#00E5FF]/30'
                               : 'bg-purple-500/10 border border-purple-500/30'
                           }`}
                         >
                           <div className="flex items-center gap-2 mb-1">
-                            {msg.sender_type === 'client' ? (
+                            {msg.sender_type === 'moderator' ? (
+                              <Shield size={12} className="text-amber-400" />
+                            ) : msg.sender_type === 'client' ? (
                               <User size={12} className="text-[#00E5FF]" />
                             ) : (
                               <Building2 size={12} className="text-purple-400" />
                             )}
                             <span className={`text-xs font-medium ${
+                              msg.sender_type === 'moderator' ? 'text-amber-400' :
                               msg.sender_type === 'client' ? 'text-[#00E5FF]' : 'text-purple-400'
                             }`}>
                               {msg.sender_name}
+                              {msg.sender_type === 'moderator' && ' (модератор)'}
                             </span>
+                            {msg.source === 'telegram' && (
+                              <span className="text-xs text-blue-400">TG</span>
+                            )}
                             <span className="text-xs text-slate-500">
                               {new Date(msg.created_at).toLocaleString('ru-RU')}
                             </span>
@@ -1878,6 +2570,28 @@ const ModeratorPage = () => {
                       ))}
                     </div>
                   )}
+                  
+                  {/* Moderator message input */}
+                  <div className="mt-3 pt-3 border-t border-[#27272A]">
+                    <div className="flex gap-2">
+                      <input
+                        value={moderatorStageMessage}
+                        onChange={(e) => setModeratorStageMessage(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendModeratorStageMessage()}
+                        placeholder="Написать сообщение в чат этапа..."
+                        className="flex-1 bg-[#15191E] border border-[#27272A] rounded-md px-3 py-2 text-white text-sm placeholder-slate-500 outline-none focus:border-purple-500/50"
+                        data-testid="moderator-stage-message-input"
+                      />
+                      <Button
+                        onClick={sendModeratorStageMessage}
+                        disabled={sendingStageMessage || !moderatorStageMessage.trim()}
+                        className="bg-purple-500 hover:bg-purple-600 text-white"
+                        data-testid="moderator-stage-send-btn"
+                      >
+                        {sendingStageMessage ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Actions */}

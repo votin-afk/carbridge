@@ -49,13 +49,22 @@ import {
   Scale,
   Phone,
   Mail,
-  AlertCircle
+  AlertCircle,
+  Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 import StageInfographic from '../../components/deal/StageInfographic';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+const getProxiedImageUrl = (url) => {
+  if (!url) return null;
+  if (url.includes('autoimg.cn') || url.includes('che168.com') || url.includes('autohome.com')) {
+    return `${API}/proxy/image?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+};
 
 // Stage labels
 const stageLabels = {
@@ -92,6 +101,8 @@ const Documents = () => {
   const [helpMessages, setHelpMessages] = useState([]);
   const [newHelpMessage, setNewHelpMessage] = useState('');
   const [sendingHelp, setSendingHelp] = useState(false);
+  const [showCreateHelpDialog, setShowCreateHelpDialog] = useState(false);
+  const [helpDescription, setHelpDescription] = useState('');
   
   // Legal help state
   const [legalRequests, setLegalRequests] = useState([]);
@@ -212,6 +223,25 @@ const Documents = () => {
     }
   };
 
+  const createHelpRequest = async () => {
+    if (!helpDescription.trim()) {
+      toast.error('Опишите, в чём вам нужна помощь');
+      return;
+    }
+    try {
+      await axios.post(`${API}/help-requests`, {
+        request_type: 'general',
+        description: helpDescription.trim()
+      }, { headers });
+      toast.success('Запрос на помощь менеджера отправлен');
+      setHelpDescription('');
+      setShowCreateHelpDialog(false);
+      fetchHelpRequests();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Ошибка при создании запроса');
+    }
+  };
+
   const fetchDealData = async () => {
     if (!selectedDeal) return;
     
@@ -284,24 +314,16 @@ const Documents = () => {
     }
   };
 
-  const downloadFile = async (fileId, filename) => {
-    try {
-      const response = await axios.get(
-        `${API}/deals/${selectedDeal.id}/files/${fileId}/download`,
-        { headers, responseType: 'blob' }
-      );
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      toast.error('Ошибка скачивания файла');
-    }
+  const downloadFile = (fileId, filename) => {
+    const url = `${API}/files/${fileId}/public-download?token=${encodeURIComponent(token)}`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename || 'file';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const deleteFile = async (fileId) => {
@@ -397,7 +419,7 @@ const Documents = () => {
                   >
                     <div className="flex items-center gap-3">
                       {deal.car_info?.image_url ? (
-                        <img src={deal.car_info.image_url} alt="" className="w-12 h-9 object-cover rounded" />
+                        <img src={getProxiedImageUrl(deal.car_info.image_url)} alt="" className="w-12 h-9 object-cover rounded" />
                       ) : (
                         <div className="w-12 h-9 bg-[#0B0F14] rounded flex items-center justify-center">
                           <Car size={18} className="text-slate-600" />
@@ -429,13 +451,24 @@ const Documents = () => {
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Help Requests List */}
             <div className="lg:col-span-1 space-y-3">
-              <h3 className="text-white font-medium">Запросы на помощь</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-white font-medium">Запросы на помощь</h3>
+                <Button
+                  onClick={() => setShowCreateHelpDialog(true)}
+                  size="sm"
+                  className="bg-amber-500 hover:bg-amber-600 text-black"
+                  data-testid="create-help-request-btn"
+                >
+                  <Plus size={14} className="mr-1" />
+                  Создать запрос
+                </Button>
+              </div>
               
               {helpRequests.length === 0 ? (
                 <div className="bg-[#15191E] border border-[#27272A] rounded-lg p-6 text-center">
                   <Headphones size={48} className="mx-auto mb-3 text-slate-600" />
                   <p className="text-slate-400">Нет запросов на помощь</p>
-                  <p className="text-slate-500 text-sm mt-1">Запросите помощь менеджера в разделе Гараж</p>
+                  <p className="text-slate-500 text-sm mt-1">Создайте запрос, чтобы получить помощь менеджера</p>
                 </div>
               ) : (
                 helpRequests.map(req => (
@@ -530,6 +563,44 @@ const Documents = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Create Help Request Dialog */}
+      <Dialog open={showCreateHelpDialog} onOpenChange={setShowCreateHelpDialog}>
+        <DialogContent className="bg-[#15191E] border-[#27272A]">
+          <DialogHeader>
+            <DialogTitle className="text-white">Запрос помощи менеджера</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-slate-400 mb-2 block">Опишите, в чём вам нужна помощь</label>
+              <Textarea
+                value={helpDescription}
+                onChange={(e) => setHelpDescription(e.target.value)}
+                placeholder="Например: Нужна помощь с подбором авто, оформлением документов..."
+                className="bg-[#0B0F14] border-[#27272A] text-white min-h-[120px]"
+                data-testid="help-description-input"
+              />
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowCreateHelpDialog(false)}
+                className="border-[#27272A] text-slate-400"
+              >
+                Отмена
+              </Button>
+              <Button
+                onClick={createHelpRequest}
+                disabled={!helpDescription.trim()}
+                className="bg-amber-500 hover:bg-amber-600 text-black"
+                data-testid="submit-help-request-btn"
+              >
+                Отправить запрос
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 
@@ -551,7 +622,7 @@ const Documents = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               {selectedDeal.car_info?.image_url ? (
-                <img src={selectedDeal.car_info.image_url} alt="" className="w-16 h-12 object-cover rounded" />
+                <img src={getProxiedImageUrl(selectedDeal.car_info.image_url)} alt="" className="w-16 h-12 object-cover rounded" />
               ) : (
                 <div className="w-16 h-12 bg-[#0B0F14] rounded flex items-center justify-center">
                   <Car size={24} className="text-slate-600" />
@@ -757,6 +828,24 @@ const Documents = () => {
                     </span>
                   </div>
                   <p className="text-white text-sm whitespace-pre-wrap">{msg.content}</p>
+                  {msg.source === 'telegram' && (
+                    <span className="inline-block mt-1 mr-1 px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded">
+                      Telegram
+                    </span>
+                  )}
+                  {msg.file_ids && msg.file_ids.length > 0 && (
+                    <div className="mt-1">
+                      {msg.file_ids.map(fid => (
+                        <button
+                          key={fid}
+                          onClick={() => downloadFile(fid, `file_${fid}`)}
+                          className="flex items-center gap-1 text-xs text-[#00E5FF] hover:underline cursor-pointer"
+                        >
+                          <Paperclip size={10} /> Скачать файл
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {msg.stage_key && (
                     <span className="inline-block mt-1 px-2 py-0.5 bg-slate-700 text-slate-300 text-xs rounded">
                       {stageLabels[msg.stage_key]}

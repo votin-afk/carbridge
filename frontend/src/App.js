@@ -22,6 +22,7 @@ import CarDetailPage from "./pages/CarDetailPage";
 import ContractorsPage from "./pages/ContractorsPage";
 import ContractorRegisterPage from "./pages/ContractorRegisterPage";
 import ContractorDashboard from "./pages/ContractorDashboard";
+import ContractorProfilePage from "./pages/ContractorProfilePage";
 import ModeratorPage from "./pages/ModeratorPage";
 import UserProfileModerator from "./pages/UserProfileModerator";
 import HotDealsPage from "./pages/HotDealsPage";
@@ -43,6 +44,7 @@ function App() {
           <Route path="/contractors" element={<ContractorsPage />} />
           <Route path="/contractor-register" element={<ContractorRegisterPage />} />
           <Route path="/contractor-dashboard" element={<ContractorDashboard />} />
+          <Route path="/contractor/:contractorId" element={<ContractorProfilePage />} />
           <Route path="/moderator" element={<ModeratorPage />} />
           <Route path="/moderator/user/:userId" element={<UserProfileModerator />} />
           <Route path="/hot-deals" element={<HotDealsPage />} />
