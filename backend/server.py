@@ -3833,15 +3833,37 @@ async def delete_garage_item(garage_id: str, current_user: dict = Depends(requir
     return {"message": "Garage item deleted"}
 
 @api_router.delete("/moderator/contractors/{contractor_id}")
-async def delete_contractor(contractor_id: str, current_user: dict = Depends(require_role(["admin", "moderator"]))):
-    """Delete a contractor"""
-    # Delete contractor
+async def moderator_delete_contractor(contractor_id: str, current_user: dict = Depends(require_role(["admin", "moderator"]))):
+    """Delete a contractor and all related data"""
+    deleted = False
+    
+    # Try to delete from contractors collection
     result = await db.contractors.delete_one({"id": contractor_id})
-    if result.deleted_count == 0:
+    if result.deleted_count > 0:
+        deleted = True
+    
+    # Also delete from contractor_applications (the ID might be from this collection)
+    result2 = await db.contractor_applications.delete_one({"id": contractor_id})
+    if result2.deleted_count > 0:
+        deleted = True
+    
+    # If contractor was approved, also clean up by email match
+    if not deleted:
+        # Try finding by contractor_id field in applications
+        app = await db.contractor_applications.find_one({"contractor_id": contractor_id})
+        if app:
+            await db.contractor_applications.delete_one({"contractor_id": contractor_id})
+            deleted = True
+    
+    if not deleted:
         raise HTTPException(status_code=404, detail="Contractor not found")
     
-    # Delete related contractor application
-    await db.contractor_applications.delete_many({"contractor_id": contractor_id})
+    # Clean up related data
+    await db.tender_offers.delete_many({"contractor_id": contractor_id})
+    await db.deals.update_many(
+        {"contractor_id": contractor_id},
+        {"$unset": {"contractor_id": "", "contractor": ""}}
+    )
     
     return {"message": "Contractor deleted"}
 
