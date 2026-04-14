@@ -1,0 +1,104 @@
+{
+  "summary": "Translation fix testing completed successfully. All English translations on ContractorsPage and Calculator page are working correctly. No hardcoded Russian text found in English mode. Language switching works without errors.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "ContractorsPage - Title 'Our Contractors' displays in English mode",
+    "ContractorsPage - Subtitle 'Verified companies for every stage...' displays in English",
+    "ContractorsPage - Partners label 'PARTNERS' displays in English",
+    "ContractorsPage - Back button 'Home' displays in English",
+    "ContractorsPage - 'Become a Contractor' button displays in English",
+    "ContractorsPage - 'Contractor Login' button displays in English",
+    "ContractorsPage - Search placeholder 'Search contractor...' displays in English",
+    "ContractorsPage - All 9 tab labels display in English (Leasing, Car Inspection, Purchase & Export, Port Delivery, Car Insurance, Delivery to Belarus, Customs Clearance, Lawyers Belarus, Lawyers China)",
+    "ContractorsPage - Stage description 'Technical condition check' displays in English",
+    "ContractorsPage - Contractor card labels (Services, deals, Details) display in English",
+    "ContractorsPage - Russian mode shows all labels in Russian correctly",
+    "Calculator - Page title 'Customs Clearance Calculator' displays in English",
+    "Calculator - Subtitle 'Calculate the full turnkey cost...' displays in English",
+    "Calculator - User type tabs 'Individual' and 'Legal Entity' display in English",
+    "Calculator - Engine type buttons 'ICE', 'Hybrid', 'Electric' display in English",
+    "Calculator - Age buttons 'Under 3 years', '3-5 years', '5+ years' display in English",
+    "Calculator - 'Calculate' button displays in English",
+    "Calculator - Form labels (Price in CNY, Engine Type, Car Age, Engine volume, Platform fees, Platform commission, Payment commission) display in English",
+    "Calculator - Decree 140 benefit section displays in English",
+    "Calculator - Calculation works correctly (tested with 150000 CNY)",
+    "Calculator - Results section displays all labels in English (Total turnkey, Breakdown, Car price, Customs payments, Customs Duty, Utilization fee, Fixed costs, Platform commission, Payment commission)",
+    "Calculator - Fixed costs section displays in English (Customs fee, Warehouse and declarant services, EPTS, Delivery to Belarus, Exporter commission, Processing in China)",
+    "Calculator - Decree 140 info section displays in English (Preferential customs clearance, Large families, Group I or II disabled, Parents of disabled children)",
+    "Calculator - Russian mode shows all labels in Russian correctly",
+    "Language switching between EN and RU works without page errors",
+    "No hardcoded Russian text visible in English mode on /contractors page",
+    "No hardcoded Russian text visible in English mode on /calculator page"
+  ],
+
+  "test_report_links": [
+    "/app/test_reports/iteration_33.json"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [],
+
+  "updated_files": [],
+
+  "success_rate": {
+    "backend": "N/A (frontend only testing)",
+    "frontend": "100% (all translation tests passed)"
+  },
+
+  "test_credentials": {
+    "admin": {"email": "votin@tut.by", "password": "test"},
+    "user": {"email": "test@test.com", "password": "test"},
+    "contractor": {"email": "horon4ik@icloud.com", "password": "test123"}
+  },
+
+  "seed_data_creation": "",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Translation fix for ContractorsPage and Calculator validated. All i18n translations working correctly: 1) ContractorsPage uses useTranslation() hook in both main component and ContractorCard child component. 2) All tab labels, buttons, placeholders, and card labels are translated via t() function. 3) Calculator.js has full i18n support with all form labels, buttons, results section, fixed costs section, and Decree 140 info section translated. 4) en.js and ru.js translation dictionaries contain all required keys under calc.*, contractors.*, messages.* sections. 5) Language is toggled via localStorage key 'carbridge_lang' with values 'ru' or 'en'.",
+
+  "features_validated": {
+    "contractors_page_english": {
+      "url": "/contractors",
+      "elements_tested": ["title", "subtitle", "partners_label", "back_button", "become_contractor_btn", "contractor_login_btn", "search_placeholder", "tab_labels", "stage_description", "contractor_card_labels"],
+      "status": "✓ All translations working"
+    },
+    "contractors_page_russian": {
+      "url": "/contractors",
+      "status": "✓ All translations working"
+    },
+    "calculator_page_english": {
+      "url": "/calculator",
+      "elements_tested": ["page_title", "subtitle", "user_type_tabs", "engine_type_buttons", "age_buttons", "calculate_button", "form_labels", "decree_140_section", "results_section", "fixed_costs_section", "decree_140_info"],
+      "status": "✓ All translations working"
+    },
+    "calculator_page_russian": {
+      "url": "/calculator",
+      "status": "✓ All translations working"
+    },
+    "calculator_functionality": {
+      "test_input": "150000 CNY, 2000 cm³ engine, ICE, Under 3 years",
+      "result": "40,794.54 $ / 115,913.61 BYN",
+      "status": "✓ Calculation working correctly"
+    },
+    "language_switching": {
+      "method": "localStorage 'carbridge_lang' = 'en' | 'ru'",
+      "status": "✓ No errors during switching"
+    }
+  },
+
+  "no_mocked_apis": true
+}

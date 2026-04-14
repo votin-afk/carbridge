@@ -4,15 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../components/ui/dialog";
 import { 
   Search as SearchIcon,
   CheckCircle2,
@@ -20,19 +12,16 @@ import {
   Phone,
   Mail,
   Globe,
-  Plus,
   Trash2,
   Loader2,
   Building2,
   Truck,
   ClipboardCheck,
   Package,
-  MessageCircle,
   ExternalLink,
   ArrowLeft,
   UserPlus,
-  CreditCard,
-  Percent
+  CreditCard
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -83,7 +72,6 @@ const getServiceStages = (lang) => stageConfig.map(s => ({
   description: stageLabels[lang]?.[s.key]?.description || stageLabels.ru[s.key]?.description,
 }));
 
-// Legacy compatibility mapping
 const getContractorTypes = (lang) => {
   const stages = getServiceStages(lang);
   return {
@@ -114,33 +102,13 @@ const TelegramIcon = ({ className }) => (
 );
 
 const ContractorsPage = () => {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const { t, lang } = useTranslation();
   const serviceStages = getServiceStages(lang);
-  const contractorTypes = getContractorTypes(lang);
   const [contractors, setContractors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('inspection');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    contractor_type: 'inspection',
-    description: '',
-    services: '',
-    price_range: '',
-    phone: '',
-    email: '',
-    website: '',
-    whatsapp: '',
-    wechat: '',
-    telegram: '',
-    rating: 5.0,
-    deals_count: 0,
-    is_verified: false
-  });
 
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -153,7 +121,7 @@ const ContractorsPage = () => {
       setContractors(response.data);
     } catch (error) {
       console.error('Error fetching contractors:', error);
-      toast.error('Ошибка загрузки подрядчиков');
+      toast.error(t('messages.loadError'));
     } finally {
       setLoading(false);
     }
@@ -163,72 +131,20 @@ const ContractorsPage = () => {
     fetchContractors(activeTab);
   }, [activeTab]);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-  };
-
-  const handleAddContractor = async () => {
-    if (!formData.name || !formData.description || !formData.services) {
-      toast.error('Заполните обязательные поля');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      await axios.post(`${API}/contractors`, {
-        ...formData,
-        rating: parseFloat(formData.rating),
-        deals_count: parseInt(formData.deals_count)
-      }, { headers });
-      
-      toast.success('Подрядчик добавлен');
-      setIsAddDialogOpen(false);
-      resetForm();
-      fetchContractors(activeTab);
-    } catch (error) {
-      toast.error('Ошибка при добавлении');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handleDeleteContractor = async (contractorId) => {
-    if (!window.confirm('Удалить подрядчика?')) return;
+    if (!window.confirm(t('messages.confirmDelete'))) return;
     
     try {
       await axios.delete(`${API}/contractors/${contractorId}`, { headers });
-      toast.success('Подрядчик удален');
+      toast.success(t('messages.contractorDeleted'));
       fetchContractors(activeTab);
     } catch (error) {
       if (error.response?.data?.detail?.includes('demo')) {
-        toast.error('Демо-подрядчиков нельзя удалить');
+        toast.error(t('messages.demoCannotDelete'));
       } else {
-        toast.error('Ошибка при удалении');
+        toast.error(t('messages.deleteError'));
       }
     }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      contractor_type: activeTab,
-      description: '',
-      services: '',
-      price_range: '',
-      phone: '',
-      email: '',
-      website: '',
-      whatsapp: '',
-      wechat: '',
-      telegram: '',
-      rating: 5.0,
-      deals_count: 0,
-      is_verified: false
-    });
   };
 
   const filteredContractors = contractors.filter(c => 
@@ -236,7 +152,7 @@ const ContractorsPage = () => {
     c.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const TypeIcon = contractorTypes[activeTab]?.icon || Building2;
+  const TypeIcon = stageConfig.find(s => s.key === activeTab)?.icon || Building2;
 
   return (
     <div className="min-h-screen bg-[#0B0F14] py-12">
@@ -253,7 +169,7 @@ const ContractorsPage = () => {
 
         {/* Header */}
         <div className="text-center mb-12">
-          <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">Партнеры</p>
+          <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">{t('contractors.partnersLabel')}</p>
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">{t('contractors.title')}</h1>
           <p className="text-slate-400 max-w-2xl mx-auto mb-6">
             {t('contractors.subtitle')}
@@ -292,7 +208,6 @@ const ContractorsPage = () => {
             </TabsList>
 
             <div className="flex gap-3">
-              {/* Search */}
               <div className="relative flex-1 max-w-md">
                 <SearchIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                 <Input
@@ -300,6 +215,7 @@ const ContractorsPage = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t('contractors.searchPlaceholder')}
                   className="pl-9 bg-[#15191E] border-[#27272A] text-white"
+                  data-testid="contractors-search-input"
                 />
               </div>
             </div>
@@ -307,7 +223,7 @@ const ContractorsPage = () => {
             {/* Current stage description */}
             <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-4">
               <p className="text-slate-400 text-sm">
-                {serviceStages.find(s => s.key === activeTab)?.description || 'Подрядчики для данного этапа'}
+                {serviceStages.find(s => s.key === activeTab)?.description || t('contractors.stageDefaultDesc')}
               </p>
             </div>
           </div>
@@ -333,9 +249,9 @@ const ContractorsPage = () => {
               ) : (
                 <div className="text-center py-16 bg-[#15191E] border border-[#27272A] rounded-sm">
                   <TypeIcon size={64} className="mx-auto mb-4 text-slate-600" />
-                  <h3 className="text-xl font-semibold text-white mb-2">Подрядчики не найдены</h3>
+                  <h3 className="text-xl font-semibold text-white mb-2">{t('contractors.noContractorsFound')}</h3>
                   <p className="text-slate-400">
-                    {searchQuery ? 'Попробуйте изменить поисковый запрос' : 'Пока нет подрядчиков в этой категории'}
+                    {searchQuery ? t('contractors.tryChangingSearch') : t('contractors.noCategoryContractors')}
                   </p>
                 </div>
               )}
@@ -348,8 +264,10 @@ const ContractorsPage = () => {
 };
 
 const ContractorCard = ({ contractor, onDelete, isAuthenticated }) => {
+  const { t, lang } = useTranslation();
+  const contractorTypes = getContractorTypes(lang);
   const typeConfig = contractorTypes[contractor.contractor_type] || contractorTypes.inspection;
-  const TypeIcon = typeConfig.icon;
+  const TypeIcon = typeConfig?.icon || Building2;
 
   return (
     <div className="bg-[#15191E] border border-[#27272A] rounded-sm overflow-hidden card-hover">
@@ -374,6 +292,7 @@ const ContractorCard = ({ contractor, onDelete, isAuthenticated }) => {
             <button
               onClick={() => onDelete(contractor.id)}
               className="text-slate-500 hover:text-red-400 p-1"
+              data-testid={`delete-contractor-${contractor.id}`}
             >
               <Trash2 size={16} />
             </button>
@@ -389,8 +308,8 @@ const ContractorCard = ({ contractor, onDelete, isAuthenticated }) => {
             <Star size={14} className="text-amber-400 fill-amber-400" />
             <span className="text-white font-medium">{contractor.rating.toFixed(1)}</span>
           </div>
-          <span className="text-slate-500">•</span>
-          <span className="text-slate-400 text-sm">{contractor.deals_count} сделок</span>
+          <span className="text-slate-500">&bull;</span>
+          <span className="text-slate-400 text-sm">{contractor.deals_count} {t('contractors.deals')}</span>
         </div>
 
         {/* Description */}
@@ -413,22 +332,12 @@ const ContractorCard = ({ contractor, onDelete, isAuthenticated }) => {
         {/* Service Prices */}
         {contractor.service_prices && Object.keys(contractor.service_prices).length > 0 && (
           <div className="mb-3 p-2 bg-[#0B0F14] rounded-sm">
-            <p className="text-slate-500 text-xs mb-2">Стоимость услуг:</p>
+            <p className="text-slate-500 text-xs mb-2">{t('contractors.servicePrices')}:</p>
             <div className="space-y-1">
               {Object.entries(contractor.service_prices).map(([service, price]) => {
-                const serviceNames = {
-                  inspection: 'Инспекция',
-                  export: 'Выкуп и экспорт',
-                  logistics: 'Логистика',
-                  logistics_china: 'Доставка (Китай)',
-                  delivery_rb: 'Доставка в РБ',
-                  insurance: 'Страхование',
-                  purchase: 'Покупка',
-                  leasing: 'Лизинг',
-                  customs: 'Растаможка'
-                };
+                const serviceName = t(`contractors.serviceLabels.${service}`);
+                const displayName = serviceName !== `contractors.serviceLabels.${service}` ? serviceName : service;
                 
-                // Handle leasing object {rate, currency}
                 let priceDisplay;
                 if (service === 'leasing' && typeof price === 'object' && price !== null) {
                   priceDisplay = `${price.rate}% (${price.currency || 'USD'})`;
@@ -440,9 +349,7 @@ const ContractorCard = ({ contractor, onDelete, isAuthenticated }) => {
                 
                 return (
                   <div key={service} className="flex justify-between items-center text-sm">
-                    <span className="text-slate-400">
-                      {serviceNames[service] || service}
-                    </span>
+                    <span className="text-slate-400">{displayName}</span>
                     <span className="text-[#00E5FF] font-medium">{priceDisplay}</span>
                   </div>
                 );
@@ -454,7 +361,7 @@ const ContractorCard = ({ contractor, onDelete, isAuthenticated }) => {
         {/* Price Range (fallback) */}
         {!contractor.service_prices && contractor.price_range && (
           <div className="mb-4 p-2 bg-[#0B0F14] rounded-sm">
-            <span className="text-slate-500 text-xs">Стоимость: </span>
+            <span className="text-slate-500 text-xs">{t('contractors.cost')}: </span>
             <span className="text-[#00E5FF] font-medium">{contractor.price_range}</span>
           </div>
         )}
@@ -476,7 +383,7 @@ const ContractorCard = ({ contractor, onDelete, isAuthenticated }) => {
           {contractor.website && (
             <a href={contractor.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-slate-400 hover:text-[#00E5FF] text-sm">
               <Globe size={14} />
-              Сайт
+              {t('contractors.websiteLink')}
               <ExternalLink size={12} />
             </a>
           )}
@@ -498,7 +405,7 @@ const ContractorCard = ({ contractor, onDelete, isAuthenticated }) => {
             <div
               onClick={() => {
                 navigator.clipboard.writeText(contractor.wechat);
-                toast.success(`WeChat ID скопирован: ${contractor.wechat}`);
+                toast.success(`${t('messages.wechatCopied')}: ${contractor.wechat}`);
               }}
               className="w-8 h-8 bg-[#07C160]/10 rounded-full flex items-center justify-center text-[#07C160] hover:bg-[#07C160] hover:text-white transition-colors cursor-pointer"
             >
