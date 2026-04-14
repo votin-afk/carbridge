@@ -9,47 +9,48 @@
 
 ## Текущая архитектура
 - FastAPI backend, React frontend, MongoDB
+- Мультиязычность: RU/EN через LanguageContext + translation files
 - Модульные роуты: catalog.py, telegram.py, deals.py, auth.py, affiliate.py, user.py, leasing.py
 - server.py: ~7000 строк
-- Shared config: config.py (константы), database.py, utils/auth.py
+- Shared config: config.py, database.py, utils/auth.py
 
 ## Выполненные задачи
 
 ### Сессия 14.04.2026 (текущая)
-1. **Исправлены баги Documents.js** — proxy для фото + надёжный downloadFile
-2. **Рефакторинг server.py** — deals.py (~2050 строк), config.py обновлён
-3. **Обновлена главная страница** — Hero, "7 шагов к честной машине", FAQ (10 вопросов), преимущества
-4. **Обновлён AI-ассистент** — навигация по платформе + подбор из каталога
-5. **Публичная страница подрядчика** — endpoint GET /api/contractors/{id}/page, страница /contractor/:id
-   - О компании, услуги (локализованы), контакты, команда, сертификаты, портфолио, фото офиса
-   - Ссылка "Подробнее" в списке подрядчиков
-   - Ссылка "Полный профиль" в тендерах
-6. **Исправлен approve_contractor** — устранен KeyError при одобрении заявки
-7. **Исправлен delete_contractor** — поиск в обеих коллекциях
+1. **Баги Documents.js** — proxy для фото + downloadFile
+2. **Рефакторинг server.py** — deals.py (~2050 строк), config.py
+3. **Обновлена главная страница** — Hero, 7 шагов, FAQ (10), преимущества
+4. **AI-ассистент** — навигация по платформе + подбор из каталога
+5. **Публичная страница подрядчика** — endpoint + фронтенд + ссылки
+6. **Мультиязычность RU/EN**:
+   - LanguageContext + useTranslation hook + translation files (ru.js, en.js)
+   - Переключатель RU/EN в хедере лендинга и sidebar дашборда
+   - Переведены: LandingPage, ContractorsPage, ContractorProfilePage, DashboardLayout
+   - AI-ассистент отвечает на выбранном языке (параметр `lang` в API)
+   - Язык сохраняется в localStorage
 
 ### Предыдущие сессии
 - Полная двусторонняя Telegram интеграция
 - Прокси для китайских изображений
 - Lightbox для фото предложений
 - Добавление авто по ссылке через Che168 API
-- Полная заявка в тендерах (30+ полей)
 
 ## Бэклог
-- P1: Продолжить рефакторинг server.py (moderator, contractors, applications)
-- P2: Telegram webhook на production (ожидает пользователя)
+- P1: Рефакторинг server.py (moderator, contractors, applications)
+- P1: Добавить переводы в оставшиеся dashboard-страницы (Garage, Applications, Tenders, Documents и т.д.)
+- P2: Telegram webhook на production
 - P2: WhatsApp интеграция (ожидание Meta credentials)
-- P2: Рефакторинг фронтенд-компонентов (ModeratorPage.js, ContractorDashboard.js)
+- P2: Рефакторинг фронтенд-компонентов
 - P3: Система платежей/эскроу
 - P3: Кэширование переведённых описаний авто
 
 ## Тест-отчёты
-- iteration_31.json — Публичная страница подрядчика (100%)
+- iteration_32.json — Мультиязычность RU/EN (100% backend, 90% frontend)
+- iteration_31.json — Страница подрядчика (100%)
 - iteration_30.json — Landing page + AI chat (100%)
 - iteration_29.json — Deals refactoring (100%)
-- iteration_28.json — Documents bugs (100%)
 
 ## Тестовые данные
 - Admin: votin@tut.by / test
 - User: test@test.com / test
 - Contractor: test.contractor2@test.com / test123
-- Test contractor ID: c1f8fc8e-b0c7-45a6-bdda-5eaf9c792a3e

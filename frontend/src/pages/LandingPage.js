@@ -659,7 +659,7 @@ const LandingPage = () => {
       <section id="advantages" className="py-24 bg-[#15191E]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">Почему мы</p>
+            <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">{lt.advantagesLabel}</p>
             <h2 className="text-3xl sm:text-4xl font-bold text-white">{lt.advantagesTitle}</h2>
           </div>
 
@@ -685,7 +685,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">Где искать</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white">Площадки в Китае</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white">{lang === 'ru' ? 'Площадки в Китае' : 'Platforms in China'}</h2>
             <p className="text-slate-400 mt-4 max-w-2xl mx-auto">
               Основные платформы для поиска автомобилей. Найдите авто и добавьте его в гараж для запуска тендера.
             </p>

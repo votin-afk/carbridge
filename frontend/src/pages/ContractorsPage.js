@@ -40,96 +40,58 @@ import axios from 'axios';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // Service stages matching deal flow
-const serviceStages = [
-  { 
-    key: 'leasing', 
-    label: 'Лизинг', 
-    icon: CreditCard, 
-    color: 'text-purple-400', 
-    bgColor: 'bg-purple-500/10', 
-    borderColor: 'border-purple-500/30',
-    description: 'Лизинговые компании'
-  },
-  { 
-    key: 'inspection', 
-    label: 'Инспекция авто', 
-    icon: ClipboardCheck, 
-    color: 'text-blue-400', 
-    bgColor: 'bg-blue-500/10', 
-    borderColor: 'border-blue-500/30',
-    description: 'Проверка технического состояния'
-  },
-  { 
-    key: 'export', 
-    label: 'Выкуп и экспорт', 
-    icon: Package, 
-    color: 'text-amber-400', 
-    bgColor: 'bg-amber-500/10', 
-    borderColor: 'border-amber-500/30',
-    description: 'Выкуп и экспорт из Китая'
-  },
-  { 
-    key: 'logistics_china', 
-    label: 'Доставка до порта (Китай)', 
-    icon: Truck, 
-    color: 'text-emerald-400', 
-    bgColor: 'bg-emerald-500/10', 
-    borderColor: 'border-emerald-500/30',
-    description: 'Логистика до порта отправления'
-  },
-  { 
-    key: 'insurance', 
-    label: 'Страхование авто', 
-    icon: ClipboardCheck, 
-    color: 'text-cyan-400', 
-    bgColor: 'bg-cyan-500/10', 
-    borderColor: 'border-cyan-500/30',
-    description: 'Страхование груза'
-  },
-  { 
-    key: 'delivery_rb', 
-    label: 'Доставка в Беларусь', 
-    icon: Truck, 
-    color: 'text-indigo-400', 
-    bgColor: 'bg-indigo-500/10', 
-    borderColor: 'border-indigo-500/30',
-    description: 'Морская/ж/д доставка'
-  },
-  { 
-    key: 'customs', 
-    label: 'Таможенное оформление', 
-    icon: Building2, 
-    color: 'text-rose-400', 
-    bgColor: 'bg-rose-500/10', 
-    borderColor: 'border-rose-500/30',
-    description: 'Растаможка в Беларуси'
-  },
-  { 
-    key: 'legal_belarus', 
-    label: 'Юристы (Беларусь)', 
-    icon: Building2, 
-    color: 'text-amber-400', 
-    bgColor: 'bg-amber-500/10', 
-    borderColor: 'border-amber-500/30',
-    description: 'Юридическая помощь в Беларуси'
-  },
-  { 
-    key: 'legal_china', 
-    label: 'Юристы (Китай)', 
-    icon: Building2, 
-    color: 'text-red-400', 
-    bgColor: 'bg-red-500/10', 
-    borderColor: 'border-red-500/30',
-    description: 'Юридическая помощь в Китае'
-  }
+const stageConfig = [
+  { key: 'leasing', icon: CreditCard, color: 'text-purple-400', bgColor: 'bg-purple-500/10', borderColor: 'border-purple-500/30' },
+  { key: 'inspection', icon: ClipboardCheck, color: 'text-blue-400', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/30' },
+  { key: 'export', icon: Package, color: 'text-amber-400', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/30' },
+  { key: 'logistics_china', icon: Truck, color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-500/30' },
+  { key: 'insurance', icon: ClipboardCheck, color: 'text-cyan-400', bgColor: 'bg-cyan-500/10', borderColor: 'border-cyan-500/30' },
+  { key: 'delivery_rb', icon: Truck, color: 'text-indigo-400', bgColor: 'bg-indigo-500/10', borderColor: 'border-indigo-500/30' },
+  { key: 'customs', icon: Building2, color: 'text-rose-400', bgColor: 'bg-rose-500/10', borderColor: 'border-rose-500/30' },
+  { key: 'legal_belarus', icon: Building2, color: 'text-amber-400', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/30' },
+  { key: 'legal_china', icon: Building2, color: 'text-red-400', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/30' },
 ];
 
+const stageLabels = {
+  ru: {
+    leasing: { label: 'Лизинг', description: 'Лизинговые компании' },
+    inspection: { label: 'Инспекция авто', description: 'Проверка технического состояния' },
+    export: { label: 'Выкуп и экспорт', description: 'Выкуп и экспорт из Китая' },
+    logistics_china: { label: 'Доставка до порта (Китай)', description: 'Логистика до порта отправления' },
+    insurance: { label: 'Страхование авто', description: 'Страхование груза' },
+    delivery_rb: { label: 'Доставка в Беларусь', description: 'Морская/ж/д доставка' },
+    customs: { label: 'Таможенное оформление', description: 'Растаможка в Беларуси' },
+    legal_belarus: { label: 'Юристы (Беларусь)', description: 'Юридическая помощь в Беларуси' },
+    legal_china: { label: 'Юристы (Китай)', description: 'Юридическая помощь в Китае' },
+  },
+  en: {
+    leasing: { label: 'Leasing', description: 'Leasing companies' },
+    inspection: { label: 'Car Inspection', description: 'Technical condition check' },
+    export: { label: 'Purchase & Export', description: 'Purchase and export from China' },
+    logistics_china: { label: 'Port Delivery (China)', description: 'Logistics to departure port' },
+    insurance: { label: 'Car Insurance', description: 'Cargo insurance' },
+    delivery_rb: { label: 'Delivery to Belarus', description: 'Sea/rail delivery' },
+    customs: { label: 'Customs Clearance', description: 'Customs in Belarus' },
+    legal_belarus: { label: 'Lawyers (Belarus)', description: 'Legal help in Belarus' },
+    legal_china: { label: 'Lawyers (China)', description: 'Legal help in China' },
+  },
+};
+
+const getServiceStages = (lang) => stageConfig.map(s => ({
+  ...s,
+  label: stageLabels[lang]?.[s.key]?.label || stageLabels.ru[s.key]?.label,
+  description: stageLabels[lang]?.[s.key]?.description || stageLabels.ru[s.key]?.description,
+}));
+
 // Legacy compatibility mapping
-const contractorTypes = {
-  inspection: serviceStages.find(s => s.key === 'inspection'),
-  export: serviceStages.find(s => s.key === 'export'),
-  logistics: serviceStages.find(s => s.key === 'delivery_rb'),
-  leasing: serviceStages.find(s => s.key === 'leasing')
+const getContractorTypes = (lang) => {
+  const stages = getServiceStages(lang);
+  return {
+    inspection: stages.find(s => s.key === 'inspection'),
+    export: stages.find(s => s.key === 'export'),
+    logistics: stages.find(s => s.key === 'delivery_rb'),
+    leasing: stages.find(s => s.key === 'leasing')
+  };
 };
 
 // Messenger icons
@@ -154,6 +116,8 @@ const TelegramIcon = ({ className }) => (
 const ContractorsPage = () => {
   const { token, user } = useAuth();
   const { t, lang } = useTranslation();
+  const serviceStages = getServiceStages(lang);
+  const contractorTypes = getContractorTypes(lang);
   const [contractors, setContractors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('inspection');
@@ -282,7 +246,7 @@ const ContractorsPage = () => {
           <Link to="/">
             <Button variant="ghost" className="text-slate-400 hover:text-white">
               <ArrowLeft size={18} className="mr-2" />
-              На главную
+              {t('nav.backToMain')}
             </Button>
           </Link>
         </div>
@@ -298,13 +262,13 @@ const ContractorsPage = () => {
             <Link to="/contractor-register">
               <Button className="bg-gradient-to-r from-[#00E5FF] to-[#22D3EE] text-black">
                 <UserPlus size={18} className="mr-2" />
-                Стать подрядчиком
+                {t('contractors.becomeContractor')}
               </Button>
             </Link>
             <Link to="/contractor-dashboard">
               <Button variant="outline" className="border-[#00E5FF] text-[#00E5FF] hover:bg-[#00E5FF]/10">
                 <Building2 size={18} className="mr-2" />
-                Войти в кабинет подрядчика
+                {t('contractors.contractorLogin')}
               </Button>
             </Link>
           </div>
@@ -334,7 +298,7 @@ const ContractorsPage = () => {
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Поиск подрядчика..."
+                  placeholder={t('contractors.searchPlaceholder')}
                   className="pl-9 bg-[#15191E] border-[#27272A] text-white"
                 />
               </div>
@@ -434,18 +398,14 @@ const ContractorCard = ({ contractor, onDelete, isAuthenticated }) => {
 
         {/* Services */}
         <div className="mb-3">
-          <p className="text-slate-500 text-xs mb-1">Услуги:</p>
+          <p className="text-slate-500 text-xs mb-1">{t('contractors.services')}:</p>
           <p className="text-slate-300 text-sm line-clamp-2">
             {(() => {
-              const serviceLabels = {
-                inspection: 'Инспекция', export: 'Выкуп и экспорт', logistics: 'Логистика',
-                logistics_china: 'Доставка (Китай)', delivery_rb: 'Доставка в РБ',
-                insurance: 'Страхование', purchase: 'Покупка', leasing: 'Лизинг', customs: 'Растаможка'
-              };
+              const sLabels = stageLabels[lang] || stageLabels.ru;
               const servicesArray = typeof contractor.services === 'string' 
                 ? contractor.services.split(',').map(s => s.trim())
                 : (contractor.services || []);
-              return servicesArray.map(s => serviceLabels[s] || s).join(', ');
+              return servicesArray.map(s => sLabels[s]?.label || s).join(', ');
             })()}
           </p>
         </div>
@@ -560,7 +520,7 @@ const ContractorCard = ({ contractor, onDelete, isAuthenticated }) => {
             className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-[#00E5FF]/10 text-[#00E5FF] text-sm rounded hover:bg-[#00E5FF]/20 transition-colors"
             data-testid={`contractor-profile-link-${contractor.id}`}
           >
-            Подробнее <ExternalLink size={12} />
+            {t('nav.more')} <ExternalLink size={12} />
           </Link>
         </div>
       </div>
