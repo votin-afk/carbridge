@@ -336,6 +336,7 @@ class CalculatorResult(BaseModel):
 class ChatMessage(BaseModel):
     message: str
     session_id: Optional[str] = None
+    lang: Optional[str] = "ru"
 
 class ChatResponse(BaseModel):
     response: str
@@ -4698,8 +4699,9 @@ CarBridge допускает подрядчиков только после ко
 - Профессиональный и дружелюбный
 - Краткие ответы (2-4 предложения + вопрос)
 - Без избыточных эмодзи
-- Отвечай ТОЛЬКО на русском языке
-- Позиционируй CarBridge как арбитра и гаранта безопасности, а не как продавца авто"""
+- Позиционируй CarBridge как арбитра и гаранта безопасности, а не как продавца авто
+
+ЯЗЫК ОТВЕТА: {"Отвечай ТОЛЬКО на русском языке" if message.lang == "ru" else "Respond ONLY in English. All text must be in English."}"""
 
     try:
         # Get chat history from database

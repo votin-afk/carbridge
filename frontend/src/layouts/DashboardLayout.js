@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { Logo } from '../components/Logo';
 import { Button } from '../components/ui/button';
 import TelegramSettings from '../components/TelegramSettings';
@@ -38,6 +39,7 @@ const DashboardLayout = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showTelegramSettings, setShowTelegramSettings] = useState(false);
   const { user, token, logout } = useAuth();
+  const { t, lang, toggleLang } = useTranslation();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -88,18 +90,18 @@ const DashboardLayout = () => {
   };
 
   const navItems = [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Обзор', end: true },
-    { to: '/dashboard/catalog', icon: Search, label: 'Каталог' },
-    { to: '/dashboard/garage', icon: Car, label: 'Мой гараж' },
-    { to: '/dashboard/applications', icon: ClipboardList, label: 'Заявки' },
-    { to: '/dashboard/tenders', icon: FileStack, label: 'Тендеры' },
-    { to: '/dashboard/deals', icon: ShoppingCart, label: 'Авто для сделки' },
-    { to: '/dashboard/purchased', icon: Trophy, label: 'Приобретённые авто' },
-    { to: '/dashboard/verification', icon: Shield, label: 'Верификация' },
-    { to: '/dashboard/documents', icon: FileText, label: 'Документы' },
-    { to: '/dashboard/tracking', icon: MapPin, label: 'Отследить авто' },
-    { to: '/dashboard/ai-assistant', icon: Bot, label: 'ИИ-Ассистент' },
-    { to: '/dashboard/legal-help', icon: Scale, label: 'Юридическая помощь' },
+    { to: '/dashboard', icon: LayoutDashboard, label: t('sidebar.overview'), end: true },
+    { to: '/dashboard/catalog', icon: Search, label: t('sidebar.catalog') },
+    { to: '/dashboard/garage', icon: Car, label: t('sidebar.garage') },
+    { to: '/dashboard/applications', icon: ClipboardList, label: t('sidebar.applications') },
+    { to: '/dashboard/tenders', icon: FileStack, label: t('sidebar.tenders') },
+    { to: '/dashboard/deals', icon: ShoppingCart, label: lang === 'ru' ? 'Авто для сделки' : 'Deal Cars' },
+    { to: '/dashboard/purchased', icon: Trophy, label: t('purchased.title') },
+    { to: '/dashboard/verification', icon: Shield, label: lang === 'ru' ? 'Верификация' : 'Verification' },
+    { to: '/dashboard/documents', icon: FileText, label: t('sidebar.documents') },
+    { to: '/dashboard/tracking', icon: MapPin, label: t('sidebar.tracking') },
+    { to: '/dashboard/ai-assistant', icon: Bot, label: t('sidebar.aiAssistant') },
+    { to: '/dashboard/legal-help', icon: Scale, label: t('sidebar.legalHelp') },
   ];
 
   return (
@@ -156,7 +158,7 @@ const DashboardLayout = () => {
                 className="flex items-center gap-3 px-4 py-3 rounded-sm text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>
-                <span className="font-medium">Калькулятор</span>
+                <span className="font-medium">{t('nav.calculator')}</span>
                 <ChevronRight size={16} className="ml-auto" />
               </NavLink>
             </div>
@@ -164,7 +166,7 @@ const DashboardLayout = () => {
 
           {/* User section */}
           <div className="p-4 border-t border-[#27272A]">
-            <div className="flex items-center gap-3 mb-4 px-2">
+            <div className="flex items-center gap-3 mb-3 px-2">
               <div className="w-10 h-10 rounded-full bg-[#00E5FF]/10 flex items-center justify-center text-[#00E5FF] font-semibold">
                 {user?.name?.charAt(0).toUpperCase()}
               </div>
@@ -172,6 +174,13 @@ const DashboardLayout = () => {
                 <p className="text-white font-medium truncate">{user?.name}</p>
                 <p className="text-slate-500 text-xs truncate">{user?.email}</p>
               </div>
+              <button
+                onClick={toggleLang}
+                data-testid="dashboard-lang-toggle"
+                className="px-2 py-1 text-xs font-bold border border-[#27272A] rounded text-slate-400 hover:border-[#00E5FF] hover:text-[#00E5FF] transition-colors"
+              >
+                {lang === 'ru' ? 'EN' : 'RU'}
+              </button>
             </div>
             <Button
               data-testid="logout-btn"
@@ -180,7 +189,7 @@ const DashboardLayout = () => {
               className="w-full justify-start gap-3 text-slate-400 hover:text-red-400 hover:bg-red-500/10"
             >
               <LogOut size={18} />
-              Выйти
+              {t('nav.logout')}
             </Button>
           </div>
         </div>
@@ -228,14 +237,14 @@ const DashboardLayout = () => {
               {showNotifications && (
                 <div className="absolute right-0 top-12 w-80 bg-[#1C2128] border border-[#27272A] rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto">
                   <div className="p-3 border-b border-[#27272A] flex justify-between items-center">
-                    <h4 className="text-white font-semibold">Уведомления</h4>
+                    <h4 className="text-white font-semibold">{lang === 'ru' ? 'Уведомления' : 'Notifications'}</h4>
                     {unreadCount > 0 && (
-                      <span className="text-xs text-[#00E5FF]">{unreadCount} новых</span>
+                      <span className="text-xs text-[#00E5FF]">{unreadCount} {lang === 'ru' ? 'новых' : 'new'}</span>
                     )}
                   </div>
                   {notifications.length === 0 ? (
                     <div className="p-4 text-center text-slate-400">
-                      Нет уведомлений
+                      {lang === 'ru' ? 'Нет уведомлений' : 'No notifications'}
                     </div>
                   ) : (
                     notifications.slice(0, 10).map(notification => (

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { Logo } from '../components/Logo';
 import { Button } from '../components/ui/button';
 import {
@@ -106,26 +107,24 @@ const popularCars = [
 
 const LandingPage = () => {
   const { isAuthenticated, isModerator, isAdmin, user } = useAuth();
+  const { t, lang, toggleLang } = useTranslation();
+  
+  const lt = t('landing');
   
   // AI Chat state
-  const [chatMessages, setChatMessages] = useState([
-    {
-      role: 'assistant',
-      content: `Здравствуйте! Я AI-консультант платформы CARBRIDGE.
-
-Помогу вам:
-- Подобрать автомобиль из Китая под ваш бюджет
-- Показать актуальные авто из каталога Che168
-- Рассчитать полную стоимость с доставкой в Беларусь
-- Разобраться в работе платформы и этапах сделки
-- Объяснить тендерную систему и процесс проверки подрядчиков
-
-Чем могу помочь?`
-    }
-  ]);
+  const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
+  
+  // Reset chat initial message on language change
+  useEffect(() => {
+    const greeting = lang === 'ru' 
+      ? `Здравствуйте! Я AI-консультант платформы CARBRIDGE.\n\nПомогу вам:\n- Подобрать автомобиль из Китая под ваш бюджет\n- Показать актуальные авто из каталога Che168\n- Рассчитать полную стоимость с доставкой в Беларусь\n- Разобраться в работе платформы и этапах сделки\n- Объяснить тендерную систему и процесс проверки подрядчиков\n\nЧем могу помочь?`
+      : `Hello! I'm the CARBRIDGE AI consultant.\n\nI can help you:\n- Find a car from China within your budget\n- Show available cars from the Che168 catalog\n- Calculate the full turnkey cost in Belarus\n- Navigate the platform and explain deal stages\n- Explain the tender system and contractor verification\n\nHow can I help you?`;
+    setChatMessages([{ role: 'assistant', content: greeting }]);
+    setSessionId(null);
+  }, [lang]);
   
   // Popular cars carousel state
   const [currentCarIndex, setCurrentCarIndex] = useState(0);
@@ -211,7 +210,8 @@ const LandingPage = () => {
     try {
       const response = await axios.post(`${API}/chat`, {
         message: userMessage,
-        session_id: sessionId
+        session_id: sessionId,
+        lang: lang
       }, {
         timeout: 60000 // 60 second timeout for AI response
       });
@@ -219,12 +219,18 @@ const LandingPage = () => {
       setChatMessages(prev => [...prev, { role: 'assistant', content: response.data.response }]);
     } catch (error) {
       console.error('Chat error:', error);
-      let errorMessage = 'Извините, произошла ошибка. Попробуйте позже или свяжитесь с нами напрямую.';
+      let errorMessage = lang === 'ru' 
+        ? 'Извините, произошла ошибка. Попробуйте позже или свяжитесь с нами напрямую.'
+        : 'Sorry, an error occurred. Please try again later or contact us directly.';
       
       if (error.code === 'ECONNABORTED') {
-        errorMessage = 'Время ожидания истекло. AI обрабатывает ваш запрос дольше обычного. Попробуйте ещё раз.';
+        errorMessage = lang === 'ru'
+          ? 'Время ожидания истекло. AI обрабатывает ваш запрос дольше обычного. Попробуйте ещё раз.'
+          : 'Request timed out. The AI is taking longer than usual. Please try again.';
       } else if (error.response?.status === 500) {
-        errorMessage = 'AI-сервис временно недоступен. Вы можете посмотреть каталог авто или создать заявку в личном кабинете.';
+        errorMessage = lang === 'ru'
+          ? 'AI-сервис временно недоступен. Вы можете посмотреть каталог авто или создать заявку в личном кабинете.'
+          : 'AI service is temporarily unavailable. You can browse the car catalog or create an application in your dashboard.';
       }
       
       setChatMessages(prev => [...prev, { 
@@ -236,72 +242,24 @@ const LandingPage = () => {
     }
   };
 
-  const processSteps = [
-    { num: "01", title: "Создание запроса", desc: "Опишите автомобиль в заявке или выберите из каталога. AI-ассистент поможет определить оптимальные параметры и рассчитать бюджет под ключ в Беларуси.", icon: Search },
-    { num: "02", title: "Подбор подрядчиков", desc: "Ваша заявка попадает к проверенным подрядчикам со статусом Verified Partner. Каждый прошёл аудит: юридическая проверка, фото офиса, история сделок и видеосвязь с менеджером CarBridge.", icon: Users },
-    { num: "03", title: "Тендер", desc: "Подрядчики конкурируют за ваш заказ, предлагая лучшие условия по цене, срокам и доставке. Вы сравниваете предложения и выбираете оптимальное — полная прозрачность и выгода.", icon: FileCheck },
-    { num: "04", title: "Договор и оплата", desc: "Заключаете договор с выбранным подрядчиком через платформу. Деньги переводятся только после подтверждения выполнения каждого этапа — модель безопасной сделки.", icon: Shield },
-    { num: "05", title: "Проверка и фото-пакет", desc: "Инспекция авто на месте в Китае: VIN-проверка, детальные фотографии, видеообзор и профессиональный отчёт о техническом состоянии. Всё в вашем личном кабинете.", icon: Car },
-    { num: "06", title: "Логистика и GPS-трек", desc: "Отслеживайте перемещение автомобиля в реальном времени через GPS-трекинг. Фото и видео отчёты на каждом этапе: порт, погрузка, транзит, прибытие в Беларусь.", icon: Truck },
-    { num: "07", title: "Передача авто", desc: "Таможенное оформление, регистрация и передача автомобиля с полным пакетом документов. CarBridge сопровождает до момента получения ключей.", icon: CheckCircle2 },
-  ];
+  const processSteps = (lt.steps || []).map((step, i) => ({
+    ...step,
+    icon: [Search, Users, FileCheck, Shield, Car, Truck, CheckCircle2][i]
+  }));
 
-  const advantages = [
-    { title: "Прозрачность", desc: "Все процессы видны клиенту: от выбора авто до логистики и растаможки. Никаких скрытых наценок — только честные 3% комиссии.", icon: "%" },
-    { title: "Безопасность", desc: "Юридический контроль сделки, проверка контрактов и VIN. Деньги списываются поэтапно только после подтверждения.", icon: "🛡" },
-    { title: "Технологичность", desc: "Цифровая платформа с личным кабинетом, тендерной системой, GPS-трекингом и AI-ассистентом для подбора авто.", icon: "◎" },
-    { title: "Доверие", desc: "CarBridge — независимый арбитр сделки. Все подрядчики проходят аудит: проверка юрлица, фото офиса, видеосвязь.", icon: "✓" },
-  ];
+  const advantages = (lt.advantages || []).map((adv, i) => ({
+    ...adv,
+    icon: ['%', '\u26e8', '\u25ce', '\u2713'][i]
+  }));
 
   const platforms = [
-    { name: "58.com", url: "https://m.58.com/", desc: "Крупнейший классифайд Китая" },
-    { name: "Che168", url: "https://www.che168.com/", desc: "Ведущая автоплощадка" },
-    { name: "Guazi", url: "https://www.guazi.com", desc: "Авто с пробегом" },
-    { name: "Dongchedi", url: "https://www.dongchedi.com", desc: "Автопортал от ByteDance" },
+    { name: "58.com", url: "https://m.58.com/", desc: lang === 'ru' ? "Крупнейший классифайд Китая" : "China's largest classifieds" },
+    { name: "Che168", url: "https://www.che168.com/", desc: lang === 'ru' ? "Ведущая автоплощадка" : "Leading auto platform" },
+    { name: "Guazi", url: "https://www.guazi.com", desc: lang === 'ru' ? "Авто с пробегом" : "Used cars" },
+    { name: "Dongchedi", url: "https://www.dongchedi.com", desc: lang === 'ru' ? "Автопортал от ByteDance" : "ByteDance auto portal" },
   ];
 
-  const faqItems = [
-    {
-      q: "Как работает тендерная система CarBridge?",
-      a: "После создания заявки на автомобиль, она рассылается верифицированным подрядчикам в Китае. Подрядчики конкурируют за ваш заказ, предлагая лучшие условия по цене, срокам и доставке. Вы сравниваете все предложения в личном кабинете и выбираете оптимальное. Это обеспечивает прозрачность и максимальную выгоду."
-    },
-    {
-      q: "Как проверяются подрядчики?",
-      a: "Каждый подрядчик проходит многоуровневую верификацию: проверка юридического лица (лицензии, регистрация, контакты), фото офиса или склада, анализ истории сделок и отзывов, а также ежегодная видеосвязь с менеджером CarBridge. После проверки подрядчик получает статус Verified Partner и допуск к тендерам."
-    },
-    {
-      q: "Какие гарантии безопасности сделки?",
-      a: "CarBridge выступает независимым арбитром сделки. Используется модель поэтапной оплаты — деньги переводятся подрядчику только после подтверждения выполнения каждого этапа модератором. Все этапы видны в личном кабинете: инспекция, выкуп, логистика, таможня. Договорная защита, VIN-проверка и юридический контроль на каждом шаге."
-    },
-    {
-      q: "Сколько стоят услуги платформы?",
-      a: "Комиссия платформы составляет 3% от стоимости автомобиля. При проведении платежа через платформу взимается дополнительно 1%, которые включают банковские издержки и гарантию безопасности. Это единственные расходы — никаких скрытых наценок."
-    },
-    {
-      q: "Как отслеживать статус сделки?",
-      a: "Вся сделка отслеживается в личном кабинете через интерактивную инфографику этапов. Для каждого этапа есть чат с подрядчиком, возможность загрузки документов и фото. GPS-трекинг позволяет следить за перемещением авто в реальном времени. Уведомления приходят через Telegram."
-    },
-    {
-      q: "Как долго занимает доставка?",
-      a: "Средний срок от выкупа до передачи авто составляет 30-45 дней. Срок зависит от выбранного способа перевозки (ЖД, автовоз или контейнер), загруженности маршрута и скорости таможенного оформления. Вы видите все этапы и статусы в режиме реального времени."
-    },
-    {
-      q: "Можно ли привезти электромобиль?",
-      a: "Да, электромобили растамаживаются по льготной ставке 0% — это делает их особенно выгодными для импорта. AI-ассистент поможет подобрать модель с учётом особенностей эксплуатации в Беларуси: запас хода, зарядная инфраструктура, сервисное обслуживание."
-    },
-    {
-      q: "Что такое Указ 140?",
-      a: "Указ № 140 позволяет многодетным семьям, инвалидам I-II групп и родителям детей-инвалидов получить 50% скидку на таможенные пошлины при ввозе автомобиля для личного пользования. Наш калькулятор учитывает эту льготу при расчёте стоимости."
-    },
-    {
-      q: "Можно ли самостоятельно выбрать авто?",
-      a: "Да, вы можете найти автомобиль на любой площадке (Che168, 58.com, Guazi, Dongchedi) и добавить его по ссылке в свой гараж. Также можно воспользоваться нашим встроенным каталогом или попросить AI-ассистента подобрать варианты под ваши требования и бюджет."
-    },
-    {
-      q: "Что входит в личный кабинет?",
-      a: "Личный кабинет включает: Гараж (сохранённые авто с расчётом стоимости), Заявки (создание и управление запросами), Тендеры (просмотр предложений подрядчиков), Документы (этапы сделки с чатами и файлами), Приобретённые авто. Все процессы управляются из одного интерфейса."
-    },
-  ];
+  const faqItems = lt.faq || [];
 
   return (
     <div className="min-h-screen bg-[#0B0F14]">
@@ -312,43 +270,50 @@ const LandingPage = () => {
             <Logo />
             
             <nav className="hidden md:flex items-center gap-8">
-              <Link to="/catalog" className="text-slate-400 hover:text-[#00E5FF] transition-colors font-medium">Каталог</Link>
+              <Link to="/catalog" className="text-slate-400 hover:text-[#00E5FF] transition-colors font-medium">{t('nav.catalog')}</Link>
               <Link to="/hot-deals" className="text-orange-400 hover:text-orange-300 transition-colors font-medium flex items-center gap-1">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
                 </span>
-                Горящие
+                {t('nav.hotDeals')}
               </Link>
-              <Link to="/contractors" className="text-slate-400 hover:text-[#00E5FF] transition-colors font-medium">Подрядчики</Link>
-              <Link to="/partners" className="text-emerald-400 hover:text-emerald-300 transition-colors font-medium">Партнёрам</Link>
+              <Link to="/contractors" className="text-slate-400 hover:text-[#00E5FF] transition-colors font-medium">{t('nav.contractors')}</Link>
+              <Link to="/partners" className="text-emerald-400 hover:text-emerald-300 transition-colors font-medium">{t('nav.partners')}</Link>
             </nav>
 
             <div className="flex items-center gap-3">
+              <button
+                onClick={toggleLang}
+                data-testid="lang-toggle"
+                className="px-2.5 py-1 text-xs font-bold border border-[#27272A] rounded text-slate-300 hover:border-[#00E5FF] hover:text-[#00E5FF] transition-colors"
+              >
+                {lang === 'ru' ? 'EN' : 'RU'}
+              </button>
               <Link to="/calculator">
                 <Button variant="ghost" className="hidden sm:flex text-slate-400 hover:text-[#00E5FF]">
                   <Calculator size={18} className="mr-2" />
-                  Калькулятор
+                  {t('nav.calculator')}
                 </Button>
               </Link>
               {isModerator && (
                 <Link to="/moderator">
                   <Button variant="ghost" className="hidden sm:flex text-amber-400 hover:text-amber-300">
                     <Shield size={18} className="mr-2" />
-                    Панель модератора
+                    {lang === 'ru' ? 'Панель модератора' : 'Moderator Panel'}
                   </Button>
                 </Link>
               )}
               {isAuthenticated ? (
                 <Link to="/dashboard">
                   <Button data-testid="header-dashboard-btn" className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black font-medium rounded-sm">
-                    Личный кабинет
+                    {t('nav.dashboard')}
                   </Button>
                 </Link>
               ) : (
                 <Link to="/auth">
                   <Button data-testid="header-login-btn" className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black font-medium rounded-sm">
-                    Войти
+                    {t('nav.login')}
                   </Button>
                 </Link>
               )}
@@ -364,34 +329,34 @@ const LandingPage = () => {
             <div className="fade-in">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#00E5FF]/10 border border-[#00E5FF]/20 rounded-full mb-6">
                 <span className="w-2 h-2 bg-[#00E5FF] rounded-full animate-pulse" />
-                <span className="text-[#00E5FF] text-sm font-medium">Импорт авто из Китая</span>
+                <span className="text-[#00E5FF] text-sm font-medium">{lang === 'ru' ? 'Импорт авто из Китая' : 'Car Import from China'}</span>
               </div>
               
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
-                Мы не продаём автомобили — мы помогаем совершить{' '}
-                <span className="text-[#00E5FF]">безопасную сделку</span>
+                {lt.heroTitle1}{' '}
+                <span className="text-[#00E5FF]">{lt.heroTitle2}</span>
               </h1>
               
               <p className="text-lg text-slate-400 mb-8 max-w-lg">
-                CarBridge — прозрачная цифровая платформа для безопасного импорта автомобилей из Китая. Тендер среди проверенных дилеров, AI-подбор и полный контроль каждого этапа сделки.
+                {lt.heroSubtitle}
               </p>
 
               <div className="flex flex-wrap gap-4">
                 <Link to="/catalog">
                   <Button data-testid="hero-catalog-btn" className="bg-[#00E5FF] hover:bg-[#22D3EE] text-black font-semibold px-8 py-6 rounded-sm btn-glow">
                     <Car className="mr-2" size={20} />
-                    Каталог авто
+                    {lt.heroSecondaryCta}
                   </Button>
                 </Link>
                 <a href="#ai-agent">
                   <Button data-testid="hero-cta-btn" variant="outline" className="border-[#27272A] text-white hover:border-[#00E5FF] hover:text-[#00E5FF] px-8 py-6 rounded-sm">
                     <Sparkles className="mr-2" size={20} />
-                    AI Подбор
+                    {lang === 'ru' ? 'AI Подбор' : 'AI Selection'}
                   </Button>
                 </a>
                 <Link to="/calculator">
                   <Button data-testid="hero-calc-btn" variant="outline" className="border-[#27272A] text-white hover:border-[#00E5FF] hover:text-[#00E5FF] px-8 py-6 rounded-sm">
-                    Калькулятор
+                    {t('nav.calculator')}
                   </Button>
                 </Link>
               </div>
@@ -399,15 +364,15 @@ const LandingPage = () => {
               <div className="flex items-center gap-8 mt-10 pt-8 border-t border-[#27272A]">
                 <div>
                   <p className="text-3xl font-bold text-white">500+</p>
-                  <p className="text-slate-500 text-sm">Доставленных авто</p>
+                  <p className="text-slate-500 text-sm">{lang === 'ru' ? 'Доставленных авто' : 'Cars Delivered'}</p>
                 </div>
                 <div>
                   <p className="text-3xl font-bold text-white">4.9</p>
-                  <p className="text-slate-500 text-sm">Рейтинг клиентов</p>
+                  <p className="text-slate-500 text-sm">{lang === 'ru' ? 'Рейтинг клиентов' : 'Client Rating'}</p>
                 </div>
                 <div>
                   <p className="text-3xl font-bold text-white">3%</p>
-                  <p className="text-slate-500 text-sm">Комиссия</p>
+                  <p className="text-slate-500 text-sm">{lang === 'ru' ? 'Комиссия' : 'Commission'}</p>
                 </div>
               </div>
             </div>
@@ -443,13 +408,13 @@ const LandingPage = () => {
                 
                 {/* Car Info Overlay */}
                 <div className={`absolute bottom-0 left-0 right-0 p-6 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-                  <p className="text-slate-400 text-sm mb-1">Популярный выбор</p>
+                  <p className="text-slate-400 text-sm mb-1">{lang === 'ru' ? 'Популярный выбор' : 'Popular choice'}</p>
                   <p className="text-white text-xl font-semibold mb-2">{popularCars[currentCarIndex].name}</p>
                   <div className="flex items-center gap-2">
                     <span className="text-[#00E5FF] text-2xl font-bold">
                       ${popularCars[currentCarIndex].priceUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
-                    <span className="text-slate-500 text-sm">под ключ в Беларуси</span>
+                    <span className="text-slate-500 text-sm">{lang === 'ru' ? 'под ключ в Беларуси' : 'turnkey in Belarus'}</span>
                   </div>
                 </div>
 
@@ -482,13 +447,13 @@ const LandingPage = () => {
               <div>
                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/30 rounded-full mb-4">
                   <Flame size={16} className="text-orange-500" />
-                  <span className="text-orange-400 text-sm font-medium">Ограниченное время</span>
+                  <span className="text-orange-400 text-sm font-medium">{lang === 'ru' ? 'Ограниченное время' : 'Limited Time'}</span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white">Горящие предложения</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white">{t('nav.hotDeals')}</h2>
               </div>
               <Link to="/hot-deals">
                 <Button variant="outline" className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10">
-                  Все предложения
+                  {lang === 'ru' ? 'Все предложения' : 'All deals'}
                   <ArrowRight size={16} className="ml-2" />
                 </Button>
               </Link>
@@ -554,11 +519,11 @@ const LandingPage = () => {
           <div className="text-center mb-10">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#00E5FF]/10 border border-[#00E5FF]/20 rounded-full mb-4">
               <Sparkles size={16} className="text-[#00E5FF]" />
-              <span className="text-[#00E5FF] text-sm font-medium">AI-агент подбора</span>
+              <span className="text-[#00E5FF] text-sm font-medium">{lang === 'ru' ? 'AI-агент подбора' : 'AI Selection Agent'}</span>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">AI-консультант CarBridge</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">{lt.aiChatTitle}</h2>
             <p className="text-slate-400 max-w-2xl mx-auto">
-              Подберёт авто из каталога, рассчитает стоимость, объяснит этапы сделки и поможет сориентироваться в работе платформы
+              {lt.aiChatSubtitle}
             </p>
           </div>
 
@@ -571,7 +536,7 @@ const LandingPage = () => {
                 </div>
                 <div>
                   <h3 className="text-white font-semibold">AI-Ассистент CARBRIDGE</h3>
-                  <p className="text-slate-500 text-sm">Онлайн • Отвечу на любые вопросы</p>
+                  <p className="text-slate-500 text-sm">{lang === 'ru' ? 'Онлайн • Отвечу на любые вопросы' : 'Online • Ready to answer any questions'}</p>
                 </div>
               </div>
 
@@ -625,7 +590,7 @@ const LandingPage = () => {
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()}
-                    placeholder="Опишите, какой автомобиль вы ищете..."
+                    placeholder={lt.aiChatPlaceholder}
                     className="flex-1 bg-[#0B0F14] border border-[#27272A] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]/20"
                     disabled={chatLoading}
                   />
@@ -639,7 +604,7 @@ const LandingPage = () => {
                   </Button>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-3">
-                  {['Электромобиль до $30000', 'Как работает тендер?', 'Какие этапы сделки?', 'Подобрать кроссовер'].map((suggestion) => (
+                  {(lt.aiChatSuggestions || []).map((suggestion) => (
                     <button
                       key={suggestion}
                       onClick={() => setChatInput(suggestion)}
@@ -659,10 +624,10 @@ const LandingPage = () => {
       <section id="process" className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">Как это работает</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white">7 шагов к честной машине</h2>
+            <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">{lt.processLabel}</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white">{lt.processTitle}</h2>
             <p className="text-slate-400 mt-4 max-w-2xl mx-auto">
-              CarBridge берёт вас за руку и проводит через каждый этап — от первого запроса до получения ключей
+              {lt.processSubtitle}
             </p>
           </div>
 
@@ -695,7 +660,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">Почему мы</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white">Наши преимущества</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white">{lt.advantagesTitle}</h2>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -782,7 +747,7 @@ const LandingPage = () => {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">FAQ</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white">Частые вопросы</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white">{lt.faqTitle}</h2>
           </div>
 
           <Accordion type="single" collapsible className="space-y-4">
@@ -808,8 +773,8 @@ const LandingPage = () => {
       <section id="contacts" className="py-24 bg-[#15191E]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">Связаться</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white">Контакты</h2>
+            <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">{lang === 'ru' ? 'Связаться' : 'Contact'}</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white">{lang === 'ru' ? 'Контакты' : 'Contacts'}</h2>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-12">
@@ -817,7 +782,7 @@ const LandingPage = () => {
               <div className="w-12 h-12 mx-auto mb-4 bg-[#00E5FF]/10 rounded-full flex items-center justify-center">
                 <Phone size={24} className="text-[#00E5FF]" />
               </div>
-              <h3 className="text-white font-medium mb-2">Телефон</h3>
+              <h3 className="text-white font-medium mb-2">{lang === 'ru' ? 'Телефон' : 'Phone'}</h3>
               <a href="tel:+37296699557" className="text-slate-400 hover:text-[#00E5FF] transition-colors">
                 +375 (29) 669-95-57
               </a>
@@ -837,14 +802,14 @@ const LandingPage = () => {
               <div className="w-12 h-12 mx-auto mb-4 bg-[#00E5FF]/10 rounded-full flex items-center justify-center">
                 <MapPin size={24} className="text-[#00E5FF]" />
               </div>
-              <h3 className="text-white font-medium mb-2">Адрес</h3>
-              <p className="text-slate-400">г. Минск, ул. Червякова, д. 52, пом. 1</p>
+              <h3 className="text-white font-medium mb-2">{lang === 'ru' ? 'Адрес' : 'Address'}</h3>
+              <p className="text-slate-400">{lang === 'ru' ? 'г. Минск, ул. Червякова, д. 52, пом. 1' : 'Minsk, 52 Chervyakova St., office 1'}</p>
             </div>
           </div>
 
           {/* Messengers Section */}
           <div className="max-w-2xl mx-auto">
-            <h3 className="text-white font-semibold text-xl text-center mb-6">Мессенджеры для связи</h3>
+            <h3 className="text-white font-semibold text-xl text-center mb-6">{lang === 'ru' ? 'Мессенджеры для связи' : 'Contact us via messengers'}</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <a
                 href="https://wa.me/37296699557"
@@ -889,7 +854,7 @@ const LandingPage = () => {
                 className="bg-[#1C2128] border border-[#27272A] rounded-sm p-4 flex flex-col items-center gap-2 card-hover group cursor-pointer"
                 onClick={() => {
                   navigator.clipboard.writeText('wxid_fuzh2yfspean12');
-                  alert('WeChat ID скопирован: wxid_fuzh2yfspean12');
+                  alert(lang === 'ru' ? 'WeChat ID скопирован: wxid_fuzh2yfspean12' : 'WeChat ID copied: wxid_fuzh2yfspean12');
                 }}
                 data-testid="contact-wechat"
               >
@@ -945,7 +910,7 @@ const LandingPage = () => {
               <div
                 onClick={() => {
                   navigator.clipboard.writeText('wxid_fuzh2yfspean12');
-                  alert('WeChat ID скопирован: wxid_fuzh2yfspean12');
+                  alert(lang === 'ru' ? 'WeChat ID скопирован: wxid_fuzh2yfspean12' : 'WeChat ID copied: wxid_fuzh2yfspean12');
                 }}
                 className="w-9 h-9 bg-[#27272A] rounded-full flex items-center justify-center text-slate-400 hover:bg-[#07C160] hover:text-white transition-colors cursor-pointer"
                 aria-label="WeChat"
@@ -956,7 +921,7 @@ const LandingPage = () => {
             </div>
 
             <p className="text-slate-500 text-sm">
-              © 2024 CARBRIDGE. Все права защищены.
+              © 2024 CARBRIDGE. {lang === 'ru' ? 'Все права защищены.' : 'All rights reserved.'}
             </p>
           </div>
         </div>

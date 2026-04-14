@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
+import { useTranslation } from '../hooks/useTranslation';
 import {
   Building2, Star, MapPin, Clock, Users, Award, Briefcase, Globe,
   Phone, Mail, MessageCircle, ExternalLink, ChevronLeft, BadgeCheck,
@@ -11,6 +12,7 @@ const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const ContractorProfilePage = () => {
   const { contractorId } = useParams();
+  const { t, lang } = useTranslation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -39,11 +41,7 @@ const ContractorProfilePage = () => {
   );
 
   const { contractor: c, profile: p, files } = data;
-  const serviceLabels = {
-    inspection: 'Инспекция', export: 'Выкуп и экспорт', logistics: 'Логистика',
-    logistics_china: 'Доставка (Китай)', delivery_rb: 'Доставка в РБ',
-    insurance: 'Страхование', purchase: 'Покупка', leasing: 'Лизинг', customs: 'Растаможка'
-  };
+  const serviceLabels = t('contractors.serviceLabels') || {};
 
   const facilityPhotos = (files || []).filter(f => f.category === 'facility');
   const certificateFiles = (files || []).filter(f => f.category === 'certificate');
@@ -54,7 +52,7 @@ const ContractorProfilePage = () => {
       <div className="bg-gradient-to-b from-[#15191E] to-[#0B0F14] border-b border-[#27272A]">
         <div className="max-w-5xl mx-auto px-4 py-6">
           <Link to="/contractors" className="inline-flex items-center gap-1 text-slate-400 hover:text-[#00E5FF] text-sm mb-4 transition-colors">
-            <ArrowLeft size={14} /> Все подрядчики
+            <ArrowLeft size={14} /> {t('contractors.allContractors')}
           </Link>
 
           <div className="flex items-start gap-5">
@@ -77,7 +75,7 @@ const ContractorProfilePage = () => {
                 {p?.city && <span className="text-slate-400 flex items-center gap-1"><MapPin size={12} />{p.city}</span>}
                 {p?.founded_year && <span className="text-slate-400 flex items-center gap-1"><Calendar size={12} />С {p.founded_year} г.</span>}
                 {p?.employees_count && <span className="text-slate-400 flex items-center gap-1"><Users size={12} />{p.employees_count} сотрудников</span>}
-                <span className="text-emerald-400 flex items-center gap-1"><Shield size={12} />{c.completed_deals} завершённых сделок</span>
+                <span className="text-emerald-400 flex items-center gap-1"><Shield size={12} />{c.completed_deals} {t('contractors.completedDeals')}</span>
               </div>
             </div>
           </div>
@@ -88,7 +86,7 @@ const ContractorProfilePage = () => {
         {/* About */}
         {p?.about && (
           <section>
-            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2"><Building2 size={18} className="text-purple-400" /> О компании</h2>
+            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2"><Building2 size={18} className="text-purple-400" /> {t('contractors.aboutCompany')}</h2>
             <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
               <p className="text-slate-300 leading-relaxed">{p.about}</p>
               <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -112,7 +110,7 @@ const ContractorProfilePage = () => {
                 )}
                 {c.services?.length > 0 && (
                   <div className="bg-[#0B0F14] p-3 rounded">
-                    <p className="text-slate-500 text-xs mb-1">Услуги</p>
+                    <p className="text-slate-500 text-xs mb-1">{t('contractors.services')}</p>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {(Array.isArray(c.services) ? c.services : (c.services || '').split(', ').filter(Boolean)).map(s => (
                         <span key={s} className="px-2 py-0.5 bg-[#15191E] text-[#00E5FF] text-xs rounded">{serviceLabels[s] || s}</span>
@@ -127,18 +125,18 @@ const ContractorProfilePage = () => {
 
         {/* Contacts */}
         <section>
-          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2"><Phone size={18} className="text-cyan-400" /> Контакты</h2>
+          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2"><Phone size={18} className="text-cyan-400" /> {t('contractors.contacts')}</h2>
           <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {c.contact_person && (
                 <div className="bg-[#0B0F14] p-3 rounded">
-                  <p className="text-slate-500 text-xs mb-1">Контактное лицо</p>
+                  <p className="text-slate-500 text-xs mb-1">{t('contractors.contactPerson')}</p>
                   <p className="text-white text-sm">{c.contact_person}</p>
                 </div>
               )}
               {c.phone && (
                 <div className="bg-[#0B0F14] p-3 rounded">
-                  <p className="text-slate-500 text-xs mb-1">Телефон</p>
+                  <p className="text-slate-500 text-xs mb-1">{t('contractors.phone')}</p>
                   <a href={`tel:${c.phone}`} className="text-[#00E5FF] text-sm hover:underline">{c.phone}</a>
                 </div>
               )}
@@ -162,7 +160,7 @@ const ContractorProfilePage = () => {
               )}
               {c.website && (
                 <div className="bg-[#0B0F14] p-3 rounded">
-                  <p className="text-slate-500 text-xs mb-1">Сайт</p>
+                  <p className="text-slate-500 text-xs mb-1">{t('contractors.website')}</p>
                   <a href={c.website} target="_blank" rel="noopener noreferrer" className="text-[#00E5FF] text-sm hover:underline flex items-center gap-1"><Globe size={12} /> Открыть</a>
                 </div>
               )}
@@ -184,7 +182,7 @@ const ContractorProfilePage = () => {
         {/* Staff */}
         {p?.staff?.length > 0 && (
           <section>
-            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2"><Users size={18} className="text-blue-400" /> Команда</h2>
+            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2"><Users size={18} className="text-blue-400" /> {t('contractors.team')}</h2>
             <div className="grid md:grid-cols-3 gap-4">
               {p.staff.map((s, i) => (
                 <div key={i} className="bg-[#15191E] border border-[#27272A] rounded-sm p-4">
@@ -203,7 +201,7 @@ const ContractorProfilePage = () => {
         {/* Certificates */}
         {(p?.certificates?.length > 0 || certificateFiles.length > 0) && (
           <section>
-            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2"><Award size={18} className="text-amber-400" /> Сертификаты и лицензии</h2>
+            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2"><Award size={18} className="text-amber-400" /> {t('contractors.certificates')}</h2>
             <div className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
               {p.certificates?.length > 0 && (
                 <div className="space-y-3 mb-4">
@@ -236,7 +234,7 @@ const ContractorProfilePage = () => {
         {/* Portfolio */}
         {p?.portfolio_cases?.length > 0 && (
           <section>
-            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2"><Briefcase size={18} className="text-emerald-400" /> Портфолио</h2>
+            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2"><Briefcase size={18} className="text-emerald-400" /> {t('contractors.portfolio')}</h2>
             <div className="grid md:grid-cols-2 gap-4">
               {p.portfolio_cases.map((c, i) => (
                 <div key={i} className="bg-[#15191E] border border-[#27272A] rounded-sm p-5">
@@ -251,7 +249,7 @@ const ContractorProfilePage = () => {
         {/* Facility Photos */}
         {facilityPhotos.length > 0 && (
           <section>
-            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2"><Image size={18} className="text-cyan-400" /> Фото офиса и площадок</h2>
+            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2"><Image size={18} className="text-cyan-400" /> {t('contractors.facilityPhotos')}</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {facilityPhotos.map(f => (
                 <a key={f.id} href={`${API}/profile-files/${f.id}/download`} target="_blank" rel="noopener noreferrer">

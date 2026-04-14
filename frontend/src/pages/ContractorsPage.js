@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -152,6 +153,7 @@ const TelegramIcon = ({ className }) => (
 
 const ContractorsPage = () => {
   const { token, user } = useAuth();
+  const { t, lang } = useTranslation();
   const [contractors, setContractors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('inspection');
@@ -288,9 +290,9 @@ const ContractorsPage = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <p className="text-[#00E5FF] text-sm font-medium uppercase tracking-wider mb-3">Партнеры</p>
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">Наши подрядчики</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">{t('contractors.title')}</h1>
           <p className="text-slate-400 max-w-2xl mx-auto mb-6">
-            Проверенные компании для каждого этапа покупки автомобиля из Китая
+            {t('contractors.subtitle')}
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-3">
             <Link to="/contractor-register">
