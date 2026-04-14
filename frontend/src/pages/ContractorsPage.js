@@ -433,7 +433,19 @@ const ContractorCard = ({ contractor, onDelete, isAuthenticated }) => {
         {/* Services */}
         <div className="mb-3">
           <p className="text-slate-500 text-xs mb-1">Услуги:</p>
-          <p className="text-slate-300 text-sm line-clamp-2">{contractor.services}</p>
+          <p className="text-slate-300 text-sm line-clamp-2">
+            {(() => {
+              const serviceLabels = {
+                inspection: 'Инспекция', export: 'Выкуп и экспорт', logistics: 'Логистика',
+                logistics_china: 'Доставка (Китай)', delivery_rb: 'Доставка в РБ',
+                insurance: 'Страхование', purchase: 'Покупка', leasing: 'Лизинг', customs: 'Растаможка'
+              };
+              const servicesArray = typeof contractor.services === 'string' 
+                ? contractor.services.split(',').map(s => s.trim())
+                : (contractor.services || []);
+              return servicesArray.map(s => serviceLabels[s] || s).join(', ');
+            })()}
+          </p>
         </div>
 
         {/* Service Prices */}
@@ -541,6 +553,13 @@ const ContractorCard = ({ contractor, onDelete, isAuthenticated }) => {
               <TelegramIcon className="w-4 h-4" />
             </a>
           )}
+          <Link 
+            to={`/contractor/${contractor.id}`}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-[#00E5FF]/10 text-[#00E5FF] text-sm rounded hover:bg-[#00E5FF]/20 transition-colors"
+            data-testid={`contractor-profile-link-${contractor.id}`}
+          >
+            Подробнее <ExternalLink size={12} />
+          </Link>
         </div>
       </div>
     </div>

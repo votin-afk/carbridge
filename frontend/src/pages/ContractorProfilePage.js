@@ -39,6 +39,12 @@ const ContractorProfilePage = () => {
   );
 
   const { contractor: c, profile: p, files } = data;
+  const serviceLabels = {
+    inspection: 'Инспекция', export: 'Выкуп и экспорт', logistics: 'Логистика',
+    logistics_china: 'Доставка (Китай)', delivery_rb: 'Доставка в РБ',
+    insurance: 'Страхование', purchase: 'Покупка', leasing: 'Лизинг', customs: 'Растаможка'
+  };
+
   const facilityPhotos = (files || []).filter(f => f.category === 'facility');
   const certificateFiles = (files || []).filter(f => f.category === 'certificate');
 
@@ -108,7 +114,9 @@ const ContractorProfilePage = () => {
                   <div className="bg-[#0B0F14] p-3 rounded">
                     <p className="text-slate-500 text-xs mb-1">Услуги</p>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {c.services.map(s => <span key={s} className="px-2 py-0.5 bg-[#15191E] text-[#00E5FF] text-xs rounded">{s}</span>)}
+                      {(Array.isArray(c.services) ? c.services : (c.services || '').split(', ').filter(Boolean)).map(s => (
+                        <span key={s} className="px-2 py-0.5 bg-[#15191E] text-[#00E5FF] text-xs rounded">{serviceLabels[s] || s}</span>
+                      ))}
                     </div>
                   </div>
                 )}

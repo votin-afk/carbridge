@@ -576,6 +576,15 @@ const OfferCard = ({ offer, isFirst, isSelected, tenderStatus, onSelect, onAddTo
                 <p className="text-slate-500">Рейтинг</p>
               </div>
             </div>
+            <a 
+              href={`/contractor/${offer.contractor_id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 flex items-center justify-center gap-1 w-full py-1.5 bg-[#00E5FF]/10 text-[#00E5FF] text-xs rounded hover:bg-[#00E5FF]/20 transition-colors"
+              data-testid={`full-profile-link-${offer.contractor_id}`}
+            >
+              Полный профиль <ExternalLink size={10} />
+            </a>
           </div>
         )}
 

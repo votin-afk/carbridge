@@ -2782,6 +2782,70 @@ async def get_approved_contractors():
     
     return all_contractors
 
+@api_router.get("/contractors/{contractor_id}/page")
+async def get_contractor_public_page(contractor_id: str):
+    """Get contractor public profile page (no auth required)"""
+    # Find contractor
+    contractor = await db.contractors.find_one({"id": contractor_id}, {"_id": 0, "password_hash": 0})
+    if not contractor:
+        raise HTTPException(status_code=404, detail="Contractor not found")
+    
+    # Get profile data
+    profile = await db.contractor_profiles.find_one({"contractor_id": contractor_id}, {"_id": 0})
+    if not profile:
+        profile = {
+            "contractor_id": contractor_id,
+            "about": contractor.get("description", ""),
+            "slogan": "",
+            "founded_year": "",
+            "city": "",
+            "address": "",
+            "employees_count": "",
+            "staff": [],
+            "certificates": [],
+            "portfolio_cases": [],
+            "working_hours": "",
+            "languages": [],
+            "social_links": {}
+        }
+    
+    # Get profile files (facility photos, certificates)
+    files = await db.profile_files.find({"contractor_id": contractor_id}, {"_id": 0}).to_list(100)
+    
+    # Count completed deals
+    completed_deals = await db.deals.count_documents({
+        "contractor_id": contractor_id,
+        "status": "completed"
+    })
+    
+    # Build contractor info
+    c_info = {
+        "id": contractor["id"],
+        "company_name": contractor.get("company_name") or contractor.get("name", ""),
+        "services": contractor.get("services", []),
+        "service_prices": contractor.get("service_prices", {}),
+        "verified": contractor.get("verified", False),
+        "is_verified": contractor.get("is_verified", False),
+        "rating": contractor.get("rating", 5.0),
+        "deals_count": contractor.get("deals_count", 0),
+        "completed_deals": completed_deals or contractor.get("deals_count", 0),
+        "phone": contractor.get("phone", ""),
+        "email": contractor.get("email", ""),
+        "telegram": contractor.get("telegram", ""),
+        "whatsapp": contractor.get("whatsapp", ""),
+        "wechat": contractor.get("wechat", ""),
+        "website": contractor.get("website", ""),
+        "contact_person": contractor.get("contact_person", ""),
+        "description": contractor.get("description", ""),
+        "created_at": contractor.get("created_at", ""),
+    }
+    
+    return {
+        "contractor": c_info,
+        "profile": profile,
+        "files": files
+    }
+
 @api_router.get("/contractors/{contractor_id}", response_model=ContractorResponse)
 async def get_contractor(contractor_id: str):
     """Get contractor by ID"""
@@ -3711,19 +3775,24 @@ async def approve_contractor_application(app_id: str, current_user: dict = Depen
     contractor_data = {
         "id": contractor_id,
         "name": application["company_name"],
-        "contractor_type": application["contractor_type"],
-        "description": application["description"],
-        "services": application["services"],
+        "company_name": application["company_name"],
+        "contractor_type": application.get("contractor_type", "inspection"),
+        "description": application.get("description", ""),
+        "services": application.get("services", []),
         "price_range": application.get("price_range"),
-        "phone": application["phone"],
-        "email": application["email"],
+        "phone": application.get("phone", ""),
+        "email": application.get("email", ""),
         "website": application.get("website"),
         "whatsapp": application.get("whatsapp"),
         "wechat": application.get("wechat"),
         "telegram": application.get("telegram"),
+        "contact_person": application.get("contact_person", ""),
+        "city": application.get("city", ""),
         "rating": 5.0,
         "deals_count": application.get("deals_completed", 0),
+        "verified": True,
         "is_verified": True,
+        "status": "approved",
         "logo_url": None,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
