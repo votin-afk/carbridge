@@ -1,56 +1,136 @@
-# CarBridge - Платформа для импорта авто из Китая
+# CarBridge — PRD (Product Requirements Document)
 
-**Последнее обновление:** 14.04.2026
+## Original Problem Statement
+Build a comprehensive website for importing cars from China (CarBridge). The platform's business logic and workflow must be deeply integrated with Bitrix24 CRM.
 
-## Оригинальное техзадание
-Комплексная платформа для импорта автомобилей из Китая в Беларусь с интеграцией Bitrix24 CRM.
+## System Roles
+- **Administrator** — full platform control
+- **Client** — registration (creates Bitrix24 contact), My Garage (cost calculator), Prepayment ($500), Deals & Tenders, Documents (stage infographic + chat + files), Contractor Assignment
+- **Contractor** — register, submit tender offers, stage-specific chats, public profile
+- **Moderator** — approve contractors, prepayments, deal stages
 
-**Роли:** Администратор, Клиент, Подрядчик, Модератор.
+## Core Integrations
+- Bitrix24 CRM (user webhook)
+- Telegram Bot (two-way notifications)
+- Che168 API / auto-api.com (car catalog)
+- AI Assistant (Emergent LLM Key)
+- WhatsApp Business API (pending user credentials)
 
-## Текущая архитектура
-- FastAPI backend, React frontend, MongoDB
-- Мультиязычность: RU/EN через LanguageContext + translation files
-- Модульные роуты: catalog.py, telegram.py, deals.py, auth.py, affiliate.py, user.py, leasing.py
-- server.py: ~7000 строк
-- Shared config: config.py, database.py, utils/auth.py
+## Tech Stack
+- **Frontend**: React + Shadcn/UI + TailwindCSS
+- **Backend**: FastAPI + MongoDB
+- **i18n**: Custom React Context (LanguageContext + useTranslation hook), RU/EN
 
-## Выполненные задачи
+---
 
-### Сессия 14.04.2026 (текущая)
-1. **Баги Documents.js** — proxy для фото + downloadFile
-2. **Рефакторинг server.py** — deals.py (~2050 строк), config.py
-3. **Обновлена главная страница** — Hero, 7 шагов, FAQ (10), преимущества
-4. **AI-ассистент** — навигация по платформе + подбор из каталога
-5. **Публичная страница подрядчика** — endpoint + фронтенд + ссылки
-6. **Мультиязычность RU/EN**:
-   - LanguageContext + useTranslation hook + translation files (ru.js, en.js)
-   - Переключатель RU/EN в хедере лендинга и sidebar дашборда
-   - Переведены: LandingPage, ContractorsPage, ContractorProfilePage, DashboardLayout
-   - AI-ассистент отвечает на выбранном языке (параметр `lang` в API)
-   - Язык сохраняется в localStorage
+## What's Been Implemented
 
-### Предыдущие сессии
-- Полная двусторонняя Telegram интеграция
-- Прокси для китайских изображений
-- Lightbox для фото предложений
-- Добавление авто по ссылке через Che168 API
+### Core Platform
+- Full-stack app with role-based dashboards (Client, Contractor, Moderator, Admin)
+- JWT authentication with registration/login
+- MongoDB data layer for users, contractors, deals, tenders, applications, garage
 
-## Бэклог
-- P1: Рефакторинг server.py (moderator, contractors, applications)
-- P1: Добавить переводы в оставшиеся dashboard-страницы (Garage, Applications, Tenders, Documents и т.д.)
-- P2: Telegram webhook на production
-- P2: WhatsApp интеграция (ожидание Meta credentials)
-- P2: Рефакторинг фронтенд-компонентов
-- P3: Система платежей/эскроу
-- P3: Кэширование переведённых описаний авто
+### Car Catalog & Garage
+- Live car catalog from Che168 via auto-api.com proxy
+- Image proxy (`/api/proxy/image`) to bypass referrer blocks
+- My Garage with cost calculation (turnkey in Belarus)
 
-## Тест-отчёты
-- iteration_32.json — Мультиязычность RU/EN (100% backend, 90% frontend)
-- iteration_31.json — Страница подрядчика (100%)
-- iteration_30.json — Landing page + AI chat (100%)
-- iteration_29.json — Deals refactoring (100%)
+### Deals & Tenders
+- Deal creation flow with stage infographic
+- Tender system (contractors submit offers, clients choose)
+- Documents section with chat and file upload UI
 
-## Тестовые данные
-- Admin: votin@tut.by / test
-- User: test@test.com / test
-- Contractor: test.contractor2@test.com / test123
+### Contractor System
+- Contractor registration and approval workflow
+- Public contractor profile pages (`/contractor/:id`)
+- Contractor dashboard with tender management
+- Cascade deletion (contractor + associated tenders/deals)
+
+### Calculator
+- Full customs clearance calculator (individual/legal entity)
+- Decree 140 benefit support (50% discount)
+- Platform fee breakdown
+
+### Notifications
+- Two-way Telegram integration
+- Stage-change notifications
+
+### AI Assistant
+- Integrated AI chat on landing page and dashboard
+- Language-aware system prompt
+
+### i18n Localization (RU/EN) — COMPLETED Feb 2026
+- Custom React Context + useTranslation hook
+- Landing Page fully translated
+- Dashboard Sidebar translated
+- ContractorsPage fully translated (including ContractorCard component)
+- Calculator page fully translated
+- Translation dictionaries: `/app/frontend/src/translations/ru.js` and `en.js`
+- Toast messages translated via `messages.*` keys
+
+### Backend Refactoring (Partial)
+- `deals.py` extracted to `/app/backend/routes/`
+- `telegram.py` extracted to `/app/backend/routes/`
+- `catalog.py` in `/app/backend/routes/`
+
+---
+
+## Pending / In Progress
+
+### P0 — High Priority
+- **Backend File Uploads for Deal Stages**: UI exists but backend logic to store/associate files with deal stages is missing
+
+### P1 — Medium Priority
+- **Continue server.py Refactoring**: Extract Moderator, Contractors, Applications routes into `/app/backend/routes/`
+- **Refactor Large Frontend Components**: Break down `ModeratorPage.js` and `ContractorDashboard.js`
+
+### P2 — Low Priority / Future
+- Implement full payment/escrow system
+- Cache translated car descriptions in MongoDB
+- WhatsApp Business API integration (awaiting user Meta credentials)
+- Production Telegram webhook update (user action required)
+
+---
+
+## Architecture
+
+```
+/app
+├── backend/
+│   ├── routes/
+│   │   ├── deals.py
+│   │   ├── telegram.py
+│   │   └── catalog.py
+│   └── server.py
+├── frontend/
+│   └── src/
+│       ├── contexts/
+│       │   ├── AuthContext.js
+│       │   └── LanguageContext.js
+│       ├── hooks/
+│       │   └── useTranslation.js
+│       ├── translations/
+│       │   ├── ru.js
+│       │   └── en.js
+│       ├── pages/
+│       │   ├── Calculator.js
+│       │   ├── ContractorsPage.js
+│       │   ├── ContractorProfilePage.js
+│       │   ├── LandingPage.js
+│       │   └── dashboard/
+│       └── components/ui/
+└── memory/
+    ├── PRD.md
+    └── test_credentials.md
+```
+
+## Key API Endpoints
+- `GET /api/contractors` — list contractors by type
+- `GET /api/contractors/page/{id}` — public contractor profile
+- `POST /api/calculator` — customs cost calculation
+- `POST /api/chat` — AI assistant (accepts `lang` param)
+- `DELETE /api/moderator/contractors/{id}` — cascade delete
+
+## Production Notes
+- Production domain: `carbridge.by`
+- Preview changes do NOT auto-deploy to production — user must redeploy
