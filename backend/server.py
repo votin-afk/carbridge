@@ -7035,6 +7035,88 @@ else:
     bitrix24 = None
     logger.warning("Bitrix24 webhook URL not configured")
 
+@app.on_event("startup")
+async def seed_database():
+    """Seed the database with admin user and essential data on first run"""
+    # Create admin user if not exists
+    for admin_email in ADMIN_EMAILS:
+        existing = await db.users.find_one({"email": admin_email})
+        if not existing:
+            admin_doc = {
+                "id": str(uuid.uuid4()),
+                "email": admin_email,
+                "password_hash": hash_password("test"),
+                "name": "Admin",
+                "last_name": "CarBridge",
+                "phone": "",
+                "city": "",
+                "user_type": "individual",
+                "role": "admin",
+                "balance": 0.0,
+                "is_verified": True,
+                "prepayment_confirmed": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.users.insert_one(admin_doc)
+            logger.info(f"Admin user created: {admin_email}")
+
+    # Create test user if not exists
+    test_email = "test@test.com"
+    existing_test = await db.users.find_one({"email": test_email})
+    if not existing_test:
+        test_doc = {
+            "id": str(uuid.uuid4()),
+            "email": test_email,
+            "password_hash": hash_password("test"),
+            "name": "Test",
+            "last_name": "User",
+            "phone": "+375290000000",
+            "city": "Minsk",
+            "user_type": "individual",
+            "role": "user",
+            "balance": 0.0,
+            "is_verified": False,
+            "prepayment_confirmed": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.users.insert_one(test_doc)
+        logger.info(f"Test user created: {test_email}")
+
+    # Sync approved contractor applications to contractors collection
+    approved_apps = db.contractor_applications.find({"status": "approved"})
+    async for app_doc in approved_apps:
+        existing_contractor = await db.contractors.find_one({"email": app_doc.get("email")})
+        if not existing_contractor:
+            contractor_doc = {
+                "id": app_doc["id"],
+                "name": app_doc.get("company_name", app_doc.get("contact_person", "Unknown")),
+                "company_name": app_doc.get("company_name", ""),
+                "contractor_type": app_doc.get("services", ["inspection"])[0] if app_doc.get("services") else "inspection",
+                "description": app_doc.get("description", ""),
+                "services": ", ".join(app_doc.get("services", [])) if isinstance(app_doc.get("services"), list) else app_doc.get("services", ""),
+                "service_prices": app_doc.get("service_prices"),
+                "price_range": None,
+                "phone": app_doc.get("phone", ""),
+                "email": app_doc.get("email", ""),
+                "website": app_doc.get("website"),
+                "whatsapp": app_doc.get("whatsapp"),
+                "wechat": app_doc.get("wechat"),
+                "telegram": app_doc.get("telegram"),
+                "rating": app_doc.get("rating", 5.0),
+                "deals_count": app_doc.get("deals_count", 0),
+                "is_verified": True,
+                "verified": True,
+                "country": app_doc.get("country"),
+                "contact_person": app_doc.get("contact_person"),
+                "logo_url": app_doc.get("logo_url"),
+                "password_hash": app_doc.get("password_hash"),
+                "created_at": app_doc.get("created_at", datetime.now(timezone.utc).isoformat())
+            }
+            await db.contractors.insert_one(contractor_doc)
+            logger.info(f"Synced approved contractor to contractors: {app_doc.get('company_name')}")
+
+    logger.info("Database seed completed")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()

@@ -29,6 +29,7 @@ Build a comprehensive website for importing cars from China (CarBridge). The pla
 - Full-stack app with role-based dashboards (Client, Contractor, Moderator, Admin)
 - JWT authentication with registration/login
 - MongoDB data layer for users, contractors, deals, tenders, applications, garage
+- **Database auto-seed on startup** — creates admin users, test user, syncs approved contractor applications
 
 ### Car Catalog & Garage
 - Live car catalog from Che168 via auto-api.com proxy
@@ -61,34 +62,34 @@ Build a comprehensive website for importing cars from China (CarBridge). The pla
 
 ### i18n Localization (RU/EN) — COMPLETED Feb 2026
 - Custom React Context + useTranslation hook
-- Landing Page fully translated
-- Dashboard Sidebar translated
-- ContractorsPage fully translated (including ContractorCard component)
-- Calculator page fully translated
-- Translation dictionaries: `/app/frontend/src/translations/ru.js` and `en.js`
-- Toast messages translated via `messages.*` keys
+- Landing Page, Dashboard Sidebar, ContractorsPage, Calculator fully translated
+- Translation dictionaries: `ru.js` and `en.js` with `calc.*`, `contractors.*`, `messages.*` sections
 
 ### Backend Refactoring (Partial)
-- `deals.py` extracted to `/app/backend/routes/`
-- `telegram.py` extracted to `/app/backend/routes/`
-- `catalog.py` in `/app/backend/routes/`
+- `deals.py`, `telegram.py`, `catalog.py` extracted to `/app/backend/routes/`
+
+### Database Initialization (Apr 2026)
+- `@app.on_event("startup")` seed_database function
+- Auto-creates admin users from ADMIN_EMAILS list
+- Auto-creates test user (test@test.com / test)
+- Syncs approved contractor_applications to contractors collection
 
 ---
 
 ## Pending / In Progress
 
-### P0 — High Priority
-- **Backend File Uploads for Deal Stages**: UI exists but backend logic to store/associate files with deal stages is missing
+### P0
+- **Backend File Uploads for Deal Stages**: UI exists but backend logic missing
 
-### P1 — Medium Priority
-- **Continue server.py Refactoring**: Extract Moderator, Contractors, Applications routes into `/app/backend/routes/`
-- **Refactor Large Frontend Components**: Break down `ModeratorPage.js` and `ContractorDashboard.js`
+### P1
+- **Continue server.py Refactoring**: Extract Moderator, Contractors, Applications routes
+- **Refactor Large Frontend Components**: ModeratorPage.js, ContractorDashboard.js
 
-### P2 — Low Priority / Future
-- Implement full payment/escrow system
+### P2 / Future
+- Full payment/escrow system
 - Cache translated car descriptions in MongoDB
-- WhatsApp Business API integration (awaiting user Meta credentials)
-- Production Telegram webhook update (user action required)
+- WhatsApp Business API (awaiting Meta credentials)
+- Production Telegram webhook (user action)
 
 ---
 
@@ -97,40 +98,26 @@ Build a comprehensive website for importing cars from China (CarBridge). The pla
 ```
 /app
 ├── backend/
-│   ├── routes/
-│   │   ├── deals.py
-│   │   ├── telegram.py
-│   │   └── catalog.py
-│   └── server.py
-├── frontend/
-│   └── src/
-│       ├── contexts/
-│       │   ├── AuthContext.js
-│       │   └── LanguageContext.js
-│       ├── hooks/
-│       │   └── useTranslation.js
-│       ├── translations/
-│       │   ├── ru.js
-│       │   └── en.js
-│       ├── pages/
-│       │   ├── Calculator.js
-│       │   ├── ContractorsPage.js
-│       │   ├── ContractorProfilePage.js
-│       │   ├── LandingPage.js
-│       │   └── dashboard/
-│       └── components/ui/
-└── memory/
-    ├── PRD.md
-    └── test_credentials.md
+│   ├── routes/ (deals.py, telegram.py, catalog.py)
+│   ├── services/ (bitrix24.py, telegram_service.py, che168.py)
+│   └── server.py (main app + startup seed)
+├── frontend/src/
+│   ├── contexts/ (AuthContext, LanguageContext)
+│   ├── hooks/ (useTranslation)
+│   ├── translations/ (ru.js, en.js)
+│   ├── pages/ (Calculator, ContractorsPage, LandingPage, dashboard/...)
+│   └── components/ui/
+└── memory/ (PRD.md, test_credentials.md)
 ```
 
 ## Key API Endpoints
-- `GET /api/contractors` — list contractors by type
-- `GET /api/contractors/page/{id}` — public contractor profile
+- `GET /api/contractors` — list approved contractors
+- `POST /api/auth/register` / `POST /api/auth/login`
 - `POST /api/calculator` — customs cost calculation
-- `POST /api/chat` — AI assistant (accepts `lang` param)
-- `DELETE /api/moderator/contractors/{id}` — cascade delete
+- `POST /api/moderator/applications/{id}/approve` — approve contractor
+- `POST /api/moderator/contractors/{id}/approve` — approve contractor (v2)
 
 ## Production Notes
-- Production domain: `carbridge.by`
-- Preview changes do NOT auto-deploy to production — user must redeploy
+- Production: `carbridge.by`
+- Preview changes do NOT auto-deploy — user must redeploy
+- Admin emails auto-assigned admin role: votin@tut.by, admin@carbridge.by
