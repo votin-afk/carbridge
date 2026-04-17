@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: carbridge-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - carbridge_mongo_data:/data/db
+    environment:
+      # Без аутентификации для локальной разработки
+      MONGO_INITDB_DATABASE: test_database
+
+volumes:
+  carbridge_mongo_data:
